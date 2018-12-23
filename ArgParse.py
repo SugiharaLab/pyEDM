@@ -73,6 +73,11 @@ def ParseCmdLine():
                         help = 'Tikhonov regularisation initial alpha in ' +\
                                'S-Map SVD.')
     
+    parser.add_argument('-en', '--ElasticNetAlpha', # ElasticNetCV l1_ratio
+                        dest   = 'ElasticNetAlpha', type = float,
+                        action = 'store', default = None,
+                        help = 'Elastic Net alpha in S-Map.')
+    
     parser.add_argument('-M', '--multiview',
                         dest   = 'multiview', type = int, 
                         action = 'store', default = 0,
@@ -234,6 +239,32 @@ def AdjustArgs( args ):
         args.jacobians = [ ( int( args.jacobians[i]     ),
                              int( args.jacobians[i + 1] ) )
                            for i in range( 0, len( args.jacobians ), 2 ) ]
+
+        # SVD, Tikhonov and ElasticNet are mutually exclusive
+        if ( args.TikhonovAlpha and args.ElasticNetAlpha ) or \
+           ( args.SVDLeastSquares and args.TikhonovAlpha ) or \
+           ( args.SVDLeastSquares and args.ElasticNetAlpha ) :
+            raise RuntimeError( "ParseCmdLine() Multiple S-Map solve methods "+\
+                                "specified.  Use one of: Tikhonov (-tr)  " +\
+                                "Elastic Net (-en)  SVD (-svd)." )
+
+        if args.ElasticNetAlpha :
+            # Since ArgParse.py a standalone module, check here for sklearn
+            try:
+                from sklearn.linear_model import ElasticNetCV
+            except ImportError:
+                raise RuntimeError( "ParseCmdLine() Failed to import " +\
+                                    "ElasticNetCV from sklearn.linear_model."+\
+                                    " See scikit-learn.org" )
+            # sklearn.linear_model.ElasticNet documentation states:
+            # l1_ratio <= 0.01 is not reliable
+            if args.ElasticNetAlpha <= 0.01 :
+                print( "ParseCmdLine() Setting ElasticNetAlpha to 0.01." )
+                args.ElasticNetAlpha = 0.01
+            if args.ElasticNetAlpha > 1 :
+                print( "ParseCmdLine() Setting ElasticNetAlpha to 1." )
+                args.ElasticNetAlpha = 1
+            
 
     # Convert library and prediction indices to zero-offset
     args.prediction = [ x-1 for x in args.prediction ]
