@@ -146,7 +146,10 @@ def init():
     svd = widgets.Checkbox( value=False, description='SVD',
                             layout = widgets.Layout(width='50%') )
     
-    TikhonovAlpha = widgets.FloatText(value=None, description='Tikhonov Alpha:')
+    TikhonovAlpha = widgets.FloatText(value=None, description='Tikhonov α:')
+    
+    ElasticNetAlpha = widgets.FloatText( value = None,
+                                         description='ElasticNet α:')
     
     multiview = widgets.IntSlider( value=0, min=0, max=20, step=1,
                                    description='multiview:')
@@ -208,6 +211,7 @@ def init():
     Widgets['jacobians']       = jacobians
     Widgets['svd']             = svd
     Widgets['TikhonovAlpha']   = TikhonovAlpha
+    Widgets['ElasticNetAlpha'] = ElasticNetAlpha
     Widgets['tau']             = tau
     Widgets['columns']         = columns
     Widgets['target']          = target
@@ -225,11 +229,14 @@ def init():
 
     # Organize widgets 
     left_box  = widgets.VBox( [ method, pred, lib, columns, target,
-                                libsize, widgets.HBox( [ plot, verbose ] ) ] )
+                                libsize, TikhonovAlpha,
+                                widgets.HBox( [ plot, verbose ] ) ] )
     mid_box   = widgets.VBox( [ E, knn, Tp, theta, tau, subsample,
+                                ElasticNetAlpha,
                                 widgets.HBox( [ randomLib, svd ] ) ] )
     right_box = widgets.VBox( [ path, inputFile, outputFile, outputSmapFile,
-                                outputEmbed, jacobians, embedded ] )
+                                outputEmbed, jacobians, noNeighborLimit,
+                                embedded ] )
     # Display widgets on notebook
     display( widgets.HBox( [ left_box, mid_box, right_box ] ) )
 
@@ -251,6 +258,7 @@ def UpdateArgs():
     args.theta           = Widgets['theta'].value
     args.jacobians       = [ int(x) for x in Widgets['jacobians'].value.split()]
     args.TikhonovAlpha   = Widgets['TikhonovAlpha'].value
+    args.ElasticNetAlpha = Widgets['ElasticNetAlpha'].value
     args.tau             = Widgets['tau'].value
     args.columns         = Widgets['columns'].value.split()
     args.target          = Widgets['target'].value

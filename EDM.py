@@ -8,6 +8,11 @@ from   scipy.optimize   import minimize
 from   matplotlib.dates import datestr2num, num2date
 import matplotlib.pyplot as plt
 
+try:
+    from sklearn.linear_model import ElasticNetCV
+except ImportError:
+    pass # Validated in ArgParse.AdjustArgs() if --ElasticNetAlpha (-en)
+
 # Local modules
 
 # Global options
@@ -422,15 +427,16 @@ def SMapProjection( libraryMatrix, predictMatrix, target,
                 A[ k, j ] = w[k] * predictMatrix[ row, j ]
 
         B = w * B
-        
+
+        # Solve linear regression to estimate coefficients C
         if args.SVDLeastSquares:
-            if args.TikhonovAlpha:
-                C = SVD_Tikhonov( A, B, w, args )
-            else:
-                # SVD least squares
-                C = SVD( A, B, args )
+            C = SVD( A, B, args )
+        elif args.TikhonovAlpha:
+            C = SVD_Tikhonov( A, B, w, args )
+        elif args.ElasticNetAlpha:
+            C, rho, alpha = ElasticNet_( A, B, args )
         else:
-            # numpy least squares approximation
+            # Default numpy least squares approximation
             C, residual, rank, sv = lstsq( A, B, rcond = 1E-6 )
 
         # Prediction is local linear projection
@@ -475,6 +481,35 @@ def SMapProjection( libraryMatrix, predictMatrix, target,
             print( np.round( jacobians  [ 0:5, : ], 4 ) )
 
     return ( predictions, coefficients, jacobians, tangents )
+    
+#----------------------------------------------------------------------------
+#
+#----------------------------------------------------------------------------
+def ElasticNet_( A, b, args ) :
+    '''
+    Elastic Net optimisation from scikit-learn 
+    '''
+    # Instantiate the ElasticNetCV class object
+    #   The parameter l1_ratio corresponds to alpha in the R package glmnet,
+    #   while alpha corresponds to the lambda parameter in glmnet.
+    #   Specifically, l1_ratio = 1 is the lasso penalty.
+    #   Currently, l1_ratio <= 0.01 is not reliable.
+    # If use ElasticNet, you need to specify alpha (lambda), not trivial.
+    # ElasticNetCV uses K-fold Cross Validation to choose an optimal alpha
+    en = ElasticNetCV( l1_ratio = args.ElasticNetAlpha,
+                       eps = 0.001, n_alphas = 100, max_iter = 1000, 
+                       cv = min( 5, nRow(A) ), n_jobs = None,
+                       random_state = None )
+
+    en.fit( A, b ) # Fit linear model with coordinate descent
+
+    if args.Debug :
+        print( en.coef_ )     # Parameter vector (w in the cost function)
+        print( en.alpha_ )    # Penalization chosen by cross validation
+        print( en.l1_ratio_ ) # l1 and l2 penalization from cross validation
+        print('---------------------')
+    
+    return ( en.coef_, en.alpha_, en.l1_ratio_ )
     
 #----------------------------------------------------------------------------
 #
