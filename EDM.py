@@ -487,19 +487,21 @@ def SMapProjection( libraryMatrix, predictMatrix, target,
 #----------------------------------------------------------------------------
 def ElasticNet_( A, b, args ) :
     '''
-    Elastic Net optimisation from scikit-learn 
+    Elastic Net optimisation from scikit-learn to estimate S-map coefficients.
+
+    ElasticNetCV() uses K-fold Cross Validation to choose an optimal alpha.
+    If use ElasticNet(), you need to specify alpha (lambda): not trivial.
+
+    The parameter l1_ratio corresponds to alpha in the R package glmnet,
+    while alpha corresponds to the lambda parameter in glmnet.
+    Specifically, l1_ratio = 1 is the lasso penalty, 0 Tikhonov (Ridge).
+    Currently, l1_ratio <= 0.01 is not reliable.
     '''
     # Instantiate the ElasticNetCV class object
-    #   The parameter l1_ratio corresponds to alpha in the R package glmnet,
-    #   while alpha corresponds to the lambda parameter in glmnet.
-    #   Specifically, l1_ratio = 1 is the lasso penalty.
-    #   Currently, l1_ratio <= 0.01 is not reliable.
-    # If use ElasticNet, you need to specify alpha (lambda), not trivial.
-    # ElasticNetCV uses K-fold Cross Validation to choose an optimal alpha
     en = ElasticNetCV( l1_ratio = args.ElasticNetAlpha,
                        eps = 0.001, n_alphas = 100, max_iter = 1000, 
-                       cv = min( 5, nRow(A) ), n_jobs = None,
-                       random_state = None )
+                       cv = min( 5, int( nRow(A)/2 ) ),
+                       n_jobs = None, random_state = None )
 
     en.fit( A, b ) # Fit linear model with coordinate descent
 
