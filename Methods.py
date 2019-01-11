@@ -23,9 +23,9 @@ class Source :
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def Predict( args, source = Source.Python ):
+def Predict( args, data = None, colNames = None, source = Source.Python ):
     '''
-    Data input/embedding wrapper for Prediction() in EMD.py to compute:
+    Data input/embedding wrapper for EDM.Prediction() to compute:
 
       Simplex projection of observational data (Sugihara, 1990), or
       SMap    projection of observational data (Sugihara, 1994).
@@ -49,7 +49,7 @@ def Predict( args, source = Source.Python ):
     embed and target to project are specified with the -c (columns)
     and -r (target) options. In both cases 'time' is required in column 0. 
  
-    Embedding can be done with EmbedData() via the wrapper Embed.py. 
+    Embedding can be done with EDM.EmbedData() via the wrapper Embed.py. 
     Note: The embedded data .csv file will have fewer rows (observations)
     than the data input to EmbedData() by E - 1. 
     '''
@@ -61,7 +61,7 @@ def Predict( args, source = Source.Python ):
         embedding, colNames, target = ReadEmbeddedData( args )
     else :
         # args.inputFile are timeseries data to be embedded by EmbedData
-        embedding, colNames, target = EmbedData( args )
+        embedding, colNames, target = EmbedData( args, data, colNames )
 
     rho, rmse, mae, header, output, smap_output = Prediction( embedding,
                                                               colNames,
@@ -75,8 +75,10 @@ def Predict( args, source = Source.Python ):
 #----------------------------------------------------------------------------
 #
 #----------------------------------------------------------------------------
-def Embed( args, source = Source.Python ):
+def Embed( args, data = None, colNames = None, source = Source.Python ):
     '''
+    Wrapper for EDM.EmbedData()
+
     Time-delay embedd data vector(s) from args.inputFile into 
     args.Dimensions at multiples of args.tau.  Note that if the 
     -f --forwardTau option is specified, then the embedding is 
@@ -91,7 +93,7 @@ def Embed( args, source = Source.Python ):
     than the input data by args.Dimension - 1 (E-1). 
     '''
     
-    embedding, header, target = EmbedData( args )
+    embedding, header, target = EmbedData( args, data, colNames )
 
     if args.Debug:
         print( "Embed() " + ' '.join( args.embedColumns ) +\
