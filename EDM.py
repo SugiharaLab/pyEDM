@@ -499,7 +499,7 @@ def ElasticNet_( A, b, args ) :
     '''
     # Instantiate the ElasticNetCV class object
     en = ElasticNetCV( l1_ratio = args.ElasticNetAlpha,
-                       eps = 0.001, n_alphas = 100, max_iter = 1000, 
+                       eps = 0.001, n_alphas = 100, max_iter = 2000, 
                        cv = min( 5, int( nRow(A)/2 ) ),
                        n_jobs = None, random_state = None )
 
@@ -824,6 +824,47 @@ def Distance( p1, p2, metric = DistanceMetric.Euclidean ) :
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
+def ReadData( args ) :
+    '''
+    Reads args.inputFile assumed to be .csv format with a single header line 
+    labeling the columns/variables. At least two columns are required: "time" 
+    in column i=0, and data values in args.columns.
+    '''
+    
+    # loadtxt returns an ndarray, reads all columns by default
+    # inputFile assumed to be .csv format with a single header line
+    try:
+        csv_matrix = np.loadtxt( args.path + args.inputFile,
+                                 delimiter = ',', skiprows = 1 )
+    except ValueError as err:
+        if 'could not convert string to float' in str( err ):
+            # Try with date conversion on first (j=0) column.
+            # datestr2num() is not documented, it seems to be a wrapper
+            # for matplotlib.dates.date2num(d), where d = datetime.datetime.
+            # Returns: Number of days (fraction represents hours, minutes,
+            # seconds, ms) since 0001-01-01 00:00:00 UTC, plus one.
+            csv_matrix = np.loadtxt( args.path + args.inputFile,
+                                     delimiter = ',', skiprows = 1,
+                                     converters = { 0 : datestr2num },
+                                     encoding = None )
+            args.plotDate = True
+    except:
+        print( "ReadData() np.loadtxt() failed on ", args.inputFile )
+        raise
+
+    # Parse the header [ Time, Dim_1, Dim_2, ... ]
+    csv_head = ''
+    with open( args.path + args.inputFile ) as fob:
+        csv_head = fob.readline()
+
+    csv_head = csv_head.split(',')
+    csv_head = [ h.strip() for h in csv_head ]
+
+    return ( csv_matrix, csv_head )
+    
+#----------------------------------------------------------------------------
+# 
+#----------------------------------------------------------------------------
 def ReadEmbeddedData( args ):
     '''
     Read a .csv formatted time-delay embedding from EmbedData(), 
@@ -852,26 +893,8 @@ def ReadEmbeddedData( args ):
 
     embedding = None
     header    = None
-    
-    # loadtxt returns an ndarray, reads all columns by default
-    try:
-        csv_matrix = np.loadtxt( args.path + args.inputFile,
-                                 delimiter = ',', skiprows = 1 )
-    except ValueError as err:
-        if 'could not convert string to float' in str( err ):
-            # Try with date conversion on first (j=0) column.
-            # datestr2num() is not documented, it seems to be a wrapper
-            # for matplotlib.dates.date2num(d), where d = datetime.datetime.
-            # Returns: Number of days (fraction represents hours, minutes,
-            # seconds, ms) since 0001-01-01 00:00:00 UTC, plus one.
-            csv_matrix = np.loadtxt( args.path + args.inputFile,
-                                     delimiter = ',', skiprows = 1,
-                                     converters = { 0 : datestr2num },
-                                     encoding = None )
-            args.plotDate = True
-    except:
-        print( "ReadEmbeddedData() np.loadtxt() failed on ", args.inputFile )
-        raise
+
+    csv_matrix, csv_head = ReadData( args )
 
     N_row, N_col = csv_matrix.shape
 
@@ -879,14 +902,6 @@ def ReadEmbeddedData( args ):
         raise RuntimeError( 'ReadEmbeddedData() at least two columns ' +\
                             ' required: [time, data] in ' + args.inputFile )
     
-    # Parse the header [ Time, Dim_1, Dim_2, ... ]
-    csv_head = ''
-    with open( args.path + args.inputFile ) as fob:
-        csv_head = fob.readline()
-
-    csv_head = csv_head.split(',')
-    csv_head = [ h.strip() for h in csv_head ]
-
     # Validate requested range of prediction and library
     if args.prediction[0] < 0 or args.prediction[0] > N_row :
         raise RuntimeError( 'ReadEmbeddedData() Invalid prediction start ' +\
@@ -1031,11 +1046,12 @@ def ReadEmbeddedData( args ):
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def EmbedData( args ):
+def EmbedData( args, data = None, colNames = None ):
     '''
-    Reads args.inputFile assumed to be .csv format with a single header
-    line and at least two columns: "time" in column i=0, and data values 
-    in args.columns.  
+    If args.inputFile is present, call ReadData(). 
+
+    If args.inputFile is not present, and data & colNames are present,
+    use the numpy matrix data and list of strings colNames. 
 
     !!! The first column is required to be the "time" variable.
     It can be numeric, or an ISO datetime string "YYYY-mm-dd". 
@@ -1082,45 +1098,31 @@ def EmbedData( args ):
         raise( RuntimeError( 'EmbedData() E not specified.' ) )
     if not len ( args.columns ) :
         raise RuntimeError( "EmbedData() -c columns required." )
+    if not args.inputFile :
+        if not colNames or not data :
+            raise RuntimeError( "EmbedData() If no -i (inputFile), then"
+                                " data matrix and colNames must be passed." )
 
-    # loadtxt returns an ndarray, reads all columns by default
-    # inputFile assumed to be .csv format with a single header line
-    try:
-        data = np.loadtxt( args.path + args.inputFile,
-                           delimiter = ',', skiprows = 1 )
-    except ValueError as err:
-        if 'could not convert string to float' in str( err ):
-            # Try with date conversion on first (j=0) column.
-            # datestr2num() is not documented, it seems to be a wrapper
-            # for matplotlib.dates.date2num(d), where d = datetime.datetime.
-            # Returns: Number of days (fraction represents hours, minutes,
-            # seconds, ms) since 0001-01-01 00:00:00 UTC, plus one.
-            data = np.loadtxt( args.path + args.inputFile,
-                               delimiter = ',', skiprows = 1,
-                               converters = { 0 : datestr2num },
-                               encoding = None )
-            args.plotDate = True
-    except:
-        print( "EmbedData() np.loadtxt() failed on ", args.inputFile )
-        raise
-
+    if args.inputFile :
+        data, csv_head = ReadData( args )
+    else :
+        csv_head = colNames # list of strings passed in
+        
+        if len( colNames ) != data.shape[1] :
+            raise RuntimeError( "EmbedData() data matrix number of columns (" +\
+                                str( data.shape[1] ) +\
+                                ") must equal the number of colNames (" +\
+                                str( len( colNames ) ) + ")" )
+        
     N_row, N_col = data.shape
 
     if N_col < 2 :
         raise RuntimeError( "EmbedData() at least 2 columns required: " +\
                             "[time, data] in " + args.inputFile )
     if args.verbose :
-        print( "EmbedData() Read " + str( N_row ) + " rows " +\
-               str( N_col ) + " columns from " + args.inputFile +\
+        print( "EmbedData() data has " + str( N_row ) + " rows " +\
+               str( N_col ) + " columns." +\
                " Data columns: " + str( args.columns ) )
-
-    # Parse the header [ Time, Dim_1, Dim_2, ... ]
-    csv_head = ''
-    with open( args.path + args.inputFile ) as fob:
-        csv_head = fob.readline()
-
-    csv_head = csv_head.split(',')
-    csv_head = [ h.strip() for h in csv_head ]
 
     # Dictionary of column index : label from inputFile
     D = { key:value for value, key in enumerate( csv_head ) }

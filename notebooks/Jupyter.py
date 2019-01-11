@@ -16,7 +16,7 @@ from   matplotlib.dates import num2date
 sys.path.append("../")
 import Methods
 from   ArgParse import AdjustArgs, ParseCmdLine
-from   EDM      import ReadEmbeddedData, EmbedData, Prediction, \
+from   EDM      import ReadData, ReadEmbeddedData, EmbedData, Prediction, \
                        ComputeError, nCol, nRow
 
 # Monkey patch sys.argv so that parser.parse_args() doesn't choke
@@ -45,11 +45,21 @@ def GetArgs( arguments ):
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def Embed( arguments = None ):
+def ReadCSV( arguments = None ):
+    '''Interface for ReadData() in EDM'''
+    args = GetArgs( arguments )
+    
+    data, header = ReadData( args )
+    return { 'data' : data, 'header':header }
+
+#----------------------------------------------------------------------------
+# 
+#----------------------------------------------------------------------------
+def Embed( arguments = None, data = None, colNames = None ):
     '''Interface for Embed() in Methods'''
     args = GetArgs( arguments )
     
-    D = Methods.Embed( args, Methods.Source.Jupyter )
+    D = Methods.Embed( args, data, colNames, Methods.Source.Jupyter )
     return D # Dictionary { header, embedding, target }
 
 #----------------------------------------------------------------------------
