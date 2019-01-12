@@ -30,7 +30,7 @@ Widgets = OrderedDict() # Dictionary of arg names and widgets
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def GetArgs( arguments ):
+def GetArgs( arguments, adjustArgs = True ):
     '''Get args parameters from GUI/widgets or passed in arguments'''
     global args
     
@@ -38,7 +38,8 @@ def GetArgs( arguments ):
         UpdateArgs()       # Update global args from GUI/widgets
     else:
         args = arguments   # Replace global args with arguments
-        AdjustArgs( args ) # Index offsets and parameter validation.
+        if adjustArgs:
+            AdjustArgs( args ) # Index offsets and parameter validation.
         
     return args
 
@@ -65,11 +66,17 @@ def Embed( arguments = None, data = None, colNames = None ):
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def Predict( arguments = None ):
-    '''Interface for Predict() in Methods'''
-    args = GetArgs( arguments )
+def Predict( arguments = None, data = None, colNames = None, target = None,
+             adjustArgs = True ):
+    '''
+    Interface for Predict() in Methods
     
-    D = Methods.Predict( args, Methods.Source.Jupyter )
+    updateArgs allows the caller to decide whether the arguments object
+    should be updated by AdjustArgs() in GetArgs().
+    '''
+    args = GetArgs( arguments, adjustArgs )
+    
+    D = Methods.Predict( args, data, colNames, target, Methods.Source.Jupyter )
     return D # Dictionary { rho, RMSE, MAE, header, prediction, S-map }
 
 #----------------------------------------------------------------------------

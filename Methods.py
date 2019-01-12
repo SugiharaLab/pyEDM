@@ -23,22 +23,27 @@ class Source :
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def Predict( args, data = None, colNames = None, source = Source.Python ):
+def Predict( args, data = None, colNames = None, target = None,
+             source = Source.Python ):
     '''
     Data input/embedding wrapper for EDM.Prediction() to compute:
 
       Simplex projection of observational data (Sugihara, 1990), or
       SMap    projection of observational data (Sugihara, 1994).
 
-    There are two options for data input. One is to use the -c (columns)
-    argument so that the -i (inputFile) will be considered a timeseries with 
-    embedding performed by EmbedData().  The other is to use -e where
-    the -i (inputFile) specifies a .csv file with an embedding or
-    multivariable data frame. This will be read by ReadEmbeddedData().
+    There are two options for data file input, or an embedding can be
+    passed in directly (data, colNames, target).
 
-    If ReadEmbeddedData() is used (-e specified) then input data 
-    consist of a .csv file formatted as:
+    If --embedding (-e) is specified, it is assumed that the data file
+    or data input is already an embedding or multivariable data matrix.
+    Otherwise, the data is embedded by EmbedData(). 
+
+    If --embedding (-e) is specified and the data input parameter is None, 
+    then the -i (inputFile) is processed by ReadEmbeddedData() which assumes
+    the files consists of a .csv file formatted as:
+
        [ Time, Dim_1, Dim_2, ... ] 
+
     where Dim_1 is observed data, Dim_2 data offset by τ, Dim_3 by 2τ...
     The user can specify the desired embedding dimension E, which
     can be less than the total number of columns in the inputFile. 
@@ -47,18 +52,23 @@ def Predict( args, data = None, colNames = None, source = Source.Python ):
     Alternatively, the data can be a .csv file with multiple simultaneous
     observations or delay embeddings (columns) where the columns to 
     embed and target to project are specified with the -c (columns)
-    and -r (target) options. In both cases 'time' is required in column 0. 
+    and -r (target) options. In all cases 'time' is required in column 0. 
  
     Embedding can be done with EDM.EmbedData() via the wrapper Embed.py. 
     Note: The embedded data .csv file will have fewer rows (observations)
     than the data input to EmbedData() by E - 1. 
     '''
-    
+
     if args.embedded :
-        # The args.inputFile is an embedding or multivariable data frame.
-        # ReadEmbeddedData() sets args.E to the number of columns
-        # if the -c (columns) and -t (target) options are used.
-        embedding, colNames, target = ReadEmbeddedData( args )
+        if data is None :
+            # args.inputFile is an embedding or multivariable data frame.
+            # ReadEmbeddedData() sets args.E to the number of columns
+            # if the -c (columns) and -t (target) options are used.
+            embedding, colNames, target = ReadEmbeddedData( args )
+        else:
+            # Data matrix is passed in as parameter, no embedding needed
+            embedding = data
+            # target taken as-is from input parameters
     else :
         # args.inputFile are timeseries data to be embedded by EmbedData
         embedding, colNames, target = EmbedData( args, data, colNames )
