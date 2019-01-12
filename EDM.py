@@ -32,7 +32,9 @@ def Prediction( embedding, colNames, target, args ):
 
     This function is typically called from a wrapper that reads the 
     data and performs the embedding, e.g. Predict(), PredictDecay(),
-    SMapNL(), Multiview(). 
+    SMapNL(), Multiview().  
+
+    Note that colNames is not currently used. 
 
     The embedding is a matrix of multivariable (column) timeseries
     observatins (rows).  This can be prepared by ReadEmbeddedData() 
