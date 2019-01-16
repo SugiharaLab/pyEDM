@@ -313,7 +313,8 @@ def PredictFunc( argsEmbedding ) :
     colNames   = argsEmbedding[ 2 ]
     target     = argsEmbedding[ 3 ]
     outputType = argsEmbedding[ 4 ]
-    
+
+    # Prediction does not currently use colNames
     rho, rmse, mae, header, output, smap_output = Prediction( embedding,
                                                               colNames,
                                                               target, args )
@@ -327,18 +328,22 @@ def PredictFunc( argsEmbedding ) :
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def SMapNL( args, source = Source.Python ):
+def SMapNL( args, data = None, colNames = None, target = None, thetas = None,
+            source = Source.Python ):
     '''
     Using ParseCmdLine() arguments, override the -t (theta) to evaluate 
     theta = 0.01 to 9.
 
-    There are two options for data input. One is to use the -c (columns)
+    There are two options for data file input. One is to use the -c (columns)
     argument so that the -i (inputFile) will be considered a timeseries with 
     embeddings dynamically performed by EmbedData() for each evaluation.  
     The other is to specify -e (embedded) so that -i (inputFile) specifies 
     a .csv file with an embedding or multivariables already in place.  The
     vector in the second column (j=1) will be considered the observed data.
     This will be read by ReadEmbeddedData().
+
+    Data can also be passed in (data, colNames, target) instead of read
+    from a file. 
     '''
     
     args.method = 'smap'
@@ -347,17 +352,27 @@ def SMapNL( args, source = Source.Python ):
     showPlot  = args.plot
     args.plot = False
 
-    # if -e has not been specified: use EmbedData()
-    if not args.embedded :
-        embedding, colNames, target = EmbedData( args )
+    if args.embedded :
+        if data is None :
+            # args.inputFile is an embedding or multivariable data frame.
+            # ReadEmbeddedData() sets args.E to the number of columns
+            # if the -c (columns) and -t (target) options are used.
+            embedding, colNames, target = ReadEmbeddedData( args )
+        else:
+            # Data matrix is passed in as parameter, no embedding needed
+            embedding = data
+            # target taken as-is from input parameters
     else :
-        # ReadEmbeddedData() sets args.E to the number of columns specified
-        # if the -c (columns) and -t (target) options are used, otherwise
-        # it uses args.E to read E columns. 
-        embedding, colNames, target = ReadEmbeddedData( args )
+        # args.inputFile are timeseries data to be embedded by EmbedData
+        embedding, colNames, target = EmbedData( args, data, colNames )
 
-    # Evaluate theta localization parameter from 0.01 to 9
-    Theta = [ 0.01, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9 ]
+    if thetas is None :
+        # Evaluate theta localization parameter from 0.01 to 9
+        Theta = [ 0.01, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9 ]
+    else :
+        if len( thetas ) < 1 :
+            raise Exception( 'SMapNL() theta must have at least one value.' )
+        Theta = thetas
 
     # Process pool
     pool = Pool()
