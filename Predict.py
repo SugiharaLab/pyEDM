@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from ArgParse import ParseCmdLine
-from Methods  import Predict
+from Methods  import Predict, Source
 
 #----------------------------------------------------------------------------
 # 
@@ -9,4 +9,5 @@ from Methods  import Predict
 if __name__ == "__main__":
     
     args = ParseCmdLine()
-    Predict( args, 'Python' )
+    Predict( args, data = None, colNames = None, target = None,
+             source = Source.Python )
