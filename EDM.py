@@ -242,11 +242,11 @@ def Prediction( embedding, colNames, target, args ):
                     delimiter = ',', header = coef_header, comments = '' )
             
     # Estimate correlation coefficient on observed : predicted data
-    rho, r, rmse, mae = ComputeError( Observations, Predictions )
+    rho, rmse, mae = ComputeError( Observations, Predictions )
 
     if args.verbose :
-        print( ("ρ {0:5.3f}  r {1:5.3f}  RMSE {2:5.3f}  "
-               "MAE {3:5.3f}").format( rho, r, rmse, mae ) )
+        print( ("ρ {0:5.3f}  RMSE {2:5.3f}  "
+               "MAE {3:5.3f}").format( rho, rmse, mae ) )
     
     if args.Debug:
         print( '   Time     Data      Prediction' )
@@ -1277,20 +1277,8 @@ def ComputeError( obs, pred ):
 
     N = len( pred )
 
-    sumPred    = np.sum( pred )
-    sumObs     = np.sum( obs  )
-    sumSqrPred = np.sum( np.power( pred, 2 ) )
-    sumSqrObs  = np.sum( np.power( obs,  2 ) )
-    sumErr     = np.sum( np.fabs ( obs - pred ) )
-    sumSqrErr  = np.sum( np.power( obs - pred, 2 ) )
-    sumProd    = np.dot( obs, pred )
-
-    if sumSqrPred * N == sumSqrPred :
-        r = 0
-    else:
-        r = ( ( sumProd * N - sumObs * sumPred ) / \
-              np.sqrt( ( sumSqrObs  * N - sumSqrObs  ) * \
-                       ( sumSqrPred * N - sumSqrPred ) ) )
+    sumErr    = np.sum( np.fabs ( obs - pred ) )
+    sumSqrErr = np.sum( np.power( obs - pred, 2 ) )
 
     rmse = np.sqrt( sumSqrErr / N )
 
@@ -1301,7 +1289,7 @@ def ComputeError( obs, pred ):
     else :
         rho = np.corrcoef( obs, pred )[0, 1]
 
-    return ( rho, r, rmse, mae )
+    return ( rho, rmse, mae )
 
 #----------------------------------------------------------------------------
 # 
