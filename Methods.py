@@ -106,7 +106,7 @@ def Embed( args, data = None, colNames = None, source = Source.Python ):
     embedding, header, target = EmbedData( args, data, colNames )
 
     if args.Debug:
-        print( "Embed() " + ' '.join( args.embedColumns ) +\
+        print( "Embed() " + ' '.join( args.columns ) +\
                " from " + args.inputFile +\
                " E=" + str( args.E ) + " " +\
                str( embedding.shape[0] ) + " rows,  " +\
@@ -586,10 +586,10 @@ def Multiview( args, source = Source.Python ):
                     delimiter = ',', header = header, comments = '' )
 
     # Estimate correlation coefficient on observed : predicted data
-    rho, r, rmse, mae = ComputeError( data, prediction )
+    rho, rmse, mae = ComputeError( data, prediction )
 
-    print( ("Multiview()  ρ {0:5.3f}  r {1:5.3f}  RMSE {2:5.3f}  "
-            "MAE {3:5.3f}").format( rho, r, rmse, mae ) )
+    print( ("Multiview()  ρ {0:5.3f}  RMSE {1:5.3f}  "
+            "MAE {2:5.3f}").format( rho, rmse, mae ) )
     
     #----------------------------------------------------------
     if showPlot:
@@ -625,7 +625,7 @@ def Multiview( args, source = Source.Python ):
 
     if source == Source.Jupyter :
         return { 'header':header, 'multiview':multiview_out,
-                 'rho':rho, 'r':r, 'RMSE':rmse, 'MAE':mae }
+                 'rho':rho, 'RMSE':rmse, 'MAE':mae }
     else:
         return
 
@@ -852,7 +852,7 @@ def CrossMap( args ) :
         if args.Debug :
             print( "CCM(): lib_size " + str( lib_size ) )
 
-        prediction_rho = np.zeros( ( maxSamples, 4 ) )
+        prediction_rho = np.zeros( ( maxSamples, 3 ) )
         # Loop for subsamples
         for n in range( maxSamples ) :
 
@@ -891,16 +891,15 @@ def CrossMap( args ) :
                                              distances,
                                              args )
 
-            rho, r, rmse, mae = ComputeError( target[ lib_i ], predictions )
+            rho, rmse, mae = ComputeError( target[ lib_i ], predictions )
 
-            prediction_rho[ n, : ] = [ rho, r, rmse, mae ]
+            prediction_rho[ n, : ] = [ rho, rmse, mae ]
 
         rho_  = np.mean( prediction_rho[ :, 0 ] )
-        r_    = np.mean( prediction_rho[ :, 1 ] )
-        rmse_ = np.mean( prediction_rho[ :, 2 ] )
-        mae_  = np.mean( prediction_rho[ :, 3 ] )
+        rmse_ = np.mean( prediction_rho[ :, 1 ] )
+        mae_  = np.mean( prediction_rho[ :, 2 ] )
         
-        PredictLibStats[ lib_size ] = ( rho_, r_, rmse_, mae_  )
+        PredictLibStats[ lib_size ] = ( rho_, rmse_, mae_  )
 
     # Return tuple with ( ID, PredictLibStats{} )
     return ( str( args.columns ) + " to " + args.target, PredictLibStats )
