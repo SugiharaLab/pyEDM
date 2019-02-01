@@ -245,8 +245,8 @@ def Prediction( embedding, colNames, target, args ):
     rho, rmse, mae = ComputeError( Observations, Predictions )
 
     if args.verbose :
-        print( ("ρ {0:5.3f}  RMSE {2:5.3f}  "
-               "MAE {3:5.3f}").format( rho, rmse, mae ) )
+        print( ("ρ {0:5.3f}  RMSE {1:5.3f}  "
+               "MAE {2:5.3f}").format( rho, rmse, mae ) )
     
     if args.Debug:
         print( '   Time     Data      Prediction' )
