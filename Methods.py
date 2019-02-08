@@ -963,7 +963,7 @@ def CCMGetNeighbors( Distances, lib_i, args ) :
 
     if args.Debug :
         print( 'GetNeighbors() Distances:' )
-        print( round( Distances[ 0:5, 0:5 ], 4 ) )
+        print( np.around( Distances[ 0:5, 0:5 ], 4 ) )
         print( 'N_row = ' + str( N_row ) )
 
     # Matrix to hold libraryMatrix row indices
