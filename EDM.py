@@ -632,6 +632,14 @@ def SimplexProjection( libraryMatrix, target,
     If k_NN not specified, k_NN set to E+1 in Prediction().
     '''
 
+    if args.Debug:
+        print( "SimplexProjection()" )
+        print( "target: " )
+        print( target )
+        print( "neighbors:" )
+        print( neighbors )
+
+        
     library_N_row = nRow( libraryMatrix ) # Observation Library subset
     N_row         = nRow( neighbors     ) # Prediction k_NN list
     
@@ -695,7 +703,7 @@ def SimplexProjection( libraryMatrix, target,
         predictions[ row ] = np.sum( weights * lib_target ) / np.sum( weights )
 
     if args.Debug:
-        print( "SimplexProjection()" )
+        print( "SimplexProjection() Predictions: " )
         print( np.round( predictions[ 0:10 ], 4 ) )
 
     return predictions

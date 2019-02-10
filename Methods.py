@@ -821,7 +821,7 @@ def CrossMap( args ) :
         maxSamples = args.subsample
     else:
         # Contiguous samples up to the size of the library
-        maxSamples = stop
+        maxSamples = 1
         
     # Simplex: if k_NN not specified, set k_NN to E + 1
     if args.k_NN < 0 :
@@ -962,7 +962,7 @@ def CCMGetNeighbors( Distances, lib_i, args ) :
     k_NN  = args.k_NN
 
     if args.Debug :
-        print( 'GetNeighbors() Distances:' )
+        print( 'CCMGetNeighbors() Distances In:' )
         print( np.around( Distances[ 0:5, 0:5 ], 4 ) )
         print( 'N_row = ' + str( N_row ) )
 
@@ -989,8 +989,8 @@ def CCMGetNeighbors( Distances, lib_i, args ) :
 
         if args.Debug :
             if np.amax( k_NN_distances ) > 1E29 :
-                raise RuntimeError( "GetNeighbors() Library is too small to " +\
-                                    "resolve " + str( k_NN ) + " k_NN "   +\
+                raise RuntimeError( "CCMGetNeighbors() Library is too small " +\
+                                    "to resolve " + str( k_NN ) + " k_NN "   +\
                                     "neighbors." )
         
             # Check for ties.  JP: haven't found any so far...
@@ -1003,7 +1003,11 @@ def CCMGetNeighbors( Distances, lib_i, args ) :
         row = row + 1
     
     if args.Debug :
-        print( 'GetNeighbors()  neighbors' )
+        print( 'CCMGetNeighbors()  neighbors' )
         print( neighbors[ 0:5, ] )
+        print()
+        print( 'CCMGetNeighbors()  distances' )
+        print( distances[ 0:5, ] )
+        print()
 
     return ( neighbors, distances )
