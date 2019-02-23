@@ -926,9 +926,9 @@ def CCMGetDistances( libraryMatrix, args ) :
         # Exclude the 1st column (j=0) of times
         y = libraryMatrix[ row, 1:E: ]
 
-        for col in range( N_row ) :
-            # Ignore the diagonal (row == col)
-            if row == col :
+        for col in range( N_row - 1 ) :
+            # Avoid redundant calculations
+            if row >= col :
                 continue
             
             # Find distance between vector (y) and other library vector
