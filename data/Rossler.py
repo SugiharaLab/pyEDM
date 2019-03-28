@@ -35,14 +35,14 @@ def Rossler( args ):
     # initial state
     v0 = np.array( args.initial )
 
-    t = np.arange( 0.0, args.T, args.dT )
+    t = np.arange( args.t0, args.T, args.dT )
 
     # odeint requires "extra" variables to be in a tuple with name matching
     # inside the derivative function, so make N, F explicit
     a, b, c = args.constants
     V = odeint( dRossler, v0, t, args = (a,b,c) )
 
-    # Compute and store the derivatives
+    # Compute and store the derivatives, noise not added
     dVdt      = np.zeros( V.shape )
     dVdt_cols = range( dVdt.shape[1] )
 
@@ -60,6 +60,11 @@ def Rossler( args ):
             d2 = np.gradient( V[ :, pair[1] ] )
             jacobians[ :, col ] = d1 / d2
 
+    # Add noise to V, not to dVdt
+    if args.noise :
+        noise_vec = args.noise * np.random.randn( len( t ), 3 )
+        V = V + noise_vec
+            
     # Create output matrix
     # t is an array, first cast as matrix and transpose to merge with x & dVdt
     output = np.concatenate( (np.asmatrix( t ).T, V, dVdt), 1 )
@@ -77,6 +82,14 @@ def Rossler( args ):
             for pair in args.jacobians :
                 header = header + ',∂V' + str(pair[0] + 1) +\
                                   '/∂V' + str(pair[1] + 1)
+
+        if args.outputStartTime :
+            # Ignore times before outputStartTime
+            outputStartTime_i = int(np.where( t == args.outputStartTime )[0])
+            if outputStartTime_i < 0 or outputStartTime_i > len( t ) - 1 :
+                raise( "Failed to find outputStartTime" )
+
+            output = output[ outputStartTime_i : output.shape[0], : ]
 
         np.savetxt( args.outputFile, output, fmt = '%.4f', delimiter = ',',
                     header = header, comments = '' )
@@ -154,15 +167,30 @@ def ParseCmdLine():
                         action = 'store', default = [],
                         help = 'Variable Jacobian columns, list of pairs.')
 
+    parser.add_argument('-t', '--t0',
+                        dest   = 't0', type = float, 
+                        action = 'store',      default = 0.0,
+                        help = 'Start time.')
+
     parser.add_argument('-T', '--T',
                         dest   = 'T', type = float, 
                         action = 'store',      default = 100.,
                         help = 'Max time.')
 
-    parser.add_argument('-t', '--dT',
+    parser.add_argument('-dt', '--dT',
                         dest   = 'dT', type = float, 
                         action = 'store',      default = 0.025,
                         help = 'Time increment.')
+
+    parser.add_argument('-n', '--noise',
+                        dest   = 'noise', type = float, 
+                        action = 'store', default = 0.,
+                        help = 'Guassian noise amplitude.')
+
+    parser.add_argument('-ost', '--outputStartTime',
+                        dest   = 'outputStartTime', type = float, 
+                        action = 'store', default = None,
+                        help = 'Start time of output file.')
 
     parser.add_argument('-o', '--outputFile',
                         dest   = 'outputFile', type = str, 
