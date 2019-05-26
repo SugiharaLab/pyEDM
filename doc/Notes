@@ -1,0 +1,27 @@
+
+Python interface to C++ EDM (cppEDM) using pybind11.
+
+To install the Python EDM package: python -m pip install EDM
+
+To install a local EDM module: python -m pip install . --user
+
+To build the wheel distribution: python setup.py sdist bdist_wheel
+
+Notes:
+
+To support the C++ extension based on cppEDM, Python setuptools is
+used to build separate binary distributions for Linux, OSX and Windows.
+
+The setuptools build on Linux/OSX requires position independent code:
+libEDM.a must be compiled with -fPIC.
+
+Build/system differences to support Windows.
+------------------------------------------------------------------------
+1) Must use MSVC x64 compiler to build EDM.lib from cppEDM.
+2) MSVC nmake compatible makefile: makefile.windows
+3) Common.h must #include <ciso646> since MSVC C keywords are not included.
+4) std::slice_array operator [] does not export the symbols in MSVC.  An
+   explicit type-cast is needed to placate the compiler (AuxFunc.cc).
+5) On MSVC overloaded struct MultiviewValues constructors (Common.h)
+   are not reasonably supported. 
+
