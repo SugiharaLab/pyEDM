@@ -140,7 +140,8 @@ Extension_modules = [
 #
 #----------------------------------------------------------------------
 setup(
-    name             = 'EDM', # name of the *-version.dist-info directory
+    # name of the *-version.dist-info directory
+    name             = 'EDM-SugiharaLab', 
     version          = __version__,
     author           = 'Cameron Smith & Joseph Park',
     author_email     = 'Sugihara.Lab@gmail.com',
