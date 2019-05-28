@@ -113,25 +113,28 @@ def Examples():
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
-def PlotObsPred( D, df, dataFile, E, Tp, block = True ):
+def PlotObsPred( df, dataFile = None, E = None, Tp = None, block = True ):
     '''Plot observations and predictions'''
     
     # stats: {'MAE': 0., 'RMSE': 0., 'rho': 0. }
-    stats = EDM_pybind.ComputeError( D['Observations'], D['Predictions'] )
-    
+    stats = EDM_pybind.ComputeError( df['Observations'].tolist(),
+                                     df['Predictions' ].tolist() )
+
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
-            "  ρ="   + str( round( stats['rho'],  2 ) )  +\
+            "  ρ="   + str( round( stats['rho'],  2 ) )   +\
             " RMSE=" + str( round( stats['RMSE'], 2 ) )
     
     df.plot( 'Time', ['Observations', 'Predictions'],
              title = title, linewidth = 3 )
+    
     show( block = block )
     
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
-def PlotCoeff( D, df, dataFile, E, Tp, block = True ):
+def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
     '''Plot S-Map coefficients'''
+    
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
             "  S-Map Coefficients"
     
@@ -140,6 +143,7 @@ def PlotCoeff( D, df, dataFile, E, Tp, block = True ):
     
     df.plot( 'Time', coef_cols, title = title, linewidth = 3,
              subplots = True )
+    
     show( block = block )
     
 #------------------------------------------------------------------------
@@ -157,6 +161,16 @@ def PandasDataFrametoDF( df ):
         DF.append( ( column, df.get( column ).tolist() ) )
 
     return DF
+             
+#------------------------------------------------------------------------
+# 
+#------------------------------------------------------------------------
+def ComputeError( obs, pred ):
+    '''Pearson rho, RMSE, MAE.'''
+
+    D = EDM_pybind.ComputeError( obs, pred )
+
+    return D
              
 #------------------------------------------------------------------------
 # 
@@ -285,7 +299,7 @@ def Simplex( pathIn       = "./",
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     if showPlot :
-        PlotObsPred( D, df, dataFile, E, Tp )
+        PlotObsPred( df, dataFile, E, Tp )
     
     return df
 
@@ -348,8 +362,8 @@ def SMap( pathIn       = "./",
     df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame
 
     if showPlot :
-        PlotObsPred( D['predictions'] , df_pred, dataFile, E, Tp, False )
-        PlotCoeff  ( D['coefficients'], df_coef, dataFile, E, Tp )
+        PlotObsPred( df_pred, dataFile, E, Tp, False )
+        PlotCoeff  ( df_coef, dataFile, E, Tp )
 
     SMapDict = { 'predictions' : df_pred, 'coefficients' : df_coef }
     
@@ -410,7 +424,7 @@ def Multiview( pathIn       = "./",
     df_rho  = DataFrame( D['Combo_rho']   ) # Convert to pandas DataFrame
 
     if showPlot :
-        PlotObsPred( D['Predictions'] , df_pred, dataFile, E, Tp )
+        PlotObsPred( df_pred, dataFile, E, Tp )
 
     MV = { 'Predictions' : df_pred, 'Combo_rho' : df_rho }
     
