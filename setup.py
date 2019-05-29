@@ -40,6 +40,10 @@ tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "lib" )
 EDM_H_Path     = os.path.join( tmpInstallPath, "src/cppEDM/" )
 
+# Transfer the README.md to the package decsription
+with open(os.path.join(tmpInstallPath, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+    
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
@@ -143,11 +147,12 @@ setup(
     # name of the *-version.dist-info directory
     name             = 'EDM-SugiharaLab', 
     version          = __version__,
-    author           = 'Cameron Smith & Joseph Park',
+    author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
     url              = 'https://github.com/SugiharaLab/pyEDM',
     description      = 'Python wrapper for cppEDM using pybind11',
-    long_description = 'Python wrapper for cppEDM using pybind11',
+    long_description = long_description,
+    long_description_content_type = 'text/markdown',
     license          = 'Copyright 2019 The Regents of the University ' +\
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
