@@ -28,12 +28,17 @@
 #     data/
 #     tests/
 #
+# Getting this to work reasonably is just mind-numbing and insensible. 
+# There seem to be many implicit requirements such as the directory 
+# stucture, name conventions, apparent incongruitues between using
+# package_data, MANIFEST.in, etc...
+#
 import sys, os
 import setuptools
 from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
-__version__ = '0.1.2'  # Get version from cppEDM Parameter.cc ?
+__version__ = '0.1.21'  # Get version from cppEDM Parameter.cc ?
 
 # e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
@@ -126,14 +131,16 @@ class BuildExt( build_ext ):
 #----------------------------------------------------------------------
 Extension_modules = [
     Extension(
-        'EDM_pybind',                 # Extension name
-        ['src/bindings/PyBind.cpp'],  # Extension interface
+        name = 'EDM_pybind',
+
+        sources = [ 'src/bindings/PyBind.cpp' ],
         
         include_dirs = [
             get_pybind_include(), # Path to pybind11 headers
             get_pybind_include( user = True ),
             EDM_H_Path # Path to cppEDM headers
         ],
+        
         language     = 'c++',
         library_dirs = [ EDM_Lib_Path ], # cppEDM libEDM.a -fPIC
         libraries    = ['EDM'],          # cppEDM libEDM.a -fPIC
