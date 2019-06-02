@@ -2,7 +2,7 @@
 # Build the EDM Python binding to cppEDM.
 #
 # The core library is the C++ cppEDM libEDM.a
-# libEDM.a needs to be built with -fPIC
+# NOTE: libEDM.a needs to be built with -fPIC by the user. 
 #
 # Bindings to cppEDM are provided via pybind11 in src/bindings/PyBind.cpp
 # and are built as an Extension module into a platform-specific shared
@@ -42,9 +42,23 @@ __version__ = '0.1.21'  # Get version from cppEDM Parameter.cc ?
 
 # e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
-EDM_Lib_Path   = os.path.join( tmpInstallPath, "lib" )
-EDM_H_Path     = os.path.join( tmpInstallPath, "src/cppEDM/" )
+EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
+EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
 
+# Unfortunately, we don't have the manpower to build wheels...
+# The user is required to build cppEDM
+platform = sys.platform
+if platform == 'darwin' or platform == 'linux':
+    cppLibName = 'libEDM.a'
+elif sys.platform == 'win32':
+    cppLibName = 'EDM.lib'
+else: # assume unix
+    cppLibName = 'libEDM.a'
+      
+if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
+    raise Exception( "Error: " + os.path.join( EDM_Lib_Path, cppLibName ) +
+                     " must exist.  Build cppEDM. " )
+              
 # Transfer the README.md to the package decsription
 with open(os.path.join(tmpInstallPath, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()

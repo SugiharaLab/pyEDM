@@ -489,7 +489,7 @@ private:
         // Create input file stream and open file for input
         std::ifstream dataStrm( path + fileName );
         
-        //make sure file access is good before reading
+        // Ensure file access is good before reading
         if ( not dataStrm.is_open() ) {
             std::stringstream errMsg;
             errMsg << "ERROR: DataFrame::ReadData() file " << path + fileName
@@ -563,8 +563,26 @@ private:
         // Process each line in dataLines to fill in data vectors
         for ( size_t lineIdx = 0; lineIdx < dataLines.size(); lineIdx++ ) {
             std::vector<std::string> words = SplitString(dataLines[ lineIdx ]);
-            for ( size_t colIdx = 0; colIdx < colNames.size(); colIdx++ ) {
-                namedData[ colIdx ].second.push_back(std::stod( words[colIdx]));
+
+            if ( words.size() != colNames.size() ) {
+                std::stringstream errMsg;
+                errMsg << "ERROR: DataFrame::ReadData() Line " << lineIdx + 1
+                       << " of file " << path + fileName
+                       << " does not have " << colNames.size()
+                       << " columns of data." << std::endl;
+                throw std::runtime_error( errMsg.str() );
+            }
+            
+            try {
+                for ( size_t colIdx = 0; colIdx < colNames.size(); colIdx++ ) {
+                    namedData[ colIdx ].second.push_back(
+                        std::stod( words[ colIdx ] ) );
+                }
+            }
+            catch ( const std::exception& e ) {
+                std::cout << "DataFrame ReadData() Exception:\n";
+                std::cout << e.what() << std::endl;
+                throw std::runtime_error( e.what() );
             }
         }
 

@@ -1,2 +1,2 @@
-include src/cppEDM/*
+include cppEDM/src/*
 include src/bindings/*

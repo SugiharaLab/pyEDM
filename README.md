@@ -9,6 +9,21 @@ Functionality includes:
 * Convergent cross mapping (Sugihara et. al. 2012)
 * Multiview embedding (Ye and Sugihara 2016)
 
+## Installation
+---
+Unfortunately, we do not have the resources to provide pre-built binary distributions for the various computer platforms.  The user is required to first build the cppEDM library on their machine, and then install the Python package using pip.  On OSX and Linux this requires g++, on Windows, Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed. 
+
+### OSX and Linux
+1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
+2. Build cppEDM library: `cd cppEDM/src; make`
+3. Build and install package: `cd ../..; python -m pip install . --user`
+
+### Windows
+1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
+2. Build cppEDM library: `cd cppEDM/src; nmake /f makefile.windows`
+3. Build and install package: `cd ../..; python -m pip install . --user`
+
+
 ---
 ### References
 Sugihara G. and May R. 1990.  Nonlinear forecasting as a way of distinguishing 
