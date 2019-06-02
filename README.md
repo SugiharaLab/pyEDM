@@ -20,8 +20,8 @@ Unfortunately, we do not have the resources to provide pre-built binary distribu
 
 ### Windows
 1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
-2. Build cppEDM library: `cd cppEDM/src; nmake /f makefile.windows`
-3. Build and install package: `cd ../..; python -m pip install . --user`
+2. Build cppEDM library: `cd pyEDM\cppEDM\src; nmake /f makefile.windows`
+3. Build and install package: `cd ..\..; python -m pip install . --user`
 
 
 ---
