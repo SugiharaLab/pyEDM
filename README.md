@@ -15,7 +15,7 @@ Unfortunately, we do not have the resources to provide pre-built binary distribu
 
 ### OSX and Linux
 1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
-2. Build cppEDM library: `cd cppEDM/src; make`
+2. Build cppEDM library: `cd pyEDM/cppEDM/src; make`
 3. Build and install package: `cd ../..; python -m pip install . --user`
 
 ### Windows
