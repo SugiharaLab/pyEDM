@@ -23,6 +23,13 @@ Unfortunately, we do not have the resources to provide pre-built binary distribu
 2. Build cppEDM library: `cd pyEDM\cppEDM\src; nmake /f makefile.windows`
 3. Build and install package: `cd ..\..; python -m pip install . --user`
 
+## Usage
+---
+Example usage at the python prompt:
+```python
+>>> import EDM
+>>> EDM.Examples()
+```
 
 ---
 ### References
