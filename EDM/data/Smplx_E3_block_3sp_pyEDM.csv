@@ -1,4 +1,4 @@
-Time,Observations,Predictions
+Time,Data,Prediction_t(+1)
 103.0000,0.4394,nan
 104.0000,-0.1194,0.3125
 105.0000,1.4553,0.8721
