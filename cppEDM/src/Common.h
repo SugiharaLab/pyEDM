@@ -42,15 +42,14 @@ struct SMapValues {
     DataFrame< double > coefficients;
 };
 
-// Return structure of Multiview()
 struct MultiviewValues {
     DataFrame< double > Combo_rho;
     DataFrame< double > Predictions;
 
 #ifdef MULTIVIEW_VALUES_OVERLOAD
+    // Don't define constructors for the setuptools module build on Windows
     // The MSVC compiler with pybind11 does not handle overloads easily...
     // https://pybind11.readthedocs.io/en/stable/classes.html
-    // Don't define constructurs for the setuptools module build on Windows
     
     // Constructors
     MultiviewValues();
@@ -82,34 +81,38 @@ VectorError ComputeError( std::valarray< double > obs,
 
 // API functions Embed() and MakeBlock() are in Embed.h Embed.cc
 
-DataFrame<double> Simplex( std::string pathIn       = "./data/",
-                           std::string dataFile     = "",
-                           std::string pathOut      = "./",
-                           std::string predictFile  = "",
-                           std::string lib          = "",
-                           std::string pred         = "",
-                           int         E            = 0,
-                           int         Tp           = 1,
-                           int         knn          = 0,
-                           int         tau          = 1,
-                           std::string colNames     = "",
-                           std::string targetName   = "",
-                           bool        embedded     = false,
-                           bool        verbose      = true );
+DataFrame<double> Simplex( std::string pathIn          = "./data/",
+                           std::string dataFile        = "",
+                           std::string pathOut         = "./",
+                           std::string predictFile     = "",
+                           std::string lib             = "",
+                           std::string pred            = "",
+                           int         E               = 0,
+                           int         Tp              = 1,
+                           int         knn             = 0,
+                           int         tau             = 1,
+                           int         exclusionRadius = 0,
+                           std::string colNames        = "",
+                           std::string targetName      = "",
+                           bool        embedded        = false,
+                           bool        const_predict   = false,
+                           bool        verbose         = true );
 
 DataFrame<double> Simplex( DataFrame< double >,
-                           std::string pathOut      = "./",
-                           std::string predictFile  = "",
-                           std::string lib          = "",
-                           std::string pred         = "",
-                           int         E            = 0,
-                           int         Tp           = 1,
-                           int         knn          = 0,
-                           int         tau          = 1,
-                           std::string colNames     = "",
-                           std::string targetName   = "",
-                           bool        embedded     = false,
-                           bool        verbose      = true );
+                           std::string pathOut         = "./",
+                           std::string predictFile     = "",
+                           std::string lib             = "",
+                           std::string pred            = "",
+                           int         E               = 0,
+                           int         Tp              = 1,
+                           int         knn             = 0,
+                           int         tau             = 1,
+                           int         exclusionRadius = 0,
+                           std::string colNames        = "",
+                           std::string targetName      = "",
+                           bool        embedded        = false,
+                           bool        const_predict   = false,
+                           bool        verbose         = true );
 
 SMapValues SMap( std::string pathIn          = "./data/",
                  std::string dataFile        = "",
@@ -122,11 +125,13 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  int         knn             = 0,
                  int         tau             = 1,
                  double      theta           = 0,
+                 int         exclusionRadius = 0,
                  std::string columns         = "",
                  std::string target          = "",
                  std::string smapFile        = "",
-                 std::string jacobians       = "",
+                 std::string derivatives     = "",
                  bool        embedded        = false,
+                 bool        const_predict   = false,
                  bool        verbose         = true );
 
 SMapValues SMap( DataFrame< double >,
@@ -139,11 +144,13 @@ SMapValues SMap( DataFrame< double >,
                  int         knn             = 0,
                  int         tau             = 1,
                  double      theta           = 0,
+                 int         exclusionRadius = 0,
                  std::string columns         = "",
                  std::string target          = "",
                  std::string smapFile        = "",
-                 std::string jacobians       = "",
+                 std::string derivatives     = "",
                  bool        embedded        = false,
+                 bool        const_predict   = false,
                  bool        verbose         = true );
 
 DataFrame<double> CCM( std::string pathIn       = "./data/",

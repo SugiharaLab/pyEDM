@@ -24,9 +24,11 @@ DataFrame<double> Simplex( std::string pathIn,
                            int         Tp,
                            int         knn,
                            int         tau,
+                           int         exclusionRadius,
                            std::string columns,
                            std::string target,
                            bool        embedded,
+                           bool        const_predict,
                            bool        verbose ) {
     
     // DataFrame constructor loads data
@@ -35,9 +37,9 @@ DataFrame<double> Simplex( std::string pathIn,
     // Pass data frame to Simplex 
     DataFrame< double > S = Simplex( dataFrameIn, pathOut,
                                      predictFile, lib, pred,
-                                     E, Tp, knn, tau,
+                                     E, Tp, knn, tau, exclusionRadius,
                                      columns, target,
-                                     embedded, verbose);
+                                     embedded, const_predict, verbose );
     return S;
 }
 
@@ -53,20 +55,24 @@ DataFrame<double> Simplex( DataFrame< double > data,
                            int         Tp,
                            int         knn,
                            int         tau,
+                           int         exclusionRadius,
                            std::string columns,
                            std::string target,
                            bool        embedded,
+                           bool        const_predict,
                            bool        verbose ) {
 
     Parameters param = Parameters( Method::Simplex, "", "",
                                    pathOut, predictFile,
                                    lib, pred, E, Tp, knn, tau, 0,
-                                   columns, target, embedded, verbose );
+                                   exclusionRadius,
+                                   columns, target, embedded,
+                                   const_predict, verbose );
 
     //----------------------------------------------------------
     // Embed, compute Neighbors
     //----------------------------------------------------------
-    DataEmbedNN embedNN = EmbedNN( data, param );
+    DataEmbedNN embedNN = EmbedNN( data, std::ref( param ) );
 
     DataFrame<double> S = SimplexProjection( param, embedNN );
 
@@ -89,9 +95,10 @@ DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
 
 #ifdef DEBUG_ALL
     std::cout << "Simplex -----------------------------------\n";
-    std::cout << "Neighbors:\n";
+    std::cout << "Neighbors: (" << neighbors.neighbors.NRows() << "x"
+              << neighbors.neighbors.NColumns() << ")\n";
     std::cout << neighbors.neighbors;
-    std::cout << "Target:\n";
+    std::cout << "Target: (" << target_vec.size() << ")\n";
     for ( size_t row = 0; row < 10; row++ ) {
         std::cout << target_vec[ row ] << " ";
     } std::cout << std::endl;
@@ -149,7 +156,7 @@ DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
         std::valarray<double> libTarget( param.knn );
 
         for ( size_t k = 0; k < param.knn; k++ ) {
-            double libRow = neighbors.neighbors( row, k ) + param.Tp;
+            size_t libRow = (size_t) neighbors.neighbors( row, k ) + param.Tp;
 
             if ( libRow > library_N_row ) {
                 // The k_NN index + Tp is outside the library domain
@@ -174,10 +181,21 @@ DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
         
     } // for ( row = 0; row < N_row; row++ )
 
+    // non "predictions" X(t+1) = X(t) if const_predict specified
+    std::valarray< double > const_predictions( 0., N_row );
+    if ( param.const_predict ) {
+        std::slice pred_slice =
+            std::slice( param.prediction[ 0 ], param.prediction.size(), 1 );
+        
+        const_predictions = target_vec[ pred_slice ];
+    }
+    
     //----------------------------------------------------
     // Ouput
     //----------------------------------------------------
-    DataFrame<double> dataFrame = FormatOutput( param, N_row, predictions, 
+    DataFrame<double> dataFrame = FormatOutput( param, N_row,
+                                                predictions,
+                                                const_predictions,
                                                 dataIn, target_vec,
                                                 checkDataRows );
 

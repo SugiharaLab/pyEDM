@@ -5,47 +5,42 @@
 
 //----------------------------------------------------------------
 // API Overload 1: Explicit data file path/name
-//   Implemented as a wrapper to API Overload 2:
-//   which is a wrapper for MakeBlock()
-//----------------------------------------------------------------
 // Embed DataFrame columns in E dimensions.
 // Data is read from path/dataFile
+// Implemented as a wrapper to API Overload 2:
+// which is a wrapper for MakeBlock()
 //
-// side effects:        truncates the array by tau * (E-1) rows 
-//                      to remove nan values (partial data rows)
-// @param E:            embedding dimension
-// @param tau:          time step delay
-// @param columns:      column names or indices to embed
-// @return:             DataFrame with embedded data block
+// NOTE: Truncates data by tau * (E-1) rows to remove
+//       nan values (partial data rows)
 //----------------------------------------------------------------
-DataFrame< double > Embed ( std::string path,
-                            std::string dataFile,
-                            int         E,
-                            int         tau,
-                            std::string columns,
-                            bool        verbose ) {
+DataFrame< double > Embed( std::string path,
+                           std::string dataFile,
+                           int         E,         // embedding dimension
+                           int         tau,       // time step delay
+                           std::string columns,   // column names or indices
+                           bool        verbose ) {
     
-    DataFrame< double > toEmbed (path, dataFile);
-    DataFrame< double > embedded = Embed (toEmbed, E, tau, columns, verbose); 
+    DataFrame< double > dataFrame( path, dataFile );
+    DataFrame< double > embedded = Embed(dataFrame, E, tau, columns, verbose); 
     return embedded;
 }
 
 //----------------------------------------------------------------
 // API Overload 2: DataFrame provided
-//   Implemented as a wrapper for MakeBlock()
+// Implemented as a wrapper for MakeBlock()
 // Note: dataFrame must have the columnNameToIndex map 
 //----------------------------------------------------------------
-DataFrame< double > Embed ( DataFrame< double > dataFrameIn,
-                            int                 E,
-                            int                 tau,
-                            std::string         columns,
-                            bool                verbose ) {
+DataFrame< double > Embed( DataFrame< double > dataFrameIn,
+                           int                 E,
+                           int                 tau,
+                           std::string         columns,
+                           bool                verbose ) {
     
     // Parameter.Validate will convert columns into a vector of names
     // or a vector of column indices
     Parameters param = Parameters( Method::Embed, "", "", "", "",
-                                   "1 1", "1 1", E, 0, 0, tau, 0,
-                                   columns, "", false, verbose );
+                                   "1 1", "1 1", E, 0, 0, tau, 0, 0,
+                                   columns, "", false, false, verbose );
 
     if ( not param.columnIndex.size() and
          dataFrameIn.ColumnNameToIndex().empty() ) {
@@ -94,12 +89,13 @@ DataFrame< double > Embed ( DataFrame< double > dataFrameIn,
 
 //---------------------------------------------------------
 // MakeBlock from dataFrame
+// Does not validate parameters or columns, use Embed()
 //---------------------------------------------------------
-DataFrame< double > MakeBlock ( DataFrame< double >      dataFrame,
-                                int                      E,
-                                int                      tau,
-                                std::vector<std::string> columnNames,
-                                bool                     verbose ) {
+DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
+                               int                      E,
+                               int                      tau,
+                               std::vector<std::string> columnNames,
+                               bool                     verbose ) {
 
     if ( columnNames.size() != dataFrame.NColumns() ) {
         std::stringstream errMsg;

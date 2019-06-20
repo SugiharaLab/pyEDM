@@ -110,8 +110,8 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
 
     Parameters param = Parameters( Method::Simplex, "", "",
                                    pathOut, predictFile,
-                                   "", "", E, Tp, knn, tau, 0,
-                                   columns, target, false, verbose,
+                                   "", "", E, Tp, knn, tau, 0, 0,
+                                   columns, target, false, false, verbose,
                                    "", "", "", 0, 0, 0, 0,
                                    libSizes_str, sample, random, seed );
 

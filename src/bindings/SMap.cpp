@@ -16,11 +16,13 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                                                int         knn,
                                                int         tau,
                                                double      theta,
+                                               int         exclusionRadius,
                                                std::string columns,
                                                std::string target,
                                                std::string smapFile,
-                                               std::string jacobians,
+                                               std::string derivatives,
                                                bool        embedded,
+                                               bool        const_predcit,
                                                bool        verbose ) {
     SMapValues SM;
     
@@ -38,11 +40,13 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    knn,
                    tau,
                    theta,
+                   exclusionRadius,
                    columns, 
                    target,
                    smapFile,
-                   jacobians,
+                   derivatives,
                    embedded,
+                   const_predcit,
                    verbose);
     }
     else if ( dataList.size() ) {
@@ -58,11 +62,13 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    knn,
                    tau,
                    theta,
+                   exclusionRadius,
                    columns, 
                    target,
                    smapFile,
-                   jacobians,
+                   derivatives,
                    embedded,
+                   const_predcit,
                    verbose);
     }
     else {

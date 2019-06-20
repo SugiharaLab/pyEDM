@@ -54,17 +54,17 @@ class test_EDM( unittest.TestCase ):
         #--------------------------------------------------------
         print ( "--- Simplex embedded = False ---" )
         df = EDM.Simplex( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
-                          "1 100", "101 195", 3, 1, 0, 1,
-                          "x_t", "x_t", False, True, False )
+                          "1 100", "101 195", 3, 1, 0, 1, 0,
+                          "x_t", "x_t", False, False, True, False )
 
-        # cppEDM and devPDM outputs are rounded to os.precision( 4 );
+        # cppEDM and devEDM outputs are rounded to os.precision( 4 );
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "Smplx_E3_block_3sp_pyEDM.csv" ] )
         
         S1 =       dfv.get('Prediction_t(+1)')
         S2 = round( df.get('Predictions'), 4 ) 
         self.assertTrue( S1.equals( S2 ) )
-        
+
     #------------------------------------------------------------
     def test_simplex2( self ):
         #--------------------------------------------------------
@@ -72,8 +72,8 @@ class test_EDM( unittest.TestCase ):
         #--------------------------------------------------------
         print ( "--- Simplex embedded = True ---" )
         df = EDM.Simplex( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
-                          "1 99", "100 198", 3, 1, 0, 1,
-                          "x_t y_t z_t", "x_t", True, True )
+                          "1 99", "100 198", 3, 1, 0, 1, 0,
+                          "x_t y_t z_t", "x_t", True, False, True, False )
 
         # This has been rounded to os.precision( 4 );
         dfv = EDM.ReadDataFrame( "",
@@ -95,8 +95,8 @@ class test_EDM( unittest.TestCase ):
 
         # Passing Pandas DataFrame input to Smap rather than path/file
         SM = EDM.SMap( "", "", dfc, "", "",
-                       "1 100", "101 198", 2, 1, 0, 1, 4,
-                       "x y", "x", "", "", True, True )
+                       "1 100", "101 198", 2, 1, 0, 1, 4, 0,
+                       "x y", "x", "", "", True, False, True, False )
         
         df = SM['predictions']
         
@@ -113,8 +113,8 @@ class test_EDM( unittest.TestCase ):
         #--------------------------------------------------------
         print ( "--- S-map block_3sp embedded = True ---" )
         SM = EDM.SMap( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
-                       "1 99", "100 198", 3, 1, 0, 1, 2,
-                       "x_t y_t z_t", "x_t", "", "", True, True )
+                       "1 99", "100 198", 3, 1, 0, 1, 2, 0,
+                       "x_t y_t z_t", "x_t", "", "", True, False, True, False )
 
         df = SM['predictions']
         
@@ -124,7 +124,7 @@ class test_EDM( unittest.TestCase ):
         S1 =       dfv.get('Prediction_t(+1)')
         S2 = round( df.get('Predictions'), 4 ) 
         self.assertTrue( S1.equals( S2 ) )
-
+        
     #------------------------------------------------------------
     # Multiview
     #------------------------------------------------------------

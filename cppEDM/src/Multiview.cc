@@ -94,8 +94,8 @@ MultiviewValues  Multiview( DataFrame< double > data,
     // Create local Parameters struct. Note embedded = true
     Parameters param = Parameters( Method::Simplex, "", "",
                                    pathOut, predictFile,
-                                   lib, pred, E, Tp, knn, tau, 0,
-                                   columns, target, true, verbose,
+                                   lib, pred, E, Tp, knn, tau, 0, 0,
+                                   columns, target, true, false, verbose,
                                    "", "", "", 0, 0, 0, multiview );
     
     if ( not param.columnNames.size() ) {

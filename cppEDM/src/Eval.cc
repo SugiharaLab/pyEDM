@@ -195,11 +195,13 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
                                        pred,
                                        E,
                                        Tp,
-                                       0,           // knn = 0
+                                       0,           // knn
                                        tau,
+                                       0,           // exclusionRadius
                                        colNames,
                                        targetName,
                                        embedded,
+                                       false,       // const_predict
                                        verbose );
         
         VectorError ve = ComputeError( S.VectorColumnName( "Observations" ),
@@ -348,11 +350,13 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
                                        pred,
                                        E,
                                        Tp,
-                                       0,           // knn = 0
+                                       0,           // knn
                                        tau,
+                                       0,           // exclusionRadius
                                        colNames,
                                        targetName,
                                        embedded,
+                                       false,       // const_pred
                                        verbose );
         
         VectorError ve = ComputeError( S.VectorColumnName( "Observations" ),
@@ -507,19 +511,21 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
         
         SMapValues S = SMap( data,
                              "",
-                             "",      // predictFile
+                             "",        // predictFile
                              lib,
                              pred,
                              E,
                              Tp,
-                             0,       // knn
+                             0,         // knn
                              tau,
                              theta,
+                             0,         // exclusionRadius
                              colNames,
                              targetName,
-                             "",      // smapFile
-                             "",      // jacobians
+                             "",        // smapFile
+                             "",        // derivatives
                              embedded,
+                             false,     // const_predict
                              verbose );
         
         DataFrame< double > predictions  = S.predictions;

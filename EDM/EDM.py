@@ -70,8 +70,8 @@ def Examples():
            '''"x_t y_t z_t", "x_t", True, True, True )''' )
 
     df = Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                  "1 99", "100 198", 3, 1, 0, 1,
-                  "x_t y_t z_t", "x_t", True, True, True )
+                  "1 99", "100 198", 3, 1, 0, 1, 0,
+                  "x_t y_t z_t", "x_t", True, False, True, True )
 
     #---------------------------------------------------------------
     # Tent map simplex : Embed column x_t to E=3, embedded = False
@@ -80,8 +80,8 @@ def Examples():
            '''"x_t", "x_t", False, True, True )''' )
 
     df = Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                  "1 99", "100 195", 3, 1, 0, 1,
-                  "x_t", "x_t", False, True, True )
+                  "1 99", "100 195", 3, 1, 0, 1, 0,
+                  "x_t", "x_t", False, False, True, True )
 
     #---------------------------------------------------------------
     print( '''\nMultiview( "", "block_3sp.csv", None, "./", "", ''' +\
@@ -98,8 +98,8 @@ def Examples():
            '''2, 1, 0, 1, 4, "x y", "x", "", "", True, True, True )''' )
            
     S = SMap( "", Files[ "circle.csv" ], None, "./", "", 
-              "1 100", "101 198", 2, 1, 0, 1, 4,
-              "x y", "x", "", "", True, True, True )
+              "1 100", "101 198", 2, 1, 0, 1, 4, 0,
+              "x y", "x", "", "", True, False, True, True )
 
     #---------------------------------------------------------------
     print( '''\nCCM( "./", "sardine_anchovy_sst.csv", None, "./", "",''' +\
@@ -262,10 +262,12 @@ def Simplex( pathIn       = "./",
              Tp           = 1,
              knn          = 0,
              tau          = 1,
+             exclusionRadius = 0,
              columns      = "",
              target       = "", 
              embedded     = False,
              verbose      = False,
+             const_pred   = False,
              showPlot     = False ):
     '''Simplex prediction on path/file.'''
 
@@ -291,9 +293,11 @@ def Simplex( pathIn       = "./",
                             Tp,
                             knn,
                             tau,
+                            exclusionRadius,
                             columns,
                             target, 
                             embedded,
+                            const_pred,
                             verbose  )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
@@ -318,12 +322,14 @@ def SMap( pathIn       = "./",
           knn          = 0,
           tau          = 1,
           theta        = 0,
+          exclusionRadius = 0,
           columns      = "",
           target       = "",
           smapFile     = "",
           jacobians    = "",
           embedded     = False,
           verbose      = False,
+          const_pred   = False,
           showPlot     = False ):
     '''S-Map prediction on path/file.'''
 
@@ -351,11 +357,13 @@ def SMap( pathIn       = "./",
                          knn,
                          tau,
                          theta,
+                         exclusionRadius,
                          columns,
                          target,
                          smapFile,
                          jacobians,
                          embedded,
+                         const_pred,
                          verbose  )
 
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame

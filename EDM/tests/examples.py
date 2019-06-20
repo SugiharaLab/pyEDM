@@ -43,13 +43,13 @@ def main():
     
     # Tent map simplex : specify multivariable columns embedded = True
     df = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                      "1 99", "100 198", 3, 1, 0, 1,
-                      "x_t y_t z_t", "x_t", True, True, True )
+                      "1 99", "100 198", 3, 1, 0, 1, 0,
+                      "x_t y_t z_t", "x_t", True, False, True, True )
 
     # Tent map simplex : Embed column x_t to E=3, embedded = False
     df = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                      "1 99", "100 195", 3, 1, 0, 1,
-                      "x_t", "x_t", False, True, True )
+                      "1 99", "100 195", 3, 1, 0, 1, 0,
+                      "x_t", "x_t", False, False, True, True )
 
     M = EDM.Multiview( "", Files[ "block_3sp.csv" ], None, "./", "", 
                        "1 100", "101 198", 3, 1, 0, 1,
@@ -57,8 +57,8 @@ def main():
 
     # S-map circle : specify multivariable columns embedded = True
     S = EDM.SMap( "", Files[ "circle.csv" ], None, "./", "", 
-                  "1 100", "101 198", 2, 1, 0, 1, 4,
-                  "x y", "x", "", "", True, True, True )
+                  "1 100", "101 198", 2, 1, 0, 1, 4, 0,
+                  "x y", "x", "", "", True, False, True, True )
     
     df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
                   3, 0, 0, 1, "anchovy", "np_sst",
