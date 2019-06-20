@@ -70,9 +70,11 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
                py::arg("Tp")          = 1,
                py::arg("knn")         = 0,
                py::arg("tau")         = 1,
+               py::arg("exclusionRadius") = 0,
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
                py::arg("embedded")    = false,
+               py::arg("const_pred")  = false,
                py::arg("verbose")     = false );
     
     pyMod.def( "SMap", &SMap_pybind,
@@ -88,11 +90,13 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
                py::arg("knn")         = 0,
                py::arg("tau")         = 1,
                py::arg("theta")       = 0,
+               py::arg("exclusionRadius") = 0,
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
                py::arg("smapFile")    = std::string(""),
-               py::arg("jacobians")   = std::string(""),
+               py::arg("derivatives") = std::string(""),
                py::arg("embedded")    = false,
+               py::arg("const_pred")  = false,
                py::arg("verbose")     = false );
 
     pyMod.def( "Multiview", &Multiview_pybind,

@@ -20,12 +20,13 @@ public:  // Not protected with accessors.
     int         Tp;                 // prediction interval
     int         knn;                // k nearest neighbors
     int         tau;                // block embedding delay
+    int         exclusionRadius;    // temporal rows to ignore in predict
     
-    float       theta;            // S Map localization
-    float       SVDSignificance;  // SVD singular value cutoff
-    std::vector<size_t> jacobians;// list of column indices for Jacobians
-    float       TikhonovAlpha;    // Initial alpha parameter
-    float       ElasticNetAlpha;  // Initial alpha parameter
+    float       theta;              // S Map localization
+    float       SVDSignificance;    // SVD singular value cutoff
+    std::vector<size_t> derivatives;// list of column indices for derivatives
+    float       TikhonovAlpha;      // Initial alpha parameter
+    float       ElasticNetAlpha;    // Initial alpha parameter
 
     std::vector<std::string> columnNames; // column names 
     std::vector<size_t>      columnIndex; // column indices
@@ -34,6 +35,7 @@ public:  // Not protected with accessors.
     size_t      targetIndex;      // target column index
 
     bool        embedded;         // true if data is already embedded/block
+    bool        const_predict;    // true to compute non "predictor" stats
     
     int         MultiviewEnsemble;// Number of ensembles in multiview
 
@@ -60,7 +62,7 @@ public:  // Not protected with accessors.
     std::string columns_str;
     std::string target_str;
     std::string libSizes_str;
-    std::string jacobian_str;
+    std::string derivatives_str;
 
     Version version;  // Version object, instantiated in constructor
 
@@ -68,28 +70,30 @@ public:  // Not protected with accessors.
 
     // Constructor declaration and default arguments
     Parameters(
-        Method      method       = Method::None,
-        std::string pathIn       = "./",
-        std::string dataFile     = "",
-        std::string pathOut      = "./",
-        std::string predictFile  = "",
-        std::string lib_str      = "",
-        std::string pred_str     = "",
-        int         E            = 0,
-        int         Tp           = 0,
-        int         knn          = 0,
-        int         tau          = 1,
-        float       theta        = 0,
+        Method      method      = Method::None,
+        std::string pathIn      = "./",
+        std::string dataFile    = "",
+        std::string pathOut     = "./",
+        std::string predictFile = "",
+        std::string lib_str     = "",
+        std::string pred_str    = "",
+        int         E           = 0,
+        int         Tp          = 0,
+        int         knn         = 0,
+        int         tau         = 1,
+        float       theta       = 0,
+        int         exclusionRadius = 0,
 
-        std::string columns_str  = "",
-        std::string target_str   = "",
+        std::string columns_str = "",
+        std::string target_str  = "",
 
-        bool        embedded     = false,
-        bool        verbose      = false,
+        bool        embedded      = false,
+        bool        const_predict = false,
+        bool        verbose       = false,
         
-        std::string SmapFile     = "",
-        std::string blockFile    = "",        
-        std::string jacobian_str = "",
+        std::string SmapFile        = "",
+        std::string blockFile       = "",        
+        std::string derivatives_str = "",
         
         float       svdSig       = 1E-5,
         float       tikhonov     = 0,
@@ -102,7 +106,7 @@ public:  // Not protected with accessors.
         unsigned    seed         = 0,   // 0: Generate random seed in CCM
         bool        noNeighbor   = false,
         bool        forwardTau   = false
-        );
+    );
 
     ~Parameters();
 

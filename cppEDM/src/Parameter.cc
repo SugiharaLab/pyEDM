@@ -18,16 +18,18 @@ Parameters::Parameters(
     int         knn,
     int         tau,
     float       theta,
+    int         exclusionRadius,
 
     std::string columns_str,
     std::string target_str,
     
     bool        embedded,
+    bool        const_predict,
     bool        verbose,
     
     std::string SmapFile,
     std::string blockFile,
-    std::string jacobian_str,
+    std::string derivatives_str,
     
     float       svdSig,
     float       tikhonov,
@@ -54,19 +56,21 @@ Parameters::Parameters(
     knn              ( knn ),
     tau              ( tau ),
     theta            ( theta ),
+    exclusionRadius  ( exclusionRadius ),
     
     columns_str      ( columns_str ),
     target_str       ( target_str ),
     targetIndex      ( 0 ),
 
     embedded         ( embedded ),
+    const_predict    ( const_predict ),
     verbose          ( verbose ),
     
     SmapOutputFile   ( SmapFile ),
     blockOutputFile  ( blockFile ),
 
     SVDSignificance  ( svdSig ),
-    jacobian_str     ( jacobian_str ),
+    derivatives_str  ( derivatives_str ),
     TikhonovAlpha    ( tikhonov ),
     ElasticNetAlpha  ( elasticNet ),
     
@@ -80,7 +84,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 0, 1, 2, "2019-05-05" )
+    version          ( 0, 1, 3, "2019-06-21" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -208,17 +212,17 @@ void Parameters::Validate() {
         }
     }
     
-    // Jacobians
-    if ( jacobian_str.size() > 0 ) {
-        std::vector<std::string> jac_vec = SplitString( jacobian_str, " \t," );
-        if ( jac_vec.size() < 2 ) {
+    // Derivatives
+    if ( derivatives_str.size() > 0 ) {
+        std::vector<std::string> der_vec = SplitString(derivatives_str," \t,");
+        if ( der_vec.size() < 2 ) {
             std::string errMsg( "Parameters::Validate(): "
-                                "jacobians must be at least two integers.\n" );
+                                "derivatives must be integer pairs.\n");
             throw std::runtime_error( errMsg );
         }
-        jacobians = std::vector<size_t>( jac_vec.size() );
-        for ( size_t i = 0; i < jac_vec.size(); i++ ) {
-            jacobians.push_back( std::stoi( jac_vec[i] ) );
+        derivatives = std::vector<size_t>( der_vec.size() );
+        for ( size_t i = 0; i < der_vec.size(); i++ ) {
+            derivatives.push_back( std::stoi( der_vec[i] ) );
         }
     }
 
@@ -277,7 +281,7 @@ void Parameters::Validate() {
         }
         else {
             // knn = 0
-            knn = library.size() - Tp;
+            knn = library.size() - Tp * (E + 1);
             if ( verbose ) {
                 std::stringstream msg;
                 msg << "Parameters::Validate(): Set knn = " << knn
@@ -293,19 +297,19 @@ void Parameters::Validate() {
             std::cout << msg;
         }
 
-        // S-Map coefficient columns for jacobians start at 1 since the 0th
+        // S-Map coefficient columns for derivatives start at 1 since the 0th
         // column is the S-Map linear prediction bias term
-        if ( jacobians.size() > 1 ) {
-            std::vector<size_t>::iterator it = std::find( jacobians.begin(),
-                                                          jacobians.end(), 0 );
-            if ( it != jacobians.end() ) {
+        if ( derivatives.size() > 1 ) {
+            std::vector<size_t>::iterator it = std::find( derivatives.begin(),
+                                                          derivatives.end(), 0);
+            if ( it != derivatives.end() ) {
                 std::string errMsg( "Parameters::Validate() S-Map coefficient "
-                             " columns for jacobians can not use column 0.\n");
+                            " columns for derivatives can not use column 0.\n");
                 throw std::runtime_error( errMsg );
             }
-            if ( jacobians.size() % 2 ) {
+            if ( derivatives.size() % 2 ) {
                 std::string errMsg( "Parameters::Validate() S-Map coefficient "
-                                  " columns for jacobians must be in pairs.\n");
+                            " columns for derivatives must be in pairs.\n");
                 throw std::runtime_error( errMsg );                
             }
         }
@@ -340,8 +344,7 @@ void Parameters::Validate() {
 }
 
 //------------------------------------------------------------------
-// Stream to ostream
-//  @param os: the output stream
+// Overload << to output to ostream
 //------------------------------------------------------------------
 std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
 

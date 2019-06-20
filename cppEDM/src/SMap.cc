@@ -10,6 +10,10 @@
 // lower numerical robustness are disabled. This currently concerns only
 // JacobiSVD which otherwise would be replaced by gesvd that is less robust
 // than Jacobi rotations.
+//
+//-------------------------------------------------------------------------
+// The Lapack SVD routine dgesdd_() can also be called directly without
+// need for Eigen. An example is in etc/lapack_dgesdd.cc
 //-------------------------------------------------------------------------
 
 #include <Eigen/Dense>
@@ -21,8 +25,8 @@
 #include "AuxFunc.h"
 
 // forward declaration
-std::valarray< double > SVD( DataFrame    < double > A,
-                             std::valarray< double > B );
+std::valarray < double > SVD( DataFrame    < double > A,
+                              std::valarray< double > B );
 
 //----------------------------------------------------------------
 // Overload 1: Explicit data file path/name
@@ -39,20 +43,23 @@ SMapValues SMap( std::string pathIn,
                  int         knn,
                  int         tau,
                  double      theta,
+                 int         exclusionRadius,
                  std::string columns,
                  std::string target,
                  std::string smapFile,
-                 std::string jacobians,
+                 std::string derivatives,
                  bool        embedded,
+                 bool        const_predict,
                  bool        verbose )
 {
     // DataFrame constructor loads data
     DataFrame< double > dataFrameIn( pathIn, dataFile );
     
     SMapValues SMapOutput = SMap( dataFrameIn, pathOut, predictFile,
-                                  lib, pred, E, Tp, knn, tau, theta, 
-                                  columns, target, smapFile, jacobians, 
-                                  embedded, verbose );
+                                  lib, pred, E, Tp, knn, tau, theta,
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives, 
+                                  embedded, const_predict, verbose );
     return SMapOutput;
 }
 
@@ -69,24 +76,27 @@ SMapValues SMap( DataFrame< double > data,
                  int         knn,
                  int         tau,
                  double      theta,
+                 int         exclusionRadius,
                  std::string columns,
                  std::string target,
                  std::string smapFile,
-                 std::string jacobians,
+                 std::string derivatives,
                  bool        embedded,
+                 bool        const_predict,
                  bool        verbose )
 {
 
     Parameters param = Parameters( Method::SMap, "", "",
                                    pathOut, predictFile,
                                    lib, pred, E, Tp, knn, tau, theta,
-                                   columns, target, embedded, verbose,
-                                   smapFile, "", jacobians );
+                                   exclusionRadius, columns, target,
+                                   embedded, const_predict, verbose,
+                                   smapFile, "", derivatives );
 
     //----------------------------------------------------------
     // Load data, Embed, compute Neighbors
     //----------------------------------------------------------
-    DataEmbedNN dataEmbedNN = EmbedNN( data, param );
+    DataEmbedNN dataEmbedNN = EmbedNN( data, std::ref( param ) );
 
     // Unpack the dataEmbedNN for convenience
     DataFrame<double>     dataIn     = dataEmbedNN.dataIn;
@@ -126,7 +136,7 @@ SMapValues SMap( DataFrame< double > data,
     // Init coefficients to NAN ?
     DataFrame< double > coefficients = DataFrame< double >( N_row,
                                                             param.E + 1 );
-    DataFrame< double > jacobian;
+    DataFrame< double > derivative;
     DataFrame< double > tangents;
 
     //------------------------------------------------------------
@@ -184,7 +194,7 @@ SMapValues SMap( DataFrame< double > data,
         std::valarray < double > C = SVD( A, B );
 
         // Prediction is local linear projection
-        double prediction = C[ 0 ]; // Note that C[ 0 ] is the bias term
+        double prediction = C[ 0 ]; // C[ 0 ] is the bias term
 
         for ( size_t e = 1; e < param.E + 1; e++ ) {
             prediction = prediction + C[ e ] *
@@ -196,31 +206,40 @@ SMapValues SMap( DataFrame< double > data,
 
     } // for ( row = 0; row < predict_N_row; row++ )
 
+    // non "predictions" X(t+1) = X(t) if const_predict specified
+    std::valarray< double > const_predictions( 0., N_row );
+    if ( param.const_predict ) {
+        std::slice pred_slice =
+            std::slice( param.prediction[ 0 ], param.prediction.size(), 1 );
+        
+        const_predictions = target_vec[ pred_slice ];
+    }
+    
+    //-----------------------------------------------------
+    // Derivatives
+    //-----------------------------------------------------
+
+
+    //----------------------------------------------------
+    // Ouput
+    //----------------------------------------------------
+    // Obervations & predictions
+    DataFrame<double> dataOut = FormatOutput( param, N_row,
+                                              predictions,
+                                              const_predictions,
+                                              dataIn, target_vec );
+    
+    // Insert coefficients DataFrame column names: C0, C1, C2, ...
     for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
         std::stringstream coefName;
         coefName << "C" << col;
         coefficients.ColumnNames().push_back( coefName.str() );
     }
 
-    //-----------------------------------------------------
-    // Jacobians
-    //-----------------------------------------------------
-
-
-    
-    //----------------------------------------------------
-    // Ouput
-    //----------------------------------------------------
-    DataFrame<double> dataOut = FormatOutput( param, N_row, predictions, 
-                                              dataIn, target_vec );
-    
-    // Prediction row slice
-    std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
-
-    // Create output DataFrame
+    // Coefficient output DataFrame
     DataFrame< double > coefOut = DataFrame< double >( N_row, param.E + 2 );
     
-    // Populate column names
+    // Populate coefOut column names
     std::vector<std::string> coefNames;
     coefNames.push_back( "Time" );
     for ( size_t col = 0; col < coefficients.ColumnNames().size(); col++ ) {
@@ -228,9 +247,13 @@ SMapValues SMap( DataFrame< double > data,
     }
     coefOut.ColumnNames() = coefNames;
 
-    // Write the time vector
+    // Prediction row slice
+    std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
+
+    // Write time vector in column 0
     coefOut.WriteColumn( 0, dataIn.Column( 0 )[ pred_i ] );
-    // Write the coefficients to the columns
+    
+    // Write coefficients to columns
     for ( size_t col = 1; col < coefOut.NColumns(); col++ ) {
         coefOut.WriteColumn( col, coefficients.Column( col - 1 ) );
     }
@@ -254,8 +277,8 @@ SMapValues SMap( DataFrame< double > data,
 //----------------------------------------------------------------
 // Singular Value Decomposition using Eigen C++ template library
 //----------------------------------------------------------------
-std::valarray < double > SVD( DataFrame    < double > A_,
-                              std::valarray< double > B_ ) {
+std::valarray < double >  SVD( DataFrame    < double > A_,
+                               std::valarray< double > B_ ) {
 
     // Eigen::Map<> allows "raw" initialization from a pointer
     // The Map (A) is then a mapping to the memory location pointer (a)
@@ -272,31 +295,37 @@ std::valarray < double > SVD( DataFrame    < double > A_,
     double *b = &(B_[0]);
     Eigen::VectorXd B = Eigen::Map< Eigen::VectorXd >( b, B_.size() );
 
+    //-------------------------------------------------------------------
     // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
     //-------------------------------------------------------------------
     // The recommended method is the BDCSVD class, which scale well for
     // large problems and automatically fall-back to the JacobiSVD class
     // for smaller problems.
-
+    //
+    // JacobiSVD implements two-sided Jacobi iterations that are
+    // numerically very accurate, fast for small matrices, but very
+    // slow for larger ones.
+    //
     // BDCSVD implements a recursive divide & conquer strategy on top of
     // an upper-bidiagonalization which remains fast for large problems.
-    // Warning:  this algorithm is unlikely to provide accurate result when
+    // Warning:  This algorithm is unlikely to provide accurate result when
     // compiled with unsafe math optimizations. For instance, this concerns
     // Intel's compiler (ICC), which perfroms such optimization by default
     // unless you compile with the -fp-model precise option. Likewise,
     // the -ffast-math option of GCC or clang will significantly degrade
     // the accuracy.
-    // Eigen::VectorXd C =
-    //    A.bdcSvd( Eigen::ComputeThinU |  Eigen::ComputeThinV ).solve( B );
+    // NOTE gcc: -ffast-math is not turned on by any -O option besides -Ofast
     
-    // JacobiSVD implements two-sided Jacobi iterations that are
-    // numerically very accurate, fast for small matrices, but very
-    // slow for larger ones.
     Eigen::VectorXd C =
-        A.jacobiSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).solve( B );
+        A.bdcSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).solve( B );
 
     // Extract fit coefficients from Eigen::VectorXd to valarray<>
     std::valarray < double > C_( C.data(), A_.NColumns() );
+
+#ifdef DEBUG_ALL
+        double relative_error = (A*C - B).norm() / B.norm(); // L2 norm
+        std::cout << "SVD relative error: " << relative_error << std::endl;
+#endif
 
 #ifdef DEBUG_ALL
     std::cout << "SVD------------------------\n";

@@ -108,10 +108,18 @@ Neighbors FindNeighbors(
                 continue;
             }
 
+            // Apply temporal exclusion radius: units are data rows, not time
+            if ( parameters.exclusionRadius ) {
+                int xrad = (int) lib_row - pred_row;
+                if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
+                    continue;
+                }
+            }
+                
             // If this lib_row + args.Tp >= library_N_row, then this neighbor
             // would be outside the library, keep looking if noNeighborLimit
-            if ( lib_row + parameters.Tp >= N_library_rows ) {
-                if ( not parameters.noNeighborLimit ) {
+            if ( not parameters.noNeighborLimit ) {
+                if ( lib_row + parameters.Tp >= N_library_rows ) {
                     continue;
                 }
             }

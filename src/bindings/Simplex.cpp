@@ -14,10 +14,12 @@ py::dict Simplex_pybind( std::string pathIn,
                          int         E,
                          int         Tp,
                          int         knn,
-                         int         tau, 
+                         int         tau,
+                         int         exclusionRadius,
                          std::string columns,
                          std::string target,
                          bool        embedded,
+                         bool        const_predict,
                          bool        verbose ) {
 
     DataFrame< double > S;
@@ -34,9 +36,11 @@ py::dict Simplex_pybind( std::string pathIn,
                      Tp,
                      knn,
                      tau,
+                     exclusionRadius,
                      columns,
                      target, 
                      embedded,
+                     const_predict,
                      verbose );
     }
     else if ( dataList.size() ) {
@@ -51,9 +55,11 @@ py::dict Simplex_pybind( std::string pathIn,
                      Tp,
                      knn,
                      tau,
+                     exclusionRadius,
                      columns,
                      target, 
                      embedded,
+                     const_predict,
                      verbose );
     }
     else {
