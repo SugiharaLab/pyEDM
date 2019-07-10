@@ -6,7 +6,7 @@
 //---------------------------------------------------------------
 py::dict EmbedDimension_pybind( std::string pathIn,
                                 std::string dataFile,
-                                DF          dataList,
+                                DF          df,
                                 std::string pathOut,
                                 std::string predictFile,
                                 std::string lib,
@@ -38,8 +38,8 @@ py::dict EmbedDimension_pybind( std::string pathIn,
                                      verbose,
                                      numThreads );
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         EmbedDimDF = EmbedDimension( dataFrame,
                                      pathOut,
@@ -58,8 +58,8 @@ py::dict EmbedDimension_pybind( std::string pathIn,
         throw std::runtime_error( "EmbedDimension_pybind(): Invalid input.\n" );
     }
     
-    DF       df = DataFrameToDF( EmbedDimDF );
-    py::dict D  = DFtoDict( df );
+    DF       dfout = DataFrameToDF( EmbedDimDF );
+    py::dict D     = DFtoDict( dfout );
     
     return D;
 }

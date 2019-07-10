@@ -78,7 +78,8 @@ std::vector<std::string> SplitString( std::string inString,
 
 VectorError ComputeError( std::valarray< double > obs,
                           std::valarray< double > pred );
-
+std::string increment_datetime_str ( std::string datetime1, 
+        std::string datetime2, int tp );
 // API functions Embed() and MakeBlock() are in Embed.h Embed.cc
 
 DataFrame<double> Simplex( std::string pathIn          = "./data/",

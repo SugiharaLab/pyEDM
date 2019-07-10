@@ -33,13 +33,16 @@ DataEmbedNN EmbedNN( DataFrame<double> dataIn,
                      Parameters       &param,
                      bool              checkDataRows = true );
     
-DataFrame<double> FormatOutput( Parameters            param,
-                                size_t                N_row,
-                                std::valarray<double> predictions,
-                                std::valarray<double> const_predictions,
-                                DataFrame<double>     dataFrameIn,
-                                std::valarray<double> target_vec,
-                                bool                  checkDataRows = true );
+DataFrame<double> FormatOutput( Parameters               param,
+                                std::valarray<double>    predictions,
+                                std::valarray<double>    const_predictions,
+                                std::valarray<double>    target_vec,
+                                std::vector<std::string> time,
+                                std::string              timeName );
+
+void FillTimes( Parameters                param,
+                std::vector<std::string>  time,
+                std::vector<std::string> &timeOut );
 
 void CheckDataRows( Parameters        param,
                     DataFrame<double> dataFrameIn,

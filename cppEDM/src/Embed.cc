@@ -128,7 +128,7 @@ DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
     DataFrame< double > embedding( NRows - NPartial, NColOut, newColumnNames );
 
     // slice indices for each column of original & shifted data
-    std::slice slice_i = std::slice (0, NRows, 1);
+    std::slice slice_i = std::slice( 0, NRows, 1 );
 
     // to keep track of where to insert column in new data frame
     size_t colCount = 0;
@@ -158,6 +158,19 @@ DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
         std::valarray< double > tmp = shiftDataFrame.Column( i )[ slice_i ];
         embedding.WriteColumn( i, tmp );
     }
+
+#ifdef ADD_EMBEDDING_TIME  // JP Is this needed?  
+    // Add time vector with partial rows removed if present
+    if ( dataFrame.Time().size() ) {
+        embedding.Time() =
+            std::vector< std::string >( dataFrame.Time().size() - NPartial );
+        
+        for ( size_t t = NPartial; t < dataFrame.Time().size(); t++ ) {
+            embedding.Time()[ t - NPartial ] = dataFrame.Time()[ t ];
+        }
+        embedding.TimeName() = dataFrame.TimeName();
+    }
+#endif
     
     return embedding;
 }

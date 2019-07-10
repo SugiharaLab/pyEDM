@@ -6,7 +6,7 @@
 //---------------------------------------------------------------
 py::dict PredictNonlinear_pybind( std::string pathIn,
                                   std::string dataFile,
-                                  DF          dataList,
+                                  DF          df,
                                   std::string pathOut,
                                   std::string predictFile,
                                   std::string lib,
@@ -40,8 +40,8 @@ py::dict PredictNonlinear_pybind( std::string pathIn,
                                        verbose,
                                        numThreads );
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         PredictDF  = PredictNonlinear( dataFrame,
                                        pathOut,
@@ -61,8 +61,8 @@ py::dict PredictNonlinear_pybind( std::string pathIn,
         throw std::runtime_error("PredictNonlinear_pybind(): Invalid input.\n");
     }
 
-    DF       df = DataFrameToDF( PredictDF );
-    py::dict D  = DFtoDict( df );
+    DF       dfout = DataFrameToDF( PredictDF );
+    py::dict D     = DFtoDict( dfout );
     
     return D;
 }

@@ -1,7 +1,8 @@
 
 CC  = cl
-OBJ = Common.obj AuxFunc.obj Parameter.obj Embed.obj Interface.obj\
-	Neighbors.obj Simplex.obj Eval.obj CCM.obj Multiview.obj SMap.obj 
+OBJ = Common.obj AuxFunc.obj DateTimeUtil.o Parameter.obj Embed.obj\
+	Interface.obj Neighbors.obj Simplex.obj Eval.obj CCM.obj\
+	Multiview.obj SMap.obj 
 
 LIB = EDM.lib
 
@@ -22,6 +23,9 @@ $(LIB): $(OBJ)
 
 AuxFunc.obj: AuxFunc.cc
 	$(CC) /c AuxFunc.cc $(CFLAGS)
+
+DateTimeUtil.obj: DateTimeUtil.cc
+	$(CC) /c DateTimeUtil.cc $(CFLAGS)
 
 Common.obj: Common.cc
 	$(CC) /c Common.cc $(CFLAGS)
@@ -56,7 +60,8 @@ SMap.obj: SMap.cc
 # Depedencies from makedepend on Linux
 Common.obj: Common.h DataFrame.h
 AuxFunc.obj: AuxFunc.h Common.h DataFrame.h Neighbors.h Parameter.h Version.h
-AuxFunc.obj: Embed.h
+AuxFunc.obj: Embed.h DateTime.h
+DateTimeUtil.obj: DateTime.h
 Parameter.obj: Parameter.h Common.h DataFrame.h Version.h
 Embed.obj: Embed.h Common.h DataFrame.h Parameter.h Version.h
 Interface.obj: Common.h DataFrame.h

@@ -26,6 +26,12 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
 
     pyMod.doc() = "Python bindings to cppEDM via pybind11.";
 
+    py::class_<DF>( pyMod, "DF" )
+        .def( py::init() )  // Default constructor (?)
+        .def_readwrite( "timeName", &DF::timeName )
+        .def_readwrite( "time",     &DF::time     )
+        .def_readwrite( "dataList", &DF::dataList );
+    
     pyMod.def( "ComputeError", &ComputeError_pybind );
 
     pyMod.def( "DataFrameToDF", &DataFrameToDF );
@@ -36,7 +42,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
                py::arg("file") = "" );
     
     pyMod.def( "MakeBlock", &MakeBlock_pybind,
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("E")           = 0,
                py::arg("tau")         = 0,
                py::arg("columnNames") = std::vector<std::string>(),
@@ -52,7 +58,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "Embed", &Embed_pybind,
                py::arg("path")     = std::string(""),
                py::arg("dataFile") = std::string(""),
-               py::arg("pyInput")  = DF(0),
+               py::arg("pyInput")  = DF(),
                py::arg("E")        = 0,
                py::arg("tau")      = 0,
                py::arg("columns")  = std::string(""),
@@ -61,7 +67,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "Simplex", &Simplex_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),
@@ -80,7 +86,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "SMap", &SMap_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),
@@ -102,7 +108,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "Multiview", &Multiview_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),
@@ -120,7 +126,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "CCM", &CCM_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("E")           = 0,
@@ -138,7 +144,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "EmbedDimension", &EmbedDimension_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),
@@ -154,7 +160,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "PredictInterval", &PredictInterval_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),
@@ -170,7 +176,7 @@ PYBIND11_MODULE( EDM_pybind, pyMod ) {
     pyMod.def( "PredictNonlinear", &PredictNonlinear_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(0),
+               py::arg("pyInput")     = DF(),
                py::arg("pathOut")     = std::string("./"),
                py::arg("predictFile") = std::string(""),
                py::arg("lib")         = std::string(""),

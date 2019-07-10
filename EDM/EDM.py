@@ -123,8 +123,15 @@ def PlotObsPred( df, dataFile = None, E = None, Tp = None, block = True ):
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
             "  ρ="   + str( round( stats['rho'],  2 ) )   +\
             " RMSE=" + str( round( stats['RMSE'], 2 ) )
+
+    if "time" in df.columns :
+        time_col = "time"
+    elif "Time" in df.columns :
+        time_col = "Time"
+    else :
+        raise RuntimeError( "PlotObsPred() Time column not found." )
     
-    df.plot( 'Time', ['Observations', 'Predictions'],
+    df.plot( time_col, ['Observations', 'Predictions'],
              title = title, linewidth = 3 )
     
     show( block = block )
@@ -139,15 +146,15 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
             "  S-Map Coefficients"
     
     # Coefficient columns can be in any column
-    coef_cols = [ x for x in df.columns if 'Time' not in x ]
-    
-    df.plot( 'Time', coef_cols, title = title, linewidth = 3,
+    coef_cols = [ x for x in df.columns if "Time" not in x ]
+
+    df.plot( "Time", coef_cols, title = title, linewidth = 3,
              subplots = True )
     
     show( block = block )
     
 #------------------------------------------------------------------------
-# pybind C++  DF = list< pair<string, valarray> >
+# pybind C++  DF = list< pair< string, valarray<double> > >
 # pybind Py        [ ( string, array ),  ]
 #------------------------------------------------------------------------
 def PandasDataFrametoDF( df ):
@@ -156,10 +163,16 @@ def PandasDataFrametoDF( df ):
     if df is None :
         raise RuntimeError( "PandasDataFrametoDF() empty DataFrame" )
     
-    DF = []
-    for column in df.columns :
-        DF.append( ( column, df.get( column ).tolist() ) )
+    #DF = []
+    #for column in df.columns :
+    #    DF.append( ( column, df.get( column ).tolist() ) )
 
+    DF = EDM_pybind.DF()
+    # time and timeName?
+    for column in df.columns :
+        DF.dataList.append( ( column, df.get( column ).tolist() ) )
+    
+    
     return DF
              
 #------------------------------------------------------------------------
@@ -227,7 +240,7 @@ def Embed( path      = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Embed()
     if dataFile :
-        DF = [] 
+        DF = EDM_pybind.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Embed(): dataFrame is empty." )
@@ -273,7 +286,7 @@ def Simplex( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
     if dataFile :
-        DF = [] 
+        DF = EDM_pybind.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Simplex(): dataFrame is empty." )
@@ -335,7 +348,7 @@ def SMap( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
     if dataFile :
-        DF = [] 
+        DF = EDM_pybind.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "SMap(): dataFrame is empty." )
@@ -369,6 +382,12 @@ def SMap( pathIn       = "./",
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame
     df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame
 
+    # JP --------------------------------------------------------
+    # SMap coef df.time is not the right size?
+    # print( "Pred: ", df_pred.shape, "\n", df_pred.head(5) )
+    # print( "Coef: ", df_coef.shape, "\n", df_coef.head(5) )
+    # JP --------------------------------------------------------
+    
     if showPlot :
         PlotObsPred( df_pred, dataFile, E, Tp, False )
         PlotCoeff  ( df_coef, dataFile, E, Tp )
@@ -401,7 +420,7 @@ def Multiview( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
     if dataFile :
-        DF = [] 
+        DF = EDM_pybind.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Multiview(): dataFrame is empty." )
@@ -463,7 +482,7 @@ def CCM( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for CCM()
     if dataFile :
-        DF = []
+        DF = EDM_pybind.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "CCM(): dataFrame is empty." )
@@ -524,7 +543,7 @@ def EmbedDimension( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
     if dataFile :
-        DF = []
+        DF = EDM_pybind.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "EmbedDimension(): dataFrame is empty." )
@@ -582,7 +601,7 @@ def PredictInterval( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for PredictInterval()
     if dataFile :
-        DF = []
+        DF = EDM_pybind.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "PredictInterval(): dataFrame is empty." )
@@ -641,7 +660,7 @@ def PredictNonlinear( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
     if dataFile :
-        DF = []
+        DF = EDM_pybind.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "PredictNonlinear(): dataFrame is empty." )

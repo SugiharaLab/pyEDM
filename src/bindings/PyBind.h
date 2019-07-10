@@ -10,11 +10,16 @@ namespace py = pybind11;
 
 // There are three data frame representations:
 //   1) C++ DataFrame class defined in cppEDM DataFrame.h
-//   2) DF: C++ STL container to hold DataFrame values
+//   2) DF: C++ struct to hold DataFrame values
 //   3) py::dict Python dictionary equivalent of DF
 
-// typedef for C++ DF to hold cppEDM DataFrame values
-using DF = std::list< std::pair<std::string, std::valarray<double> >>;
+// DF container to hold cppEDM DataFrame values
+typedef std::list< std::pair< std::string, std::valarray<double> > > DataList;
+struct DF {
+    std::string                timeName;
+    std::vector< std::string > time;
+    DataList                   dataList;
+};
 
 // Forward declarations for DataFrameWrapper.cpp convertors
 DataFrame< double > DFToDataFrame ( DF df );

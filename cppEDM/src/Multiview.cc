@@ -119,7 +119,7 @@ MultiviewValues  Multiview( DataFrame< double > data,
     // Combinations of possible embedding variables (columns), E at-a-time
     // Note that these combinations are not zero-offset, i.e.
     // Combination( 3, 2 ) = [(1, 2), (1, 3), (2, 3)]
-    // Since data has time in column 0, these correspond to column indices
+    // These correspond to column indices +1
     size_t nVar = param.columnNames.size();
     std::vector< std::vector< size_t > > combos =
         Combination( nVar * param.E, param.E );
@@ -303,17 +303,15 @@ MultiviewValues  Multiview( DataFrame< double > data,
     
     //----------------------------------------------------------
     // Compute Multiview averaged prediction
-    // combos_rho_prediction is a vector of DataFrames with columns
-    // [ Time, Observations, Predictions ]
+    // combos_rho_prediction is a vector of DataFrames with
+    // columns [ Observations, Predictions ]
     //----------------------------------------------------------
-    // Get copies of Time, Observations
-    std::valarray< double >
-        Time = combos_rho_prediction[0].VectorColumnName( "Time" );
+    // Get copy of Observations
     std::valarray< double >
         Obs = combos_rho_prediction[0].VectorColumnName( "Observations" );
 
     // Create ensemble average prediction vector
-    std::valarray< double > Predictions( 0., Time.size() );
+    std::valarray< double > Predictions( 0., Obs.size() );
 
     // Compute ensemble prediction (this seems clunky...)
     // combos_rho_prediction is a vector of DataFrames with prediction
@@ -336,11 +334,17 @@ MultiviewValues  Multiview( DataFrame< double > data,
     VectorError ve = ComputeError( Obs, Predictions );
 
     // Output Prediction DataFrame
-    DataFrame< double > Prediction( Predictions.size(), 3,
-                                    "Time Observations  Predictions" );
-    Prediction.WriteColumn( 0, Time );
-    Prediction.WriteColumn( 1, Obs  );
-    Prediction.WriteColumn( 2, Predictions );
+    DataFrame< double > Prediction( Predictions.size(), 2,
+                                    "Observations  Predictions" );
+    // Output time vector
+    std::vector< std::string > predTime( param.prediction.size() + param.Tp );
+    
+    FillTimes( param, data.Time(), std::ref( predTime ) );
+    
+    Prediction.Time()     = predTime;
+    Prediction.TimeName() = data.TimeName();
+    Prediction.WriteColumn( 0, Obs  );
+    Prediction.WriteColumn( 1, Predictions );
 
     if ( outputFile.size() ) {
         Prediction.WriteData( param.pathOut, outputFile );
@@ -349,7 +353,8 @@ MultiviewValues  Multiview( DataFrame< double > data,
     if ( param.verbose ) {
         std::cout << "Multiview(): rho " << ve.rho
                   << "  MAE " << ve.MAE << "  RMSE " << ve.RMSE << std::endl;
-    }
+        std::cout << combos_rho_pred;
+   }
 
     struct MultiviewValues MV( combos_rho_pred, Prediction );
     
@@ -381,6 +386,14 @@ void EvalComboThread( Parameters                            param,
         // Get the combo for this thread
         std::vector< size_t > combo = combos[ combo_i ];
 
+        // Local copy with combo column indices (zero-offset)
+        std::vector< size_t > combo_cols( combo );
+
+        // Zero offset combo column indices for dataFrame
+        for ( auto ci = combo_cols.begin(); ci != combo_cols.end(); ++ci ) {
+            *ci = *ci - 1;
+        }
+
 #ifdef DEBUG_ALL
         {
             std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );
@@ -395,18 +408,18 @@ void EvalComboThread( Parameters                            param,
 #endif
 
         // Select combo columns from the data
-        DataFrame<double> comboData = data.DataFrameFromColumnIndex( combo );
-    
+        DataFrame<double> comboData = data.DataFrameFromColumnIndex(combo_cols);
+
         // Compute neighbors on comboData
         Neighbors neighbors = FindNeighbors( comboData, param );
-    
+
         std::valarray<double> targetVec =
             data.VectorColumnName( param.targetName );
-    
+
         // Pack embedding, target, neighbors for SimplexProjection
         DataEmbedNN embedNN = DataEmbedNN( data, comboData,
                                            targetVec, neighbors );
-        
+
         // combo prediction
         DataFrame<double> S = SimplexProjection( param, embedNN );
 

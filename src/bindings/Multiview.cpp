@@ -7,7 +7,7 @@
 std::map< std::string, py::dict > Multiview_pybind (
     std::string  pathIn,
     std::string  dataFile,
-    DF           dataList,
+    DF           df,
     std::string  pathOut,
     std::string  predictFile,
     std::string  lib,
@@ -43,8 +43,8 @@ std::map< std::string, py::dict > Multiview_pybind (
                         verbose,
                         numThreads );
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         MV = Multiview( dataFrame,
                         pathOut,

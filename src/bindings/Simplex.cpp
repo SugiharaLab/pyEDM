@@ -6,7 +6,7 @@
 //-------------------------------------------------------------
 py::dict Simplex_pybind( std::string pathIn,
                          std::string dataFile,
-                         DF          dataList,
+                         DF          df,
                          std::string pathOut,
                          std::string predictFile,
                          std::string lib,
@@ -25,7 +25,7 @@ py::dict Simplex_pybind( std::string pathIn,
     DataFrame< double > S;
     
     if ( dataFile.size() ) {
-        // dataFile specified, dispatch overloaded Simplex, ignore dataList
+        // dataFile specified, dispatch overloaded Simplex, ignore df.dataList
         S = Simplex( pathIn,
                      dataFile,
                      pathOut,
@@ -43,8 +43,8 @@ py::dict Simplex_pybind( std::string pathIn,
                      const_predict,
                      verbose );
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         S = Simplex( dataFrame,
                      pathOut,
@@ -66,8 +66,8 @@ py::dict Simplex_pybind( std::string pathIn,
         throw std::runtime_error( "Simplex_pybind(): Invalid input.\n" );
     }
     
-    DF       df = DataFrameToDF( S );
-    py::dict D  = DFtoDict( df );
+    DF       dfout = DataFrameToDF( S );
+    py::dict D     = DFtoDict( dfout );
     
     return D;
 }
