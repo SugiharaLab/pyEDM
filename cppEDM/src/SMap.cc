@@ -223,11 +223,13 @@ SMapValues SMap( DataFrame< double > data,
     //----------------------------------------------------
     // Ouput
     //----------------------------------------------------
-    // Obervations & predictions
-    DataFrame<double> dataOut = FormatOutput( param, N_row,
+    // Observations & predictions
+    DataFrame<double> dataOut = FormatOutput( param,
                                               predictions,
                                               const_predictions,
-                                              dataIn, target_vec );
+                                              target_vec,
+                                              dataIn.Time(),
+                                              dataIn.TimeName() );
     
     // Insert coefficients DataFrame column names: C0, C1, C2, ...
     for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
@@ -238,6 +240,16 @@ SMapValues SMap( DataFrame< double > data,
 
     // Coefficient output DataFrame
     DataFrame< double > coefOut = DataFrame< double >( N_row, param.E + 2 );
+    
+    // Prediction times
+    std::vector<std::string> predTime( param.prediction.size() + param.Tp );
+    
+    if ( dataIn.Time().size() ) {
+        FillTimes( param, dataIn.Time(), std::ref( predTime ) );
+        coefOut.Time()     = predTime;
+        coefOut.TimeName() = dataIn.TimeName();
+    }
+    // else { throw ? }  JP
     
     // Populate coefOut column names
     std::vector<std::string> coefNames;
@@ -250,9 +262,6 @@ SMapValues SMap( DataFrame< double > data,
     // Prediction row slice
     std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
 
-    // Write time vector in column 0
-    coefOut.WriteColumn( 0, dataIn.Column( 0 )[ pred_i ] );
-    
     // Write coefficients to columns
     for ( size_t col = 1; col < coefOut.NColumns(); col++ ) {
         coefOut.WriteColumn( col, coefficients.Column( col - 1 ) );

@@ -35,11 +35,21 @@ DataFrame<double> Simplex( std::string pathIn,
     DataFrame< double > dataFrameIn( pathIn, dataFile );
 
     // Pass data frame to Simplex 
-    DataFrame< double > S = Simplex( dataFrameIn, pathOut,
-                                     predictFile, lib, pred,
-                                     E, Tp, knn, tau, exclusionRadius,
-                                     columns, target,
-                                     embedded, const_predict, verbose );
+    DataFrame< double > S = Simplex( dataFrameIn,
+                                     pathOut,
+                                     predictFile,
+                                     lib,
+                                     pred,
+                                     E,
+                                     Tp,
+                                     knn,
+                                     tau,
+                                     exclusionRadius,
+                                     columns,
+                                     target,
+                                     embedded,
+                                     const_predict,
+                                     verbose );
     return S;
 }
 
@@ -82,8 +92,9 @@ DataFrame<double> Simplex( DataFrame< double > data,
 //----------------------------------------------------------------
 // Simplex Projection
 //----------------------------------------------------------------
-DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
-                                     bool checkDataRows ) {
+DataFrame<double> SimplexProjection( Parameters  param,
+                                     DataEmbedNN embedNN,
+                                     bool        checkDataRows ) {
 
     // Unpack the data, (embedding dataBlock not used), target & neighbors
     DataFrame<double>     dataIn     = embedNN.dataIn;  // used for output
@@ -94,7 +105,7 @@ DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
     size_t N_row         = neighbors.neighbors.NRows();
 
 #ifdef DEBUG_ALL
-    std::cout << "Simplex -----------------------------------\n";
+    std::cout << "SimplexProjection -------------------------\n";
     std::cout << "Neighbors: (" << neighbors.neighbors.NRows() << "x"
               << neighbors.neighbors.NColumns() << ")\n";
     std::cout << neighbors.neighbors;
@@ -193,11 +204,12 @@ DataFrame<double> SimplexProjection( Parameters param, DataEmbedNN embedNN,
     //----------------------------------------------------
     // Ouput
     //----------------------------------------------------
-    DataFrame<double> dataFrame = FormatOutput( param, N_row,
+    DataFrame<double> dataFrame = FormatOutput( param,
                                                 predictions,
                                                 const_predictions,
-                                                dataIn, target_vec,
-                                                checkDataRows );
+                                                target_vec,
+                                                dataIn.Time(),
+                                                dataIn.TimeName() );
 
     if ( param.predictOutputFile.size() ) {
         // Write to disk

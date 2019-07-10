@@ -19,8 +19,9 @@
 // forward declarations
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
-void CrossMap( Parameters p, DataFrame< double > df,
-               const DataFrame< double > & LibStats );
+void CrossMap(       Parameters           p,
+                     DataFrame< double >  df,
+               const DataFrame< double > &LibStats );
 #else
 DataFrame< double > CrossMap( Parameters p, DataFrame< double > df );
 #endif
@@ -28,12 +29,13 @@ DataFrame< double > CrossMap( Parameters p, DataFrame< double > df );
 DataFrame< double > CCMDistances( DataFrame< double > dataBlock,
                                   Parameters param );
 
-Neighbors CCMNeighbors( DataFrame< double > Distances,
-                        std::vector< size_t > lib_i, Parameters param );
+Neighbors CCMNeighbors( DataFrame< double >   Distances,
+                        std::vector< size_t > lib_i,
+                        Parameters            param );
 
 DataFrame<double> SimplexProjection( Parameters  param,
                                      DataEmbedNN embedNN,
-                                     bool        checkDataRows = true );
+                                     bool        checkDataRows );
 
 //----------------------------------------------------------------
 // API Overload 1: Explicit data file path/name
@@ -119,7 +121,7 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
         std::cout << "WARNING: CCM() Only the first column will be mapped.\n";
     }
 
-    // Create an Parameters object that switches column[0] and target
+    // Create Parameters object that switches column[0] and target
     // for the inverse mapping
     Parameters inverseParam( param ); // copy constructor
     std::string newTarget( param.columns_str );
@@ -186,14 +188,14 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
 // Return DataFrame of rho, RMSE, MAE values for param.librarySizes
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
-void CrossMap( Parameters paramCCM,
-               DataFrame< double > dataFrameIn,
-               const DataFrame< double > & LibStatsIn ) {
+void CrossMap(       Parameters           paramCCM,
+                     DataFrame< double >  dataFrameIn,
+               const DataFrame< double > &LibStatsIn ) {
     
-    DataFrame< double > & LibStats =
-        const_cast<DataFrame< double > &>(LibStatsIn);
+    DataFrame< double > &LibStats =
+        const_cast< DataFrame< double > & >( LibStatsIn );
 #else
-DataFrame< double > CrossMap( Parameters paramCCM,
+DataFrame< double > CrossMap( Parameters          paramCCM,
                               DataFrame< double > dataFrameIn ) {
 #endif
     
@@ -222,13 +224,18 @@ DataFrame< double > CrossMap( Parameters paramCCM,
     size_t N_row = dataBlock.NRows();
 
     // JP: This removal of partial data rows is also done in EmbedNN()
-    //     Should investigate how to avoid this duplication
+    //     Should investigate how to avoid this duplication.
+    //     However, functionalization would require the passing of
+    //     potentially very large data frames.  Pointer usage would
+    //     incur synchronization losses.
+    
     //----------------------------------------------------------
     // Remove dataFrameIn, target rows as needed
+    // dataBlock had partial data removed in Embed()
     //----------------------------------------------------------
-    // If we support negtive tau, this will change
+    // If we support negative tau, this will change
     // For now, assume only positive tau is allowed
-    size_t shift = std::max(0, paramCCM.tau * (paramCCM.E - 1) );
+    size_t shift = std::max( 0, paramCCM.tau * (paramCCM.E - 1) );
     
     DataFrame<double> dataInEmbed( dataFrameIn.NRows() - shift,
                                    dataFrameIn.NColumns(),
@@ -259,7 +266,7 @@ DataFrame< double > CrossMap( Parameters paramCCM,
     paramCCM.Validate();
 
     //-----------------------------------------------------------------
-    // Set the number of samples
+    // Set number of samples
     //-----------------------------------------------------------------
     size_t maxSamples;
     if ( paramCCM.randomLib ) {
@@ -308,7 +315,7 @@ DataFrame< double > CrossMap( Parameters paramCCM,
     
     // Loop for library sizes
     for ( size_t lib_size_i = 0;
-          lib_size_i < paramCCM.librarySizes.size(); lib_size_i++ ) {
+                 lib_size_i < paramCCM.librarySizes.size(); lib_size_i++ ) {
 
         size_t lib_size = paramCCM.librarySizes[ lib_size_i ];
 
@@ -346,8 +353,9 @@ DataFrame< double > CrossMap( Parameters paramCCM,
                     
                     if ( paramCCM.verbose ) {
                         std::stringstream msg;
-                        msg << "CCM(): max lib_size is " << N_row
-                            << " lib_size has been limited.\n";
+                        msg << "CCM(): Sequential library samples,"
+                            << " max lib_size is " << N_row
+                            << ", lib_size has been limited.\n";
                         std::cout << msg.str();
                     }
                 }
@@ -401,6 +409,11 @@ DataFrame< double > CrossMap( Parameters paramCCM,
             std::valarray<double> targetVec =
                 dataFrameLib_i.VectorColumnName( paramCCM.targetName );
             
+#ifdef DEBUG_ALL
+            std::cout << "dataFrameLib_i -------------------------------\n";
+            std::cout << dataFrameLib_i;
+#endif
+            
             //----------------------------------------------------------
             // Pack embedding, target, neighbors for SimplexProjection
             //----------------------------------------------------------
@@ -418,6 +431,8 @@ DataFrame< double > CrossMap( Parameters paramCCM,
             
 #ifdef DEBUG_ALL
             std::cout << "CCM Simplex ---------------------------------\n";
+            S.MaxRowPrint() = S.NRows();
+            std::cout << S;
             std::cout << "rho " << ve.rho << "  RMSE " << ve.RMSE
                       << "  MAE " << ve.MAE << std::endl;
 #endif
@@ -451,8 +466,8 @@ DataFrame< double > CrossMap( Parameters paramCCM,
 // phase space point (vector) between rows (observations) i and j.
 //---------------------------------------------------------------------
 DataFrame< double > CCMDistances( DataFrame< double > dataBlock,
-                                  Parameters param ) {
-    
+                                  Parameters          param ) {
+
     size_t N_row = dataBlock.NRows();
 
     size_t E = param.E;

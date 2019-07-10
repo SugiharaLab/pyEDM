@@ -6,7 +6,7 @@
 //----------------------------------------------------------
 std::map< std::string, py::dict > SMap_pybind( std::string pathIn, 
                                                std::string dataFile,
-                                               DF          dataList,
+                                               DF          df,
                                                std::string pathOut,
                                                std::string predictFile,
                                                std::string lib,
@@ -49,8 +49,8 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    const_predcit,
                    verbose);
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         SM = SMap( dataFrame,
                    pathOut,
@@ -74,14 +74,30 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
     else {
         throw std::runtime_error( "SMap_pybind(): Invalid input.\n" );
     }
-    
+
     DF df_pred = DataFrameToDF( SM.predictions  );
     DF df_coef = DataFrameToDF( SM.coefficients );
-
+    
     std::map< std::string, py::dict > SMap_;
 
     SMap_["predictions" ] = DFtoDict( df_pred );
     SMap_["coefficients"] = DFtoDict( df_coef );
 
+#ifdef DEBUG
+    // JP -----------------------------------------------------------------
+    //    SMap coef times bug: see bindings/DataFrame.cpp and SMap.cpp
+    std::cout << "SMap_ coefficients keys: ";
+    for ( auto ki  = SMap_["coefficients"].begin();
+               ki != SMap_["coefficients"].end(); ++ki ) {
+        std::cout << ki->first << " ";
+    } std::cout << std::endl;
+    std::cout << "SMap_ coefficients Time: ";
+    for ( auto ki  = SMap_["coefficients"]["Time"].begin();
+               ki != SMap_["coefficients"]["Time"].end(); ++ki ) {
+        std::cout << *ki << " ";
+    } std::cout << std::endl;
+    // JP -----------------------------------------------------------------
+#endif
+    
     return SMap_;
 }

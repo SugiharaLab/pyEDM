@@ -6,7 +6,7 @@
 //-----------------------------------------------------------
 py::dict CCM_pybind( std::string pathIn, 
                      std::string dataFile,
-                     DF          dataList,
+                     DF          df,
                      std::string pathOut,
                      std::string predictFile,
                      int         E,
@@ -42,8 +42,8 @@ py::dict CCM_pybind( std::string pathIn,
                          seed,
                          verbose );
     }
-    else if ( dataList.size() ) {
-        DataFrame< double > dataFrame = DFToDataFrame( dataList );
+    else if ( df.dataList.size() ) {
+        DataFrame< double > dataFrame = DFToDataFrame( df );
         
         ccmOutput = CCM( dataFrame,
                          pathOut,
@@ -64,8 +64,8 @@ py::dict CCM_pybind( std::string pathIn,
         throw std::runtime_error( "CCM_pybind(): Invalid input.\n" );
     }
 
-    DF       df = DataFrameToDF( ccmOutput );
-    py::dict D  = DFtoDict( df );
+    DF       dfout = DataFrameToDF( ccmOutput );
+    py::dict D     = DFtoDict( dfout );
     
     return D;
 }
