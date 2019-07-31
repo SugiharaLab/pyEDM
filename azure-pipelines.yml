@@ -33,26 +33,7 @@ strategy:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.7.4_EDM'
       python.version: '3.7.4'
-    Linux_2.7.16:
-      vmImage: 'ubuntu-latest'
-      build_name: 'Linux_2.7.16_EDM'
-      python.version: '2.7.16'
-    Linux_3.4.10:
-      vmImage: 'ubuntu-latest'
-      build_name: 'Linux_3.4.10_EDM'
-      python.version: '3.4.10'
-    Linux_3.5.7:
-      vmImage: 'ubuntu-latest'
-      build_name: 'Linux_3.5.7_EDM'
-      python.version: '3.5.7'
-    Linux_3.6.9:
-      vmImage: 'ubuntu-latest'
-      build_name: 'Linux_3.6.9_EDM'
-      python.version: '3.6.9'
-    Linux_3.7.4:
-      vmImage: 'ubuntu-latest'
-      build_name: 'Linux_3.7.4_EDM'
-      python.version: '3.7.4'
+
 pool:
   vmImage: $(vmImage)
   python.version: $(python.version)
@@ -83,9 +64,6 @@ steps:
 - script: make -C cppEDM/src
   condition: eq( variables['Agent.OS'], 'Darwin' )
   displayName: building cppEDM on macOS
-- script: make -C cppEDM/src 
-  condition: eq( variables['Agent.OS'], 'Linux' )
-  displayName: building cppEDM on linux
 
 - task: UsePythonVersion@0
   inputs:
@@ -93,13 +71,10 @@ steps:
 
 #build the package and download
 - script: pip install pybind11
-- script: python setup.py build
+- script: python setup.py bdist_wheel
 
 - publish: $(System.DefaultWorkingDirectory)/build
   condition: eq( variables['Agent.OS'], 'Darwin' )
-  artifact: $(build_name)
-- publish: $(System.DefaultWorkingDirectory)/build
-  condition: eq( variables['Agent.OS'], 'Linux' )
   artifact: $(build_name)
 - publish: $(System.DefaultWorkingDirectory)/build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
