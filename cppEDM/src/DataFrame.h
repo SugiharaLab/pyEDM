@@ -11,6 +11,11 @@
 #include <iomanip>
 #include <fstream>
 #include <iterator>
+#include <sstream>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <iostream>
 
 #include "Common.h"
 
