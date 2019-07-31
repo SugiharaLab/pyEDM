@@ -73,9 +73,9 @@ steps:
 - script: pip install pybind11
 - script: python setup.py bdist_wheel
 
-- publish: $(System.DefaultWorkingDirectory)/build
+- publish: $(System.DefaultWorkingDirectory)/dist
   condition: eq( variables['Agent.OS'], 'Darwin' )
   artifact: $(build_name)
-- publish: $(System.DefaultWorkingDirectory)/build
+- publish: $(System.DefaultWorkingDirectory)/dist
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
   artifact: $(build_name)
