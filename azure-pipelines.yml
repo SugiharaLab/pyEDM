@@ -1,0 +1,106 @@
+
+strategy:
+  matrix:
+    Windows_3.5.4:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.5.4_EDM'
+      python.version: '3.5.4'
+    Windows_3.6.8:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.6.8_EDM'
+      python.version: '3.6.8'
+    Windows_3.7.4:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.7.4_EDM'
+      python.version: '3.7.4'
+    MacOS_2.7.16:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_2.7.16_EDM'
+      python.version: '2.7.16'
+    MacOS_3.4.10:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_3.4.10_EDM'
+      python.version: '3.4.10'
+    MacOS_3.5.7:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_3.5.7_EDM'
+      python.version: '3.5.7'
+    MacOS_3.6.9:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_3.6.9_EDM'
+      python.version: '3.6.9'
+    MacOS_3.7.4:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_3.7.4_EDM'
+      python.version: '3.7.4'
+    Linux_2.7.16:
+      vmImage: 'ubuntu-latest'
+      build_name: 'Linux_2.7.16_EDM'
+      python.version: '2.7.16'
+    Linux_3.4.10:
+      vmImage: 'ubuntu-latest'
+      build_name: 'Linux_3.4.10_EDM'
+      python.version: '3.4.10'
+    Linux_3.5.7:
+      vmImage: 'ubuntu-latest'
+      build_name: 'Linux_3.5.7_EDM'
+      python.version: '3.5.7'
+    Linux_3.6.9:
+      vmImage: 'ubuntu-latest'
+      build_name: 'Linux_3.6.9_EDM'
+      python.version: '3.6.9'
+    Linux_3.7.4:
+      vmImage: 'ubuntu-latest'
+      build_name: 'Linux_3.7.4_EDM'
+      python.version: '3.7.4'
+pool:
+  vmImage: $(vmImage)
+  python.version: $(python.version)
+
+steps:
+#only setup the visual studio environment if on windowz
+- task: BatchScript@1
+  inputs:
+    filename: 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat'
+    arguments: 'amd64'
+    modifyEnvironment: True 
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  displayName: setup visual studio env on windows
+
+
+#download eigen for cppEDM
+- script: git clone https://github.com/eigenteam/eigen-git-mirror eigen_git
+  displayName: download eigen
+- script: mv eigen_git/Eigen .
+
+#print which version python using for testing
+- script: python --version
+
+#build cppEDM with respective makefile
+- script: make -C cppEDM/src -f makefile.windows
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  displayName: building cppEDM on windows
+- script: make -C cppEDM/src
+  condition: eq( variables['Agent.OS'], 'Darwin' )
+  displayName: building cppEDM on macOS
+- script: make -C cppEDM/src 
+  condition: eq( variables['Agent.OS'], 'Linux' )
+  displayName: building cppEDM on linux
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(python.version)'
+
+#build the package and download
+- script: pip install pybind11
+- script: python setup.py build
+
+- publish: $(System.DefaultWorkingDirectory)/build
+  condition: eq( variables['Agent.OS'], 'Darwin' )
+  artifact: $(build_name)
+- publish: $(System.DefaultWorkingDirectory)/build
+  condition: eq( variables['Agent.OS'], 'Linux' )
+  artifact: $(build_name)
+- publish: $(System.DefaultWorkingDirectory)/build
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  artifact: $(build_name)
