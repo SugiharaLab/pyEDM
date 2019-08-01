@@ -166,7 +166,7 @@ Extension_modules = [
 #----------------------------------------------------------------------
 setup(
     # name of the *-version.dist-info directory
-    name             = 'EDM-SugiharaLab', 
+    name             = 'EDM', 
     version          = __version__,
     author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
