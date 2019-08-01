@@ -71,6 +71,7 @@ steps:
 
 #build the package and download
 - script: pip install pybind11
+- script: pip install wheel
 - script: python setup.py bdist_wheel
 
 - publish: $(System.DefaultWorkingDirectory)/dist
