@@ -1,0 +1,3 @@
+[submodule "cppEDM"]
+	path = cppEDM
+	url = http://github.com/SugiharaLab/cppEDM
