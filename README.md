@@ -12,13 +12,13 @@ Functionality includes:
 ---
 ## Installation
 
-###Python Package Index (PyPI)
+### Python Package Index (PyPI)
 Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can  be installed using the Python pip module.  The module is located at pypi.org/project/pyEDM/.  
 
 Installation can be executed as: `python -m pip install pyEDM`
 
 
-###Manual Install
+### Manual Install
 Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user is required to first build the cppEDM library on their machine, and then install the Python package using pip.  On OSX and Linux this requires g++, on Windows, Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
 
 Note that the [Eigen C++ Template Library](http://eigen.tuxfamily.org/) is required to build cppEDM.  It is assumed that the `Eigen` directory is available in the compiler `INCLUDE` path.  If not, you can add the directory to the `CFLAGS -I` option in the makefile, appropriately define the `INCLUDE` environment variable, or, override the make command line with `CFLAGS=` to specify the location.
