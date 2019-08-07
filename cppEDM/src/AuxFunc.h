@@ -1,6 +1,7 @@
 #ifndef AUXFUNC
 #define AUXFUNC
 
+#include <mutex>
 #include <functional> // std::ref
 
 #include "Common.h"
@@ -12,7 +13,7 @@
 // common initial processing in Simplex and Smap
 //----------------------------------------------------------------
 struct DataEmbedNN {
-    DataFrame<double>     dataIn;
+    DataFrame<double>    *dataIn;
     DataFrame<double>     dataFrame;
     std::valarray<double> targetVec;
     Neighbors             neighbors;
@@ -20,7 +21,7 @@ struct DataEmbedNN {
     // Constructors
     DataEmbedNN() {}
     
-    DataEmbedNN( DataFrame<double>     dataIn,
+    DataEmbedNN( DataFrame<double>    *dataIn,
                  DataFrame<double>     dataFrame,
                  std::valarray<double> targetVec,
                  Neighbors             neighbors ) :
@@ -29,9 +30,9 @@ struct DataEmbedNN {
 };
 
 // Prototypes
-DataEmbedNN EmbedNN( DataFrame<double> dataIn,
-                     Parameters       &param,
-                     bool              checkDataRows = true );
+DataEmbedNN EmbedNN( DataFrame<double> *dataIn,
+                     Parameters        &param,
+                     bool               checkDataRows = true );
     
 DataFrame<double> FormatOutput( Parameters               param,
                                 std::valarray<double>    predictions,
@@ -44,7 +45,7 @@ void FillTimes( Parameters                param,
                 std::vector<std::string>  time,
                 std::vector<std::string> &timeOut );
 
-void CheckDataRows( Parameters        param,
-                    DataFrame<double> dataFrameIn,
-                    std::string       call );
+void CheckDataRows( Parameters         param,
+                    DataFrame<double> &dataFrameIn,
+                    std::string        call );
 #endif

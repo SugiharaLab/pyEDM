@@ -2,6 +2,10 @@
 #include "AuxFunc.h"
 #include "DateTime.h"
 
+namespace EDM_AuxFunc {
+    std::mutex mtx;
+}
+
 //---------------------------------------------------------------
 // Common code for Simplex and Smap that embeds, extracts
 // the target vector and computes neighbors.
@@ -11,28 +15,30 @@
 // NOTE: If dataIn is embedded by Embed(), the returned dataBlock
 //       has tau * (E-1) fewer rows than dataIn. Since dataIn is
 //       included in the returned DataEmbedNN struct, the first
-//       tau * (E-1) dataIn rows are deleted from dataIn.  The
-//       target vector is also reduced.
+//       tau * (E-1) dataIn rows are deleted from dataIn to match.
+//       The target vector is also reduced.
 //
 // NOTE: If rows are deleted, then the library and prediction
 //       vectors in Parameters are updated to reflect this. 
 //---------------------------------------------------------------
-DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
+DataEmbedNN EmbedNN( DataFrame<double> *data,
                      Parameters        &param,
                      bool               checkDataRows )
 {
+    DataFrame<double> &dataIn = std::ref( *data );
+    
     if ( checkDataRows ) {
         CheckDataRows( param, dataIn, "EmbedNN" );
     }
     
     //----------------------------------------------------------
-    // Extract or embedd data block
+    // Extract or embed dataIn into dataBlock
     //----------------------------------------------------------
     DataFrame<double> dataBlock; // Multivariate or embedded DataFrame
 
     if ( param.embedded ) {
-        // dataIn is multivariable block, no embedding needed
-        // Select the specified columns 
+        // dataIn is a multivariable block, no embedding needed
+        // Select the specified columns into dataBlock
         if ( param.columnNames.size() ) {
             dataBlock = dataIn.DataFrameFromColumnNames(param.columnNames);
         }
@@ -45,7 +51,7 @@ DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
         }
     }
     else {
-        // embedded = false: Create the embedding block via Embed()
+        // embedded = false: Create the embedding dataBlock via Embed()
         // dataBlock will have tau * (E-1) fewer rows than dataIn
         dataBlock = Embed( dataIn, param.E, param.tau,
                            param.columns_str, param.verbose );
@@ -54,16 +60,16 @@ DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
     //----------------------------------------------------------
     // Get target (library) vector
     //----------------------------------------------------------
-    std::valarray<double> target_vec;
+    std::valarray<double> targetIn;
     if ( param.targetIndex ) {
-        target_vec = dataIn.Column( param.targetIndex );
+        targetIn = dataIn.Column( param.targetIndex );
     }
     else if ( param.targetName.size() ) {
-        target_vec = dataIn.VectorColumnName( param.targetName );
+        targetIn = dataIn.VectorColumnName( param.targetName );
     }
     else {
         // Default to first column
-        target_vec = dataIn.Column( 0 );
+        targetIn = dataIn.Column( 0 );
     }
     
     //------------------------------------------------------------
@@ -75,39 +81,30 @@ DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
         // If we support negative tau, this will change
         // For now, assume only positive tau is allowed
         size_t shift = std::max( 0, param.tau * (param.E - 1) );
-        
-        std::valarray<double> target_vec_embed( dataIn.NRows() - shift );
+
+        // Copy targetIn excluding partial data into targetEmbed
+        std::valarray<double> targetEmbed( dataIn.NRows() - shift );
         // Bogus cast to ( std::valarray<double> ) for MSVC
         // as it doesn't export its own slice_array applied to []
-        target_vec_embed = ( std::valarray<double> )
-            target_vec[ std::slice( shift, target_vec.size() - shift, 1 ) ];
+        targetEmbed = ( std::valarray<double> )
+            targetIn[ std::slice( shift, targetIn.size() - shift, 1 ) ];
         
-        target_vec = target_vec_embed;
-
-        DataFrame<double> dataInEmbed( dataIn.NRows() - shift,
-                                       dataIn.NColumns(),
-                                       dataIn.ColumnNames() );
+        // Resize targetIn to ignore partial data rows
+        targetIn.resize( targetEmbed.size() );
         
-        for ( size_t row = 0; row < dataInEmbed.NRows(); row++ ) {
-            dataInEmbed.WriteRow( row, dataIn.Row( row + shift ) );
-        }
+        // Copy target without partial data into resized targetIn
+        std::slice targetEmbed_i  = std::slice( 0, targetEmbed.size(), 1 );
+        targetIn[ targetEmbed_i ] = targetEmbed[ targetEmbed_i ];
 
-        // Shift and add time vector if present
-        if ( dataIn.Time().size() ) {
-            dataInEmbed.Time() =
-                std::vector< std::string >( dataIn.Time().size() - shift );
+        // Delete dataIn top rows of partial data
+        if ( not dataIn.PartialDataRowsDeleted() ) {
+            // Not thread safe
+            std::lock_guard<std::mutex> lck( EDM_AuxFunc::mtx );
             
-            for ( size_t t = shift; t < dataIn.Time().size(); t++ ) {
-                dataInEmbed.Time()[ t - shift ] = dataIn.Time()[ t ];
-            }
-            dataInEmbed.TimeName() = dataIn.TimeName();
+            dataIn.DeletePartialDataRows( shift );
         }
 
-        // dataIn was passed in by value, so copy constructed.
-        // JP Is it OK to reassign it here, then copy into dataEmbedNN?
-        dataIn = dataInEmbed;
-
-        // Adust param.library and param.prediction vectors of indices
+        // Adjust param.library and param.prediction vectors of indices
         if ( shift > 0 ) {
             size_t library_len    = param.library.size();
             size_t prediction_len = param.prediction.size();
@@ -142,11 +139,11 @@ DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
             // in library and prediction refer to the same data rows
             // before the deletion/shift.
             for ( auto li =  param.library.begin();
-                  li != param.library.end(); li++ ) {
+                       li != param.library.end(); li++ ) {
                 *li = *li - shift;
             }
             for ( auto pi =  param.prediction.begin();
-                  pi != param.prediction.end(); pi++ ) {
+                       pi != param.prediction.end(); pi++ ) {
                 *pi = *pi - shift;
             }
         } // if ( shift > 0 )
@@ -158,8 +155,8 @@ DataEmbedNN EmbedNN( DataFrame<double>  dataIn,
     Neighbors neighbors = FindNeighbors( dataBlock, param );
 
     // Create struct to return the objects
-    DataEmbedNN dataEmbedNN = DataEmbedNN( dataIn, dataBlock, 
-                                           target_vec, neighbors );
+    DataEmbedNN dataEmbedNN = DataEmbedNN( &dataIn,  dataBlock, 
+                                           targetIn, neighbors );
     return dataEmbedNN;
 }
 
@@ -249,8 +246,10 @@ DataFrame<double> FormatOutput( Parameters               param,
         dataFrame.TimeName() = timeName;
         dataFrame.Time()     = timeOut;
     }
+    
     dataFrame.WriteColumn( 0, observations );
     dataFrame.WriteColumn( 1, predictionsOut );
+    
     if ( param.const_predict ) {
         dataFrame.WriteColumn( 2, constPredictionsOut );
     }
@@ -300,7 +299,6 @@ void FillTimes( Parameters                param,
         }
     }
     else {
-        // Keep track of whether warning of time format already printed
         bool time_format_warning_printed = false;
         
         // Tp introduces time values beyond the range of time
@@ -313,26 +311,24 @@ void FillTimes( Parameters                param,
             }
             else {
                 int time_delta = i - N_row + 1;
-                //get last two datetimes to compute time diff to add time delta 
+                // Get last two datetimes to compute time diff to add time delta 
                 std::string time_new( time[ max_pred_i     ] );
                 std::string time_old( time[ max_pred_i - 1 ] );
-                std::string new_time = increment_datetime_str( time_old, 
-                                                               time_new,
-                                                               time_delta );
+                std::string new_time =
+                    increment_datetime_str( time_old, time_new, time_delta );
                 
+                // Add +ti if not a recognized format (datetime util returns "")
                 if ( new_time.size() ) {
                     tss << new_time;
                 }
                 else {
-                    // Add " +ti" if not a recognized format
-                    // increment_datetime_str() returns ""
                     tss << time[ max_pred_i ] << " +" << i - N_row + 1;
+                    
                     if ( not time_format_warning_printed ) {
-                        std::stringstream errMsg;
-                        errMsg << "FillTimes(): Input time column format "
-                               << "not recognized.  Appending '+ tp' to last "
-                               << " available time." << std::endl;
-                        std::cout << errMsg.str();
+                        std::cout << "FillTimes(): "
+                                  << "time column is unrecognized time format."
+                                  << "\n\tManually adding + tp to the last"
+                                  << " time column available." << std::endl;
                         time_format_warning_printed = true;
                     }
                 }
@@ -346,9 +342,9 @@ void FillTimes( Parameters                param,
 //----------------------------------------------------------
 // Validate dataFrameIn rows against lib and pred indices
 //----------------------------------------------------------
-void CheckDataRows( Parameters        param,
-                    DataFrame<double> dataFrameIn,
-                    std::string       call )
+void CheckDataRows( Parameters         param,
+                    DataFrame<double> &dataFrameIn,
+                    std::string        call )
 {
     // param.prediction & library have been zero-offset in Validate()
     // to convert from user specified data row to array indicies

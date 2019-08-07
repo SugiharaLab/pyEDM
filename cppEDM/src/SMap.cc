@@ -66,7 +66,7 @@ SMapValues SMap( std::string pathIn,
 //----------------------------------------------------------------
 // Overload 2: DataFrame provided
 //----------------------------------------------------------------
-SMapValues SMap( DataFrame< double > data,
+SMapValues SMap( DataFrame< double > &data,
                  std::string pathOut,
                  std::string predictFile,
                  std::string lib,
@@ -96,15 +96,17 @@ SMapValues SMap( DataFrame< double > data,
     //----------------------------------------------------------
     // Load data, Embed, compute Neighbors
     //----------------------------------------------------------
-    DataEmbedNN dataEmbedNN = EmbedNN( data, std::ref( param ) );
+    DataEmbedNN dataEmbedNN = EmbedNN( &data, std::ref( param ) );
 
     // Unpack the dataEmbedNN for convenience
-    DataFrame<double>     dataIn     = dataEmbedNN.dataIn;
+    DataFrame<double>    *dataInRef  = dataEmbedNN.dataIn;
     DataFrame<double>     dataBlock  = dataEmbedNN.dataFrame;
     std::valarray<double> target_vec = dataEmbedNN.targetVec;
     Neighbors             neighbors  = dataEmbedNN.neighbors;
     
-    // target_vec spans the entire dataBlock, subset targetLibVector
+    DataFrame<double> &dataIn = std::ref( *dataInRef );
+    
+   // target_vec spans the entire dataBlock, subset targetLibVector
     // to library for row indexing used below:
     std::slice lib_i = std::slice( param.library[0], param.library.size(), 1 );
     std::valarray<double> targetLibVector = target_vec[ lib_i ];
