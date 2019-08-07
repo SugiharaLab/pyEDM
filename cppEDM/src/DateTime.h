@@ -6,6 +6,11 @@
 #include <ctime> 
 #include <string> 
 #include <regex> 
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <iostream>
+
 
 const int iso_start_year  = 1900;
 const int iso_start_month = 1;
