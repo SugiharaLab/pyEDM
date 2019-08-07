@@ -11,19 +11,27 @@ Functionality includes:
 
 ---
 ## Installation
-Unfortunately, we do not have the resources to provide pre-built binary distributions for the various computer platforms.  The user is required to first build the cppEDM library on their machine, and then install the Python package using pip.  On OSX and Linux this requires g++, on Windows, Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
+
+###Python Package Index (PyPI)
+Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can  be installed using the Python pip module.  The module is located at pypi.org/project/pyEDM/.  
+
+Installation can be executed as: `python -m pip install pyEDM`
+
+
+###Manual Install
+Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user is required to first build the cppEDM library on their machine, and then install the Python package using pip.  On OSX and Linux this requires g++, on Windows, Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
 
 Note that the [Eigen C++ Template Library](http://eigen.tuxfamily.org/) is required to build cppEDM.  It is assumed that the `Eigen` directory is available in the compiler `INCLUDE` path.  If not, you can add the directory to the `CFLAGS -I` option in the makefile, appropriately define the `INCLUDE` environment variable, or, override the make command line with `CFLAGS=` to specify the location.
 
-### OSX and Linux
+#### OSX and Linux
 1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
 2. Build cppEDM library: `cd pyEDM/cppEDM/src; make`
-3. Build and install package: `cd ../..; python -m pip install . --user`
+3. Build and install package: `cd ../..; python -m pip install . --user --trusted-host pypi.org`
 
-### Windows
+#### Windows
 1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
 2. Build cppEDM library: `cd pyEDM\cppEDM\src; nmake /f makefile.windows`
-3. Build and install package: `cd ..\..; python -m pip install . --user`
+3. Build and install package: `cd ..\..; python -m pip install . --user --trusted-host pypi.org`
 
 ---
 ## Usage
