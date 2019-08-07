@@ -13,7 +13,7 @@ Functionality includes:
 ## Installation
 
 ### Python Package Index (PyPI)
-Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can  be installed using the Python pip module.  The module is located at pypi.org/project/pyEDM/.  
+Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can  be installed using the Python pip module.  The module is located at [pypi.org/project/pyEDM](https://pypi.org/project/pyEDM/).
 
 Installation can be executed as: `python -m pip install pyEDM`
 
