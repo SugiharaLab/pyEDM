@@ -43,7 +43,7 @@ def Examples():
            '''"1 100", "201 500", 1, 1, "TentMap", "", False, False, 4 )''' )
     
     df = EmbedDimension( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                         "1 100", "201 500", 1, 1,
+                         "1 100", "201 500", 10, 1, 1,
                          "TentMap", "", False, False, 4 )
     
     #---------------------------------------------------------------
@@ -51,7 +51,7 @@ def Examples():
            '''"1 100", "201 500", 2, 1,"TentMap", "", False, False, 4 )''' )
     
     df = PredictInterval( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                          "1 100", "201 500", 2, 1,
+                          "1 100", "201 500", 10, 2, 1,
                           "TentMap", "", False, False, 4 );
 
     #---------------------------------------------------------------
@@ -60,13 +60,13 @@ def Examples():
            '''2, 1, 1,"TentMap", "", False, False, 4 )''' )
     
     df = PredictNonlinear( "", Files[ "TentMapNoise_rEDM.csv" ], None, "./", "",
-                           "1 100", "201 500", 2, 1, 1,
+                           "1 100", "201 500", "", 2, 1, 1,
                            "TentMap", "", False, False, 4 )
     
     #---------------------------------------------------------------
     # Tent map simplex : specify multivariable columns embedded = True
     print( '''\nSimplex( "./", "block_3sp.csv", None, "./", "", ''' +\
-           '''"1 99", "100 198", 3, 1, 0, 1, ''' +\
+           '''"1 99", "100 198", 3, 1, 0, 1, 0, ''' +\
            '''"x_t y_t z_t", "x_t", True, True, True )''' )
 
     df = Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
@@ -76,7 +76,7 @@ def Examples():
     #---------------------------------------------------------------
     # Tent map simplex : Embed column x_t to E=3, embedded = False
     print( '''\nSimplex( "./", "block_3sp.csv", None, "./", "", ''' +\
-           '''"1 99", "100 195", 3, 1, 0, 1,''' +\
+           '''"1 99", "100 195", 3, 1, 0, 1, 0,''' +\
            '''"x_t", "x_t", False, True, True )''' )
 
     df = Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
@@ -95,7 +95,7 @@ def Examples():
     #---------------------------------------------------------------
     # S-map circle : specify multivariable columns embedded = True
     print('''\nSMap( "", "circle.csv", None, "./", "", "1 100", "101 198", '''+\
-           '''2, 1, 0, 1, 4, "x y", "x", "", "", True, True, True )''' )
+           '''2, 1, 0, 1, 4, 0, "x y", "x", "", "", True, True, True )''' )
            
     S = SMap( "", Files[ "circle.csv" ], None, "./", "", 
               "1 100", "101 198", 2, 1, 0, 1, 4, 0,

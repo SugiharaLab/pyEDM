@@ -30,15 +30,15 @@ def main():
 
     # Note the path argument is empty "", file path is in Files{}
     df = EDM.EmbedDimension( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                             "1 100", "201 500", 1, 1,
+                             "1 100", "201 500", 10, 1, 1,
                              "TentMap", "", False, False, 4 )
     
     df = EDM.PredictInterval( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                             "1 100", "201 500", 2, 1,
-                             "TentMap", "", False, False, 4 );
+                              "1 100", "201 500", 10, 2, 1,
+                              "TentMap", "", False, False, 4 );
 
     df = EDM.PredictNonlinear( "", Files[ "TentMapNoise_rEDM.csv" ], None,
-                               "./", "", "1 100", "201 500", 2, 1, 1,
+                               "./", "", "1 100", "201 500", "", 2, 1, 1,
                                "TentMap", "", False, False, 4 )
     
     # Tent map simplex : specify multivariable columns embedded = True
