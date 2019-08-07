@@ -417,8 +417,8 @@ void EvalComboThread( Parameters                            param,
             data.VectorColumnName( param.targetName );
 
         // Pack embedding, target, neighbors for SimplexProjection
-        DataEmbedNN embedNN = DataEmbedNN( data, comboData,
-                                           targetVec, neighbors );
+        DataEmbedNN embedNN = DataEmbedNN( &data,      comboData,
+                                            targetVec, neighbors );
 
         // combo prediction
         DataFrame<double> S = SimplexProjection( param, embedNN );

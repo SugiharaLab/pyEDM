@@ -78,7 +78,7 @@ DataFrame< double > Embed( DataFrame< double > dataFrameIn,
         dataFrame = dataFrameIn.DataFrameFromColumnIndex( col_i );
     }
     else if ( param.columnIndex.size() ) {
-        // alread have column indices
+        // already have column indices
         dataFrame = dataFrameIn.DataFrameFromColumnIndex( param.columnIndex );
     }
 
@@ -87,10 +87,11 @@ DataFrame< double > Embed( DataFrame< double > dataFrameIn,
     return embedding;
 }
 
-//---------------------------------------------------------
+//--------------------------------------------------------------
 // MakeBlock from dataFrame
+// Ignores the first tau * (E-1) dataFrame rows of partial data.
 // Does not validate parameters or columns, use Embed()
-//---------------------------------------------------------
+//--------------------------------------------------------------
 DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
                                int                      E,
                                int                      tau,
@@ -109,9 +110,6 @@ DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
     size_t NColOut  = dataFrame.NColumns() * E; // number of output columns
     size_t NPartial = tau * (E-1);              // rows to shift & delete
 
-    // temporary data frame to hold the embedded (shifted) data
-    DataFrame< double > shiftDataFrame( NRows, NColOut );
-
     // Create embedded data frame column names X(t-0) X(t-1)...
     std::vector< std::string > newColumnNames( NColOut );
     size_t newCol_i = 0;
@@ -127,39 +125,29 @@ DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
     // Ouput data frame with tau * E-1 fewer rows
     DataFrame< double > embedding( NRows - NPartial, NColOut, newColumnNames );
 
-    // slice indices for each column of original & shifted data
-    std::slice slice_i = std::slice( 0, NRows, 1 );
-
-    // to keep track of where to insert column in new data frame
+    // To keep track of where to insert column in new data frame
     size_t colCount = 0;
 
-    // shift column data and write to temporary data frame
+    // Slice to ignore rows with partial data
+    std::slice slice_i = std::slice( NPartial, NRows - NPartial, 1 );
+    
+    // Shift column data and write to embedding data frame
     for ( size_t col = 0; col < dataFrame.NColumns(); col++ ) {
         // for each embedding dimension
         for ( size_t e = 0; e < E; e++ ) {
 
             std::valarray< double > column = dataFrame.Column( col );
             
-            std::valarray< double > tmp = column.shift( -e * tau )[slice_i];
+            std::valarray< double > tmp = column.shift( -e * tau );
 
-            // These will be deleted, but set to NAN for completeness
-            tmp[ std::slice( 0, e * tau, 1 ) ] = NAN;
-
-            shiftDataFrame.WriteColumn( colCount, tmp );
+            // Write shifted columns to the output embedding DataFrame
+            embedding.WriteColumn( colCount, tmp[ slice_i ] );
+            
             colCount++;
         }
     }
 
-    // Delete rows with partial data
-    slice_i = std::slice ( NPartial, NRows - NPartial, 1 );
-
-    // Write shifted columns to the output embedding DataFrame
-    for ( size_t i = 0; i < NColOut; i++ ) {
-        std::valarray< double > tmp = shiftDataFrame.Column( i )[ slice_i ];
-        embedding.WriteColumn( i, tmp );
-    }
-
-#ifdef ADD_EMBEDDING_TIME  // JP Is this needed?  
+#ifdef ADD_EMBEDDING_TIME  // JP Is this needed now that Time is separate?
     // Add time vector with partial rows removed if present
     if ( dataFrame.Time().size() ) {
         embedding.Time() =

@@ -11,11 +11,6 @@
 #include <iomanip>
 #include <fstream>
 #include <iterator>
-#include <sstream>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <iostream>
 
 #include "Common.h"
 
@@ -37,6 +32,7 @@ struct ParsedData {
 //----------------------------------------------------------------
 // DataFrame class
 // Data container is a single, contiguous valarray: elements.
+// NOTE: elements are Row Major format, ala C, C++, numpy
 // DataFrame element access is through the () operator: (row,col).
 // The time column is not processed as data, but as strings.
 //----------------------------------------------------------------
@@ -54,6 +50,7 @@ class DataFrame {
     std::string                timeName;
     
     bool   noTime;
+    bool   partialDataRowsDeleted;
     size_t maxRowPrint;
     
 public:
@@ -71,7 +68,7 @@ public:
     // Load data from CSV file path/fileName, populate DataFrame
     //-----------------------------------------------------------------
     DataFrame( std::string path, std::string fileName, bool noTime = false ):
-        maxRowPrint( 10 ), noTime( noTime )
+        maxRowPrint( 10 ), noTime( noTime ), partialDataRowsDeleted( false )
     {
         ParsedData parsedData = ReadData( path, fileName );
         SetupDataFrame( parsedData ); // Process parsedData into a DataFrame
@@ -82,7 +79,7 @@ public:
     //-----------------------------------------------------------------
     DataFrame( size_t rows, size_t columns ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        maxRowPrint( 10 ) {}
+        maxRowPrint( 10 ), partialDataRowsDeleted( false ) {}
     
     //-----------------------------------------------------------------
     // Empty DataFrame of size (rows, columns) with column names in a
@@ -90,7 +87,8 @@ public:
     //-----------------------------------------------------------------
     DataFrame( size_t rows, size_t columns, std::string colNames ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        columnNames( std::vector<std::string>(columns) ), maxRowPrint( 10 )
+        columnNames( std::vector<std::string>(columns) ), maxRowPrint( 10 ),
+        partialDataRowsDeleted( false )
     {
         BuildColumnNameIndex( colNames );
     }
@@ -102,7 +100,8 @@ public:
     DataFrame( size_t rows, size_t columns,
                std::vector< std::string > columnNames ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        columnNames( columnNames ), maxRowPrint( 10 )
+        columnNames( columnNames ), maxRowPrint( 10 ),
+        partialDataRowsDeleted( false ) 
     {
         BuildColumnNameIndex();
     }
@@ -145,6 +144,9 @@ public:
 
     size_t  MaxRowPrint() const { return maxRowPrint; }
     size_t &MaxRowPrint()       { return maxRowPrint; }
+    
+    bool  PartialDataRowsDeleted() const { return partialDataRowsDeleted; }
+    bool &PartialDataRowsDeleted()       { return partialDataRowsDeleted; }
     
     //-----------------------------------------------------------------
     // Return column from index col
@@ -314,6 +316,48 @@ public:
         }
     }
 
+    //-----------------------------------------------------------------
+    // Delete nrows from the top
+    // Requires that rows are contiguous: [ 0 : nrows ]
+    //-----------------------------------------------------------------
+    void DeletePartialDataRows( size_t nrows ) {
+
+        // NOTE : Not thread safe
+
+        if ( partialDataRowsDeleted ) {
+            std::cout << "DeletePartialDataRows(): Partial data rows have "
+                         "already beed deleted." << std::endl;
+            return;
+        }
+        
+        partialDataRowsDeleted = true;
+
+        if ( nrows > n_rows ) {
+            std::stringstream errMsg;
+            errMsg << "DataFrame::DeleteContiguousRows() "
+                   << " nrows (" << nrows << " larger than DataFrame "
+                   << "NRows (" << n_rows << ")" << std::endl;
+            throw( std::runtime_error( errMsg.str() ) );
+        }
+        
+        // Update n_rows
+        n_rows = n_rows - nrows;
+
+        // Update time
+        time.erase( time.begin(), time.begin() + nrows );
+
+        // Copy elements into data
+        std::valarray< double > data( elements );
+        
+        // Resize elements
+        size_t n_elements = elements.size() - nrows * n_columns;
+        elements.resize( n_elements );
+
+        // Copy non deleted data to resized elements. NOTE: Row major format
+        std::slice elements_i( nrows * n_columns, n_elements, 1 );
+        elements[ std::slice( 0, n_elements, 1 ) ] = data[ elements_i ];
+    }
+    
     //-----------------------------------------------------------------
     // Build Column Name Index( std::string colNames )
     //-----------------------------------------------------------------

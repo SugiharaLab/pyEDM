@@ -15,23 +15,27 @@
 #include "Embed.h"
 #include "AuxFunc.h"
 
+namespace EDM_CCM {
+    std::mutex mtx;
+}
+
 //----------------------------------------------------------------
 // forward declarations
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
 void CrossMap(       Parameters           p,
-                     DataFrame< double >  df,
+               const DataFrame< double > &df,
                const DataFrame< double > &LibStats );
 #else
-DataFrame< double > CrossMap( Parameters p, DataFrame< double > df );
+DataFrame< double > CrossMap( Parameters p, const DataFrame< double > &df );
 #endif
 
-DataFrame< double > CCMDistances( DataFrame< double > dataBlock,
-                                  Parameters param );
+DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
+                                        Parameters param );
 
-Neighbors CCMNeighbors( DataFrame< double >   Distances,
-                        std::vector< size_t > lib_i,
-                        Parameters            param );
+Neighbors CCMNeighbors( const DataFrame< double >   &Distances,
+                              std::vector< size_t >  lib_i,
+                              Parameters             param );
 
 DataFrame<double> SimplexProjection( Parameters  param,
                                      DataEmbedNN embedNN,
@@ -62,9 +66,10 @@ DataFrame <double > CCM( std::string pathIn,
     //----------------------------------------------------------
     // Load data to dataFrameIn
     //----------------------------------------------------------
-    DataFrame< double > dataFrameIn( pathIn, dataFile );
+    DataFrame< double > *dataFrameIn =
+        new DataFrame< double >( pathIn, dataFile );
 
-    DataFrame <double > PredictLibRho = CCM( dataFrameIn,
+    DataFrame <double > PredictLibRho = CCM( std::ref( *dataFrameIn ),
                                              pathOut,
                                              predictFile,
                                              E,
@@ -78,6 +83,8 @@ DataFrame <double > CCM( std::string pathIn,
                                              random,
                                              seed,
                                              verbose );
+    delete dataFrameIn;
+    
     return PredictLibRho;
 }
 
@@ -85,7 +92,7 @@ DataFrame <double > CCM( std::string pathIn,
 // API Overload 2: DataFrame passed in
 //   Implemented a wrapper for CrossMap()
 //----------------------------------------------------------------
-DataFrame <double > CCM( DataFrame< double > dataFrameIn,
+DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
                          std::string pathOut,
                          std::string predictFile,
                          int         E,
@@ -123,10 +130,11 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
 
     // Create Parameters object that switches column[0] and target
     // for the inverse mapping
-    Parameters inverseParam( param ); // copy constructor
+    Parameters  inverseParam( param ); // copy constructor
     std::string newTarget( param.columns_str );
     inverseParam.columns_str = param.target_str;
     inverseParam.target_str  = newTarget;
+    
     // Validate converts column_str & target_str to columnNames, targetName
     inverseParam.Validate();
     
@@ -189,14 +197,14 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
 void CrossMap(       Parameters           paramCCM,
-                     DataFrame< double >  dataFrameIn,
+               const DataFrame< double > &dataFrameIn,
                const DataFrame< double > &LibStatsIn ) {
     
     DataFrame< double > &LibStats =
         const_cast< DataFrame< double > & >( LibStatsIn );
 #else
-DataFrame< double > CrossMap( Parameters          paramCCM,
-                              DataFrame< double > dataFrameIn ) {
+DataFrame< double > CrossMap( Parameters           paramCCM,
+                              DataFrame< double > &dataFrameInRef ) {
 #endif
     
     if ( paramCCM.verbose ) {
@@ -209,42 +217,46 @@ DataFrame< double > CrossMap( Parameters          paramCCM,
         for ( size_t i = 0; i < paramCCM.librarySizes.size(); i++ ) {
             msg << paramCCM.librarySizes[ i ] << " ";
         } msg << std::endl << std::endl;
-
         std::cout << msg.str();
     }
     
     //----------------------------------------------------------
     // Generate embedding on data to be cross mapped (-c column)
+    // JP: Should this be allocated on the heap?
     //----------------------------------------------------------
-    DataFrame<double> dataBlock;
-
-    dataBlock = Embed( dataFrameIn, paramCCM.E, paramCCM.tau,
-                       paramCCM.columnNames[0], paramCCM.verbose );
-
+    DataFrame<double> dataBlock = Embed( dataFrameIn,
+                                         paramCCM.E,
+                                         paramCCM.tau,
+                                         paramCCM.columnNames[0],
+                                         paramCCM.verbose );
+    
     size_t N_row = dataBlock.NRows();
 
-    // JP: This removal of partial data rows is also done in EmbedNN()
-    //     Should investigate how to avoid this duplication.
-    //     However, functionalization would require the passing of
-    //     potentially very large data frames.  Pointer usage would
-    //     incur synchronization losses.
-    
     //----------------------------------------------------------
-    // Remove dataFrameIn, target rows as needed
-    // dataBlock had partial data removed in Embed()
+    // Remove dataFrameIn rows to match dataBlock which had
+    // partial data rows ignored in Embed() -> MakeBlock()
     //----------------------------------------------------------
     // If we support negative tau, this will change
     // For now, assume only positive tau is allowed
     size_t shift = std::max( 0, paramCCM.tau * (paramCCM.E - 1) );
     
-    DataFrame<double> dataInEmbed( dataFrameIn.NRows() - shift,
-                                   dataFrameIn.NColumns(),
-                                   dataFrameIn.ColumnNames() );
+    // This removal of partial data rows is also done in EmbedNN()
+    // using: DataFrame.DeletePartialDataRows().
     
-    for ( size_t row = 0; row < dataInEmbed.NRows(); row++ ) {
-        dataInEmbed.WriteRow( row, dataFrameIn.Row( row + shift ) );
+    // Can't do that here on dataFrameIn or the second CrossMap() thread
+    // will delete valid data.  Make a local copy.
+    // DataFrame<double> dataInEmbed( dataFrameIn );
+    // JP: Or is it OK to just craete a new reference?
+    DataFrame<double> &dataInEmbed =
+        const_cast< DataFrame< double > &>( dataFrameIn );
+    
+    if ( not dataInEmbed.PartialDataRowsDeleted() ) {
+        // Not thread safe.
+        std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
+        // NOTE: Only operates on the first call.
+        dataInEmbed.DeletePartialDataRows( shift );
     }
-
+    
 #ifdef DEBUG_ALL
     std::cout << ">>>> CrossMap() dataInEmbed-----------------------\n";
     std::cout << dataInEmbed;
@@ -296,7 +308,8 @@ DataFrame< double > CrossMap( Parameters          paramCCM,
     // Distance for all possible pred : lib E-dimensional vector pairs
     // Distances is a square Matrix of all row to to row distances
     //-----------------------------------------------------------------
-    DataFrame< double > Distances = CCMDistances( dataBlock, paramCCM );
+    DataFrame< double > Distances = CCMDistances( std::ref( dataBlock ),
+                                                  paramCCM );
 
 #ifdef DEBUG_ALL
     std::cout << "CrossMap() " << paramCCM.columnNames[0] << " to "
@@ -417,8 +430,8 @@ DataFrame< double > CrossMap( Parameters          paramCCM,
             //----------------------------------------------------------
             // Pack embedding, target, neighbors for SimplexProjection
             //----------------------------------------------------------
-            DataEmbedNN embedNN = DataEmbedNN( dataFrameLib_i, dataBlock,
-                                               targetVec,  neighbors );
+            DataEmbedNN embedNN = DataEmbedNN( &dataFrameLib_i, dataBlock,
+                                                targetVec,      neighbors );
 
             //----------------------------------------------------------
             // Simplex Projection: lib_str & pred_str set from N_row
@@ -465,8 +478,8 @@ DataFrame< double > CrossMap( Parameters          paramCCM,
 // Matrix elements D[i,j] hold the distance between the E-dimensional
 // phase space point (vector) between rows (observations) i and j.
 //---------------------------------------------------------------------
-DataFrame< double > CCMDistances( DataFrame< double > dataBlock,
-                                  Parameters          param ) {
+DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
+                                        Parameters           param ) {
 
     size_t N_row = dataBlock.NRows();
 
@@ -522,9 +535,9 @@ DataFrame< double > CCMDistances( DataFrame< double > dataBlock,
 // from 0 to len(lib_i)-1.
 //
 //---------------------------------------------------------------------
-Neighbors CCMNeighbors( DataFrame< double >   DistancesIn,
-                        std::vector< size_t > lib_i,
-                        Parameters            param ) {
+Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
+                              std::vector< size_t >  lib_i,
+                              Parameters             param ) {
 
     size_t N_row = lib_i.size();
     size_t knn   = param.knn;

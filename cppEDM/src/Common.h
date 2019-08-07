@@ -10,7 +10,7 @@
 #include <cmath>
 
 #ifdef _MSC_VER
-#include <ciso646> // macro constants for C++ operators not in ISO646
+#include <ciso646> // macro constants for MSVC C++ operators not in ISO646
 #endif
 
 #include "DataFrame.h" // has #include Common.h
@@ -78,8 +78,11 @@ std::vector<std::string> SplitString( std::string inString,
 
 VectorError ComputeError( std::valarray< double > obs,
                           std::valarray< double > pred );
-std::string increment_datetime_str ( std::string datetime1, 
-        std::string datetime2, int tp );
+
+std::string increment_datetime_str( std::string datetime1, 
+                                    std::string datetime2,
+                                    int         tp );
+
 // API functions Embed() and MakeBlock() are in Embed.h Embed.cc
 
 DataFrame<double> Simplex( std::string pathIn          = "./data/",
@@ -99,7 +102,7 @@ DataFrame<double> Simplex( std::string pathIn          = "./data/",
                            bool        const_predict   = false,
                            bool        verbose         = true );
 
-DataFrame<double> Simplex( DataFrame< double >,
+DataFrame<double> Simplex( DataFrame< double > &dataFrameIn,
                            std::string pathOut         = "./",
                            std::string predictFile     = "",
                            std::string lib             = "",
@@ -135,7 +138,7 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
-SMapValues SMap( DataFrame< double >,
+SMapValues SMap( DataFrame< double > &dataFrameIn,
                  std::string pathOut         = "./",
                  std::string predictFile     = "",
                  std::string lib             = "",
@@ -170,7 +173,7 @@ DataFrame<double> CCM( std::string pathIn       = "./data/",
                        unsigned    seed         = 0,     // seed=0: use RNG
                        bool        verbose      = true );
 
-DataFrame<double> CCM( DataFrame< double >,
+DataFrame<double> CCM( DataFrame< double > &dataFrameIn,
                        std::string pathOut      = "./",
                        std::string predictFile  = "",
                        int         E            = 0,
@@ -191,6 +194,7 @@ DataFrame<double> EmbedDimension( std::string pathIn      = "./data/",
                                   std::string predictFile = "",
                                   std::string lib         = "",
                                   std::string pred        = "",
+                                  int         maxE        = 10,
                                   int         Tp          = 1,
                                   int         tau         = 1,
                                   std::string colNames    = "",
@@ -199,11 +203,12 @@ DataFrame<double> EmbedDimension( std::string pathIn      = "./data/",
                                   bool        verbose     = true,
                                   unsigned    nThreads    = 4 );
 
-DataFrame<double> EmbedDimension( DataFrame< double >,
+DataFrame<double> EmbedDimension( DataFrame< double > &dataFrameIn,
                                   std::string pathOut     = "./",
                                   std::string predictFile = "",
                                   std::string lib         = "",
                                   std::string pred        = "",
+                                  int         maxE        = 10,
                                   int         Tp          = 1,
                                   int         tau         = 1,
                                   std::string colNames    = "",
@@ -218,6 +223,7 @@ DataFrame<double> PredictInterval( std::string pathIn      = "./data/",
                                    std::string predictFile = "",
                                    std::string lib         = "",
                                    std::string pred        = "",
+                                   int         maxTp       = 10,
                                    int         E           = 0,
                                    int         tau         = 1,
                                    std::string colNames    = "",
@@ -226,11 +232,12 @@ DataFrame<double> PredictInterval( std::string pathIn      = "./data/",
                                    bool        verbose     = true,
                                    unsigned    nThreads    = 4 );
 
-DataFrame<double> PredictInterval( DataFrame< double >,
+DataFrame<double> PredictInterval( DataFrame< double > &dataFrameIn,
                                    std::string pathOut     = "./",
                                    std::string predictFile = "",
                                    std::string lib         = "",
                                    std::string pred        = "",
+                                   int         maxTp       = 10,
                                    int         E           = 0,
                                    int         tau         = 1,
                                    std::string colNames    = "",
@@ -245,6 +252,7 @@ DataFrame<double> PredictNonlinear( std::string pathIn      = "./data/",
                                     std::string predictFile = "",
                                     std::string lib         = "",
                                     std::string pred        = "",
+                                    std::string theta       = "",
                                     int         E           = 0,
                                     int         Tp          = 1,
                                     int         tau         = 1,
@@ -254,11 +262,12 @@ DataFrame<double> PredictNonlinear( std::string pathIn      = "./data/",
                                     bool        verbose     = true,
                                     unsigned    nThreads    = 4 );
 
-DataFrame<double> PredictNonlinear( DataFrame< double >,
+DataFrame<double> PredictNonlinear( DataFrame< double > &dataFrameIn,
                                     std::string pathOut     = "./",
                                     std::string predictFile = "",
                                     std::string lib         = "",
                                     std::string pred        = "",
+                                    std::string theta       = "",
                                     int         E           = 0,
                                     int         Tp          = 1,
                                     int         tau         = 1,

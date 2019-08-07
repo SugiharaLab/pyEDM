@@ -32,10 +32,11 @@ DataFrame<double> Simplex( std::string pathIn,
                            bool        verbose ) {
     
     // DataFrame constructor loads data
-    DataFrame< double > dataFrameIn( pathIn, dataFile );
+    DataFrame< double > *dataFrameIn =
+        new DataFrame< double > ( pathIn, dataFile );
 
     // Pass data frame to Simplex 
-    DataFrame< double > S = Simplex( dataFrameIn,
+    DataFrame< double > S = Simplex( std::ref( *dataFrameIn ),
                                      pathOut,
                                      predictFile,
                                      lib,
@@ -50,13 +51,15 @@ DataFrame<double> Simplex( std::string pathIn,
                                      embedded,
                                      const_predict,
                                      verbose );
+    delete dataFrameIn;
+    
     return S;
 }
 
 //----------------------------------------------------------------
 // API Overload 2: DataFrame provided
 //----------------------------------------------------------------
-DataFrame<double> Simplex( DataFrame< double > data,
+DataFrame<double> Simplex( DataFrame< double > &data,
                            std::string pathOut,
                            std::string predictFile,
                            std::string lib,
@@ -82,7 +85,7 @@ DataFrame<double> Simplex( DataFrame< double > data,
     //----------------------------------------------------------
     // Embed, compute Neighbors
     //----------------------------------------------------------
-    DataEmbedNN embedNN = EmbedNN( data, std::ref( param ) );
+    DataEmbedNN embedNN = EmbedNN( &data, std::ref( param ) );
 
     DataFrame<double> S = SimplexProjection( param, embedNN );
 
@@ -97,7 +100,7 @@ DataFrame<double> SimplexProjection( Parameters  param,
                                      bool        checkDataRows ) {
 
     // Unpack the data, (embedding dataBlock not used), target & neighbors
-    DataFrame<double>     dataIn     = embedNN.dataIn;  // used for output
+    DataFrame<double>    *dataIn     = embedNN.dataIn;  // used for output
     std::valarray<double> target_vec = embedNN.targetVec;
     Neighbors             neighbors  = embedNN.neighbors;
 
@@ -208,8 +211,8 @@ DataFrame<double> SimplexProjection( Parameters  param,
                                                 predictions,
                                                 const_predictions,
                                                 target_vec,
-                                                dataIn.Time(),
-                                                dataIn.TimeName() );
+                                                dataIn->Time(),
+                                                dataIn->TimeName() );
 
     if ( param.predictOutputFile.size() ) {
         // Write to disk

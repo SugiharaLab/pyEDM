@@ -12,7 +12,7 @@
 //    hh:mm:ss.sss
 //---------------------------------------------------------------------
 // regex's used in parsing and their time formats. in pair for easier checking
-std::regex  regEx_yyyymmdd      ("\\d{4}-\\d{2}-\\d{2}"); 
+std::regex  regEx_yyyymmdd      ("\\d{4}-\\d{2}-\\d{2}");
 std::string fmt_yyyymmdd        ("%Y-%m-%d");
 std::regex  regEx_hhmmss        ("\\d{2}:\\d{2}:\\d{2}");
 std::string fmt_hhmmss          ("%H:%M:%S");
@@ -26,7 +26,8 @@ std::string fmt_hhmmsssss       ("%H:%M:%S");
 // @param tm             : the tm object to populate
 // @param datetime_str   : the date or time string to populate
 // @param date_fmt       : true if this is a date object
-// @return               : none, just populates the tm obj//----------------------------------------------------------------------
+// @return               : none, just populates the tm obj
+//----------------------------------------------------------------------
 void parse_datetime_str ( struct tm & time_obj, 
                           std::string datetime_str,
                           bool        date_fmt ) {
@@ -35,7 +36,7 @@ void parse_datetime_str ( struct tm & time_obj,
     
     // parse the string for it's tokens
     std::stringstream parseable_str ( datetime_str );
-    std::string token; 
+    std::string token;
     std::vector<std::string> tokens;
     
     while( getline( parseable_str, token, parse_delim ) ) {
@@ -45,12 +46,12 @@ void parse_datetime_str ( struct tm & time_obj,
     // populate the date time obj
     if ( date_fmt ) {
         time_obj.tm_mday = stod(tokens[2]);
-        time_obj.tm_mon  = stod(tokens[1]) - iso_start_month; 
+        time_obj.tm_mon  = stod(tokens[1]) - iso_start_month;
         time_obj.tm_year = stod(tokens[0]) - iso_start_year;
     }
     else {
         time_obj.tm_sec  = stod(tokens[2]);
-        time_obj.tm_min  = stod(tokens[1]); 
+        time_obj.tm_min  = stod(tokens[1]);
         time_obj.tm_hour = stod(tokens[0]);
     }
     mktime( &time_obj );
@@ -58,8 +59,8 @@ void parse_datetime_str ( struct tm & time_obj,
 
 //----------------------------------------------------------------------
 // Parse the datetime std::string into a struct tm
-// @param  datetime      :  the datetime to parse  
-// @return datetime      :  the datetime to parse  
+// @param  datetime      :  the datetime to parse
+// @return datetime      :  the datetime to parse
 //----------------------------------------------------------------------
 datetime_info parse_datetime ( std::string datetime ) {
     
@@ -100,11 +101,11 @@ datetime_info parse_datetime ( std::string datetime ) {
 // Generate a new datetime + delta past the range of given
 //----------------------------------------------------------------------
 //
-// @params datetime1/2   :  the two last time std::strings 
+// @params datetime1/2   :  the two last time std::strings
 //                          to compute the delta unit
 //                          we increment from datetime2
 // @param tp             :  the amount to increment the time diff by
-// @return               :  the new incremented timestd::string               
+// @return               :  the new incremented timestd::string
 //----------------------------------------------------------------------
 std::string increment_datetime_str ( std::string datetime1, 
                                      std::string datetime2, int tp ) {
