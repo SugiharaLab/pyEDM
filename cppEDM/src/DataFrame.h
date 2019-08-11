@@ -355,7 +355,9 @@ public:
 
         // Copy non deleted data to resized elements. NOTE: Row major format
         std::slice elements_i( nrows * n_columns, n_elements, 1 );
-        elements[ std::slice( 0, n_elements, 1 ) ] = data[ elements_i ];
+        // Bogus cast for MSVC 
+        elements[ std::slice( 0, n_elements, 1 ) ] =
+            ( std::valarray< double > ) data[ elements_i ];
     }
     
     //-----------------------------------------------------------------
