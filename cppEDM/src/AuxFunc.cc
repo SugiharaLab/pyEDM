@@ -94,7 +94,8 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
         
         // Copy target without partial data into resized targetIn
         std::slice targetEmbed_i  = std::slice( 0, targetEmbed.size(), 1 );
-        targetIn[ targetEmbed_i ] = targetEmbed[ targetEmbed_i ];
+        targetIn[ targetEmbed_i ] = ( std::valarray<double> )
+            targetEmbed[ targetEmbed_i ];
 
         // Delete dataIn top rows of partial data
         if ( not dataIn.PartialDataRowsDeleted() ) {
