@@ -10,8 +10,8 @@ LIB = EDM.lib
 CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /I..\..\.. /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
 
 all:	$(LIB)
-        lib /OUT:$(LIB) $(OBJ)
-        copy $(LIB) ..\lib
+	lib  /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB) $(OBJ)
+	copy $(LIB) ..\lib
 
 clean:
 	del -f $(OBJ) $(LIB)
