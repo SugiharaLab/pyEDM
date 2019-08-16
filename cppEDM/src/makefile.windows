@@ -1,17 +1,17 @@
 
 CC  = cl
-OBJ = Common.obj AuxFunc.obj DateTimeUtil.o Parameter.obj Embed.obj\
+OBJ = Common.obj AuxFunc.obj DateTimeUtil.obj Parameter.obj Embed.obj\
 	Interface.obj Neighbors.obj Simplex.obj Eval.obj CCM.obj\
 	Multiview.obj SMap.obj 
 
 LIB = EDM.lib
 
-# Assume Eigen\ is at the same level as pyEDM (..\..\..)
-CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /I..\..\.. /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
+# Assume Eigen\ is at the same level as cppEDM (..\..)
+CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /I..\.. /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
 
 all:	$(LIB)
 	lib  /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB) $(OBJ)
-	copy $(LIB) ..\lib
+	cp $(LIB) ..\lib
 
 clean:
 	del -f $(OBJ) $(LIB)
