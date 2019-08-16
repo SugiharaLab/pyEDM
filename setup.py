@@ -166,7 +166,7 @@ Extension_modules = [
 #----------------------------------------------------------------------
 setup(
     # name of the *-version.dist-info directory
-    name             = 'EDM', 
+    name             = 'pyEDM', 
     version          = __version__,
     author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
