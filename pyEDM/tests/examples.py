@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-import EDM
+import pyEDM
 import pkg_resources # Get data file names from EDM package
 
 #------------------------------------------------------------
