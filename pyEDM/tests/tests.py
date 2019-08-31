@@ -1,5 +1,5 @@
 
-import EDM
+import pyEDM
 import unittest
 import pkg_resources # Get data file names from EDM package
 
