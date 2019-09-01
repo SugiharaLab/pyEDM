@@ -55,7 +55,7 @@ elif sys.platform == 'win32':
 else: # assume unix
     cppLibName = 'libEDM.a'
 
-raise Exception("A pyEDM binary distribution was not available for your system.\n"+
+print("A pyEDM binary distribution was not available for your system.\n"+
     "If you are on a Linux machine, see build instructions at \n" +
     "https://github.com/SugiharaLab/pyEDM. Otherwise, see supported \n"+
     "system / Python versions at the same link. \n" )
