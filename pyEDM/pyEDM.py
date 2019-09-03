@@ -40,7 +40,7 @@ def Examples():
     # Note the path argument is empty "", file path is in Files{}
     #---------------------------------------------------------------
     print( '''\nEmbedDimension( "./", TentMap_rEDM.csv", None, "", "",''' +\
-           '''"1 100", "201 500", 1, 1, "TentMap", "", False, False, 4 )''' )
+           '''"1 100", "201 500", 10, 1, 1, "TentMap", "", False, False, 4 )''')
     
     df = EmbedDimension( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
                          "1 100", "201 500", 10, 1, 1,
@@ -48,7 +48,7 @@ def Examples():
     
     #---------------------------------------------------------------
     print( '''\nPredictInterval( "./", "TentMap_rEDM.csv", None, "./", "",''' +\
-           '''"1 100", "201 500", 2, 1,"TentMap", "", False, False, 4 )''' )
+           '''"1 100", "201 500", 10, 2, 1,"TentMap", "", False, False, 4 )''' )
     
     df = PredictInterval( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
                           "1 100", "201 500", 10, 2, 1,
@@ -56,7 +56,7 @@ def Examples():
 
     #---------------------------------------------------------------
     print( '''\nPredictNonlinear( "./", "TentMapNoise_rEDM.csv", None,''' +\
-           '''"./", "", "1 100", "201 500", ''' +\
+           '''"./", "", "1 100", "201 500", "",''' +\
            '''2, 1, 1,"TentMap", "", False, False, 4 )''' )
     
     df = PredictNonlinear( "", Files[ "TentMapNoise_rEDM.csv" ], None, "./", "",
@@ -531,6 +531,7 @@ def EmbedDimension( pathIn       = "./",
                     predictFile  = "",
                     lib          = "",
                     pred         = "",
+                    maxE         = 10,
                     Tp           = 1,
                     tau          = 1,
                     columns      = "",
@@ -558,7 +559,8 @@ def EmbedDimension( pathIn       = "./",
                                    pathOut,
                                    predictFile,
                                    lib,
-                                   pred, 
+                                   pred,
+                                   maxE,
                                    Tp,
                                    tau,
                                    columns,
@@ -589,6 +591,7 @@ def PredictInterval( pathIn       = "./",
                      predictFile  = "",
                      lib          = "",
                      pred         = "",
+                     maxTp        = 10,
                      E            = 1,
                      tau          = 1,
                      columns      = "",
@@ -616,7 +619,8 @@ def PredictInterval( pathIn       = "./",
                                     pathOut,
                                     predictFile,
                                     lib,
-                                    pred, 
+                                    pred,
+                                    maxTp,
                                     E,
                                     tau,
                                     columns,
@@ -647,6 +651,7 @@ def PredictNonlinear( pathIn       = "./",
                       predictFile  = "",
                       lib          = "",
                       pred         = "",
+                      theta        = "",
                       E            = 0,
                       Tp           = 1,
                       tau          = 1,
@@ -675,7 +680,8 @@ def PredictNonlinear( pathIn       = "./",
                                      pathOut,
                                      predictFile,
                                      lib,
-                                     pred, 
+                                     pred,
+                                     theta,
                                      E,
                                      Tp,
                                      tau,

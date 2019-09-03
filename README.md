@@ -37,8 +37,8 @@ Note that the [Eigen C++ Template Library](http://eigen.tuxfamily.org/) is requi
 ## Usage
 Example usage at the python prompt:
 ```python
->>> import EDM
->>> EDM.Examples()
+>>> import pyEDM
+>>> pyEDM.Examples()
 ```
 
 ---
