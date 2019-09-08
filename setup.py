@@ -1,8 +1,8 @@
 #
-# Build the EDM Python binding to cppEDM.
+# Build the pyEDM Python binding to cppEDM.
 #
 # The core library is the C++ cppEDM libEDM.a
-# NOTE: libEDM.a needs to be built with -fPIC by the user. 
+# NOTE: libEDM.a needs to be built with -fPIC. 
 #
 # Bindings to cppEDM are provided via pybind11 in src/bindings/PyBind.cpp
 # and are built as an Extension module into a platform-specific shared
@@ -18,13 +18,13 @@
 # https://github.com/pybind/python_example
 #
 # This only works if the directory structure for the module to
-# be installed (EDM) is:
+# be installed (pyEDM) is:
 #
 # pyEDM/  # Any name
 #   setup.py
-#   EDM/
+#   pyEDM/
 #     __init__.py # import ./EDM
-#     EDM.py
+#     pyEDM.py
 #     data/
 #     tests/
 #
@@ -32,6 +32,12 @@
 # There seem to be many implicit requirements such as the directory 
 # stucture, name conventions, apparent incongruitues between using
 # package_data, MANIFEST.in, etc...
+#
+# Note on the use of setup.py in pip:
+# If the package has a valid wheel, it's installed, perhaps from PyPI.
+# If the package is not a wheel, pip tries to build a wheel for it via
+# "setup.py bdist_wheel". If that fails pip falls back to installing
+# via "setup.py install".
 #
 import sys, os
 import setuptools
@@ -45,8 +51,7 @@ tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
 EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
 
-# Unfortunately, we don't have the manpower to build wheels...
-# The user is required to build cppEDM
+# Set default cppEDM library name
 platform = sys.platform
 if platform == 'darwin' or platform == 'linux':
     cppLibName = 'libEDM.a'
@@ -55,15 +60,13 @@ elif sys.platform == 'win32':
 else: # assume unix
     cppLibName = 'libEDM.a'
 
-print("A pyEDM binary distribution was not available for your system.\n"+
-    "If you are on a Linux machine, see build instructions at \n" +
-    "https://github.com/SugiharaLab/pyEDM. Otherwise, see supported \n"+
-    "system / Python versions at the same link. \n" )
-      
+# We are building the package, see if libEDM exists
 if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
-    raise Exception( "Error: " + os.path.join( EDM_Lib_Path, cppLibName ) +
-                     " must exist.  Build cppEDM. " )
-              
+    errStr = "Error: " + os.path.join( "./cppEDM/src/lib", cppLibName ) +\
+             " does not exist.\n\nYou can install cppEDM manually per: " +\
+             "https://github.com/SugiharaLab/pyEDM#manual-install."
+    raise Exception( errStr )
+         
 # Transfer the README.md to the package decsription
 with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
@@ -150,7 +153,7 @@ class BuildExt( build_ext ):
 #----------------------------------------------------------------------
 Extension_modules = [
     Extension(
-        name = 'EDM_pybind',
+        name = 'pyBindEDM',
 
         sources = [ 'src/bindings/PyBind.cpp' ],
         

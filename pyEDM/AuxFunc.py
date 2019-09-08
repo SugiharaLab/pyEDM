@@ -1,81 +1,91 @@
-import EDM_pybind
-from pandas import DataFrame
-from matplotlib.pyplot import show, axhline
-from .load_data import sample_data
+'''Examples and graphical functions pyEDM interface to cppEDM 
+   github.com/SugiharaLab/cppEDM.'''
+
 import pkg_resources
-from . import core_pyEDM
+
+from pandas            import DataFrame
+from matplotlib.pyplot import show, axhline
+
+import pyBindEDM
+import pyEDM.CoreEDM
+from   pyEDM.LoadData import sampleData
 
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
 def Examples():
 
-    def run_edm ( cmd ):
+    def RunEDM ( cmd ):
         print(cmd)
         print()
-        df =  eval( "core_pyEDM." + cmd )
+        df = eval( 'pyEDM.' + cmd )
         return df
 
     sampleDataNames = \
-        ["TentMap","TentMapNoise","circle","block_3sp", "sardine_anchovy_sst"]
-
-    # Create map of module dataFiles pathnames in Files
+        ["TentMap","TentMapNoise","circle","block_3sp","sardine_anchovy_sst"]
 
     for dataName in sampleDataNames :
-        if dataName not in sample_data:
+        if dataName not in sampleData:
             raise Exception( "Examples(): Failed to find sample data " + \
                              dataName + " in EDM package" )
 
-    # Note the path argument is empty "", file path is in Files{}
     #---------------------------------------------------------------
-    cmd = str().join(['EmbedDimension( dataFrame=sample_data["TentMap"],',
-                       ' lib="1 100", pred="201 500",',
-                       ' columns="TentMap", target="TentMap") '])
-    run_edm( cmd )
+    cmd = str().join(['EmbedDimension( dataFrame = sampleData["TentMap"],',
+                       ' lib = "1 100", pred = "201 500",',
+                       ' columns = "TentMap", target = "TentMap") '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
-    cmd = str().join(['PredictInterval( dataFrame=sample_data["TentMap"],',
-                       ' lib="1 100", pred="201 500",',
-                       ' columns="TentMap", target="TentMap") '])
-    run_edm( cmd )
+    cmd = str().join(['PredictInterval( dataFrame = sampleData["TentMap"],',
+                       ' lib = "1 100", pred = "201 500", E = 2,',
+                       ' columns = "TentMap", target = "TentMap") '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
-    cmd = str().join(['PredictNonlinear( dataFrame=sample_data["TentMapNoise"],',
-                      ' E=2,lib="1 100", pred="201 500", ',
-                      ' columns="TentMap",target="TentMap") '])
-    run_edm( cmd )
+    cmd = str().join(
+        ['PredictNonlinear( dataFrame = sampleData["TentMapNoise"],',
+         ' lib = "1 100", pred = "201 500", E = 2,',
+         ' columns = "TentMap", target = "TentMap" ) '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
     # Tent map simplex : specify multivariable columns embedded = True
-    cmd = str().join(['Simplex( dataFrame=sample_data["block_3sp"],',
-                      ' lib="1 99", pred="100 195", ',
-                      ' E=3, embedded=True, showPlot=True, const_pred=True,',
+    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
+                      ' lib = "1 99", pred = "100 195", ',
+                      ' E = 3, embedded = True, showPlot = True,',
+                      ' const_pred = True,',
                       ' columns="x_t y_t z_t", target="x_t") '])
+    RunEDM( cmd )
     
-    run_edm( cmd )
     #---------------------------------------------------------------
     # Tent map simplex : Embed column x_t to E=3, embedded = False
-    cmd = str().join(['Simplex( dataFrame=sample_data["block_3sp"],',
-                      ' lib="1 99", pred="105 190", ',
-                      ' E=3, showPlot=True, const_pred=True,',
-                      ' columns="x_t", target="x_t") '])
-    run_edm( cmd )
+    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
+                      ' lib = "1 99", pred = "105 190", ',
+                      ' E = 3, showPlot = True, const_pred = True,',
+                      ' columns = "x_t", target = "x_t") '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
-    cmd = str().join(['Multiview( dataFrame=sample_data["block_3sp"],',
-                      ' lib="1 99", pred="105 190", ',
-                      ' E=3, columns="x_t y_t z_t", target="x_t",',
-                      ' showPlot=True) '])
-    run_edm( cmd )
+    cmd = str().join(['Multiview( dataFrame = sampleData["block_3sp"],',
+                      ' lib = "1 99", pred = "105 190", ',
+                      ' E = 3, columns = "x_t y_t z_t", target = "x_t",',
+                      ' showPlot = True) '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
     # S-map circle : specify multivariable columns embedded = True
-    cmd = str().join(['SMap( dataFrame=sample_data["circle"],',
-                      ' lib="1 100", pred="110 190", theta=4, E=2,',
-                      'verbose=True, showPlot=True, embedded=True,',
-                      ' columns="x y", target="x") '])
-    run_edm( cmd )
+    cmd = str().join(['SMap( dataFrame = sampleData["circle"],',
+                      ' lib = "1 100", pred = "110 190", theta = 4, E = 2,',
+                      ' verbose = True, showPlot = True, embedded = True,',
+                      ' columns = "x y", target = "x") '])
+    RunEDM( cmd )
+    
     #---------------------------------------------------------------
-    cmd = str().join(['CCM( dataFrame=sample_data["sardine_anchovy_sst"],',
-                      ' E=3, Tp=0, columns="anchovy", target="np_sst",',
-                      ' libSizes="10 80 10", sample=100, verbose=True, ',
-                      ' showPlot=True) '])
-    run_edm( cmd )
+    cmd = str().join(['CCM( dataFrame = sampleData["sardine_anchovy_sst"],',
+                      ' E = 3, Tp = 0, columns = "anchovy", target = "np_sst",',
+                      ' libSizes = "10 80 10", sample = 100, verbose = True, ',
+                      ' showPlot = True) '])
+    RunEDM( cmd )
 
 #------------------------------------------------------------------------
 # 
@@ -84,7 +94,7 @@ def PlotObsPred( df, dataFile = None, E = None, Tp = None, block = True ):
     '''Plot observations and predictions'''
     
     # stats: {'MAE': 0., 'RMSE': 0., 'rho': 0. }
-    stats = EDM_pybind.ComputeError( df['Observations'].tolist(),
+    stats = pyBindEDM.ComputeError( df['Observations'].tolist(),
                                      df['Predictions' ].tolist() )
 
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
@@ -130,26 +140,23 @@ def PandasDataFrametoDF( df ):
     if df is None :
         raise RuntimeError( "PandasDataFrametoDF() empty DataFrame" )
     
-    # have to create lists separately since pybind list append not working
-    # create time column if doesn't exist
-
+    # Need to create lists separately since pybind list append not working ??
     timeName = 'Time'
-    time = []
+    time     = []
     dataList = []
 
     if df.columns[0] is timeName : 
         time = df[ timeName ].tolist()
     else : 
+        # Create time column if doesn't exist
         time = [ str(i) for i in list( range( df.shape[0] ) ) ]
 
-    # add the actual time series data
-
+    # Add time series data
     for column in df.columns :
         dataList.append( ( column, df.get( column ).tolist() ) )
     
-    # create the cppEDM df struct
-
-    DF = EDM_pybind.DF()
+    # cppEDM DF struct
+    DF          = pyBindEDM.DF()
     DF.timeName = timeName
     DF.time     = time
     DF.dataList = dataList
@@ -162,7 +169,7 @@ def PandasDataFrametoDF( df ):
 def ComputeError( obs, pred ):
     '''Pearson rho, RMSE, MAE.'''
 
-    D = EDM_pybind.ComputeError( obs, pred )
+    D = pyBindEDM.ComputeError( obs, pred )
 
     return D
              
@@ -172,11 +179,10 @@ def ComputeError( obs, pred ):
 def ReadDataFrame( path, file ):
     '''Read path/file into DataFrame.'''
 
-    D = EDM_pybind.ReadDataFrame( path, file )
+    D = pyBindEDM.ReadDataFrame( path, file )
     
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     return df
- 
-   
+
 
