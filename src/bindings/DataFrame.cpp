@@ -77,29 +77,24 @@ py::dict DFtoDict( DF df ) {
     // the py::dict as just another column.
     
     if ( df.timeName.size() and df.time.size() ) {
-
-        // JP ----------------------------------------------------
-        // SMap coeff df.time is wrong size for dataList
-        //    Need to fix in cppEDM ?
-        //    This is a hack until it's fixed....
+        // SMap coef df.data will not be as long as prediction data
+        // since SMap coef are only available for observations
         size_t N_time     = df.time.size();
         size_t N_dataList = df.dataList.begin()->second.size();
+        size_t offset     = N_time - N_dataList;
 
-        if ( N_time != N_dataList ) {
-            df.time.erase( df.time.begin(), df.time.begin() + 1 );
+        if ( offset > N_dataList ) {
+            std::stringstream errMsg;
+            errMsg << "DFtoDict(): Invalid offset for time adjustment.";
+            throw std::runtime_error( errMsg.str() );
         }
-        // JP ----------------------------------------------------
+        
+        if ( offset ) {
+            df.time.erase( df.time.end() - offset, df.time.end() );
+        }
         
         D[ py::str( df.timeName ) ] = df.time;
     }
-
-#ifdef DEBUG
-    // JP -----------------------------------------------------------------
-    std::cout << "DFtoDict() df.time.size=" << df.time.size()
-              << " df.dataList[0].size="
-              << df.dataList.begin()->second.size() << std::endl;
-    // JP -----------------------------------------------------------------
-#endif
     
     // Data
     for ( auto pi = df.dataList.begin(); pi != df.dataList.end(); pi++ ) {
@@ -107,8 +102,6 @@ py::dict DFtoDict( DF df ) {
         // Ignore the time vector if in dataList: already handled above
         // JP ----------------------------------------------------
         //    For SMap coef this overwrites Time, but with what?
-        //    The length of the above coeff df.time vector is wrong
-        //    for the SMAP coef dataList
         // JP ----------------------------------------------------
         if ( df.timeName == pi->first ) {
             continue;

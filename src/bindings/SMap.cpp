@@ -83,21 +83,5 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
     SMap_["predictions" ] = DFtoDict( df_pred );
     SMap_["coefficients"] = DFtoDict( df_coef );
 
-#ifdef DEBUG
-    // JP -----------------------------------------------------------------
-    //    SMap coef times bug: see bindings/DataFrame.cpp and SMap.cpp
-    std::cout << "SMap_ coefficients keys: ";
-    for ( auto ki  = SMap_["coefficients"].begin();
-               ki != SMap_["coefficients"].end(); ++ki ) {
-        std::cout << ki->first << " ";
-    } std::cout << std::endl;
-    std::cout << "SMap_ coefficients Time: ";
-    for ( auto ki  = SMap_["coefficients"]["Time"].begin();
-               ki != SMap_["coefficients"]["Time"].end(); ++ki ) {
-        std::cout << *ki << " ";
-    } std::cout << std::endl;
-    // JP -----------------------------------------------------------------
-#endif
-    
     return SMap_;
 }

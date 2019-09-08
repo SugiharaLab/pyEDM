@@ -22,7 +22,7 @@
 // fist argument and it should not be in quotes. The second macro argument
 // defines a variable of type py::module used to initialize the module.
 //-------------------------------------------------------------------------
-PYBIND11_MODULE( EDM_pybind, pyMod ) {
+PYBIND11_MODULE( pyBindEDM, pyMod ) {
 
     pyMod.doc() = "Python bindings to cppEDM via pybind11.";
 

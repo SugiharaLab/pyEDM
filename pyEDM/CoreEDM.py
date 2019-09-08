@@ -1,11 +1,11 @@
 '''Python interface to Empirical Dynamic Modeling (EDM) C++ library (cppEDM)
-   https://github.com/SugiharaLab/cppEDM.
-'''
+   https://github.com/SugiharaLab/cppEDM.'''
 
-import EDM_pybind
-from pandas import DataFrame
+from pandas            import DataFrame
 from matplotlib.pyplot import show, axhline
-from . import aux_funcs
+
+import pyBindEDM
+import pyEDM.AuxFunc
  
 #------------------------------------------------------------------------
 # 
@@ -21,14 +21,14 @@ def MakeBlock( dataFrame,
     if not isinstance( dataFrame, DataFrame ) :
         raise Exception( "MakeBlock(): dataFrame is not a Pandas DataFrame." )
     
-    DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+    DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     
     # D is a Python dict from pybind11 < cppEDM Embed
-    D = EDM_pybind.MakeBlock( DF,
-                              E, 
-                              tau,
-                              columnNames,
-                              verbose )
+    D = pyBindEDM.MakeBlock( DF,
+                             E, 
+                             tau,
+                             columnNames,
+                             verbose )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -50,22 +50,22 @@ def Embed( pathIn    = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Embed()
     if dataFile :
-        DF = EDM_pybind.DF() 
+        DF = pyBindEDM.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Embed(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "Embed(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM Embed
-    D = EDM_pybind.Embed( pathIn,
-                          dataFile,
-                          DF,
-                          E, 
-                          tau,
-                          columns,
-                          verbose )
+    D = pyBindEDM.Embed( pathIn,
+                         dataFile,
+                         DF,
+                         E, 
+                         tau,
+                         columns,
+                         verbose )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -96,37 +96,37 @@ def Simplex( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
     if dataFile :
-        DF = EDM_pybind.DF()
+        DF = pyBindEDM.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Simplex(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "Simplex(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM Simplex 
-    D = EDM_pybind.Simplex( pathIn,
-                            dataFile,
-                            DF,
-                            pathOut,
-                            predictFile,
-                            lib,
-                            pred,
-                            E, 
-                            Tp,
-                            knn,
-                            tau,
-                            exclusionRadius,
-                            columns,
-                            target, 
-                            embedded,
-                            const_pred,
-                            verbose  )
+    D = pyBindEDM.Simplex( pathIn,
+                           dataFile,
+                           DF,
+                           pathOut,
+                           predictFile,
+                           lib,
+                           pred,
+                           E, 
+                           Tp,
+                           knn,
+                           tau,
+                           exclusionRadius,
+                           columns,
+                           target, 
+                           embedded,
+                           const_pred,
+                           verbose  )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     if showPlot :
-        aux_funcs.PlotObsPred( df, dataFile, E, Tp )
+        pyEDM.AuxFunc.PlotObsPred( df, dataFile, E, Tp )
     
     return df
 
@@ -158,49 +158,43 @@ def SMap( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
     if dataFile :
-        DF = EDM_pybind.DF() 
+        DF = pyBindEDM.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "SMap(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "SMap(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM SMap:
     #  { "predictions" : {}, "coefficients" : {} }
-    D = EDM_pybind.SMap( pathIn,
-                         dataFile,
-                         DF,
-                         pathOut,
-                         predictFile,
-                         lib,
-                         pred,
-                         E, 
-                         Tp,
-                         knn,
-                         tau,
-                         theta,
-                         exclusionRadius,
-                         columns,
-                         target,
-                         smapFile,
-                         jacobians,
-                         embedded,
-                         const_pred,
-                         verbose  )
+    D = pyBindEDM.SMap( pathIn,
+                        dataFile,
+                        DF,
+                        pathOut,
+                        predictFile,
+                        lib,
+                        pred,
+                        E, 
+                        Tp,
+                        knn,
+                        tau,
+                        theta,
+                        exclusionRadius,
+                        columns,
+                        target,
+                        smapFile,
+                        jacobians,
+                        embedded,
+                        const_pred,
+                        verbose  )
 
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame
     df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame
 
-    # JP --------------------------------------------------------
-    # SMap coef df.time is not the right size?
-    # print( "Pred: ", df_pred.shape, "\n", df_pred.head(5) )
-    # print( "Coef: ", df_coef.shape, "\n", df_coef.head(5) )
-    # JP --------------------------------------------------------
-    
     if showPlot :
-        aux_funcs.PlotObsPred( df_pred, dataFile, E, Tp, False )
-        aux_funcs.PlotCoeff  ( df_coef, dataFile, E, Tp )
+        pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp, False )
+        pyEDM.AuxFunc.PlotCoeff  ( df_coef, dataFile, E, Tp )
 
     SMapDict = { 'predictions' : df_pred, 'coefficients' : df_coef }
     
@@ -230,38 +224,38 @@ def Multiview( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
     if dataFile :
-        DF = EDM_pybind.DF() 
+        DF = pyBindEDM.DF() 
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "Multiview(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "Multiview(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "Combo_rho" : {}, "Predictions" : {} }
-    D = EDM_pybind.Multiview( pathIn,
-                              dataFile,
-                              DF,
-                              pathOut,
-                              predictFile,
-                              lib,
-                              pred,
-                              E, 
-                              Tp,
-                              knn,
-                              tau,
-                              columns,
-                              target,
-                              multiview,
-                              verbose,
-                              numThreads )
+    D = pyBindEDM.Multiview( pathIn,
+                             dataFile,
+                             DF,
+                             pathOut,
+                             predictFile,
+                             lib,
+                             pred,
+                             E, 
+                             Tp,
+                             knn,
+                             tau,
+                             columns,
+                             target,
+                             multiview,
+                             verbose,
+                             numThreads )
     
     df_pred = DataFrame( D['Predictions'] ) # Convert to pandas DataFrame
     df_rho  = DataFrame( D['Combo_rho']   ) # Convert to pandas DataFrame
 
     if showPlot :
-        aux_funcs.PlotObsPred( df_pred, dataFile, E, Tp )
+        pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp )
 
     MV = { 'Predictions' : df_pred, 'Combo_rho' : df_rho }
     
@@ -292,31 +286,31 @@ def CCM( pathIn       = "./",
 
     # Establish DF as empty list or Pandas DataFrame for CCM()
     if dataFile :
-        DF = EDM_pybind.DF()
+        DF = pyBindEDM.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "CCM(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "CCM(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM CCM
-    D = EDM_pybind.CCM( pathIn,
-                        dataFile,
-                        DF,
-                        pathOut,
-                        predictFile,
-                        E, 
-                        Tp,
-                        knn,
-                        tau,
-                        columns,
-                        target,
-                        libSizes,
-                        sample,
-                        random,
-                        seed,
-                        verbose )
+    D = pyBindEDM.CCM( pathIn,
+                       dataFile,
+                       DF,
+                       pathOut,
+                       predictFile,
+                       E, 
+                       Tp,
+                       knn,
+                       tau,
+                       columns,
+                       target,
+                       libSizes,
+                       sample,
+                       random,
+                       seed,
+                       verbose )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -351,34 +345,34 @@ def EmbedDimension( pathIn       = "./",
                     numThreads   = 4,
                     showPlot     = True ):
  
-    '''Estimate optimal embedding dimension [1,10] on path/file.'''
+    '''Estimate optimal embedding dimension [1:maxE].'''
 
     # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
     if dataFile :
-        DF = EDM_pybind.DF()
+        DF = pyBindEDM.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "EmbedDimension(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "EmbedDimension(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM CCM
-    D = EDM_pybind.EmbedDimension( pathIn,
-                                   dataFile,
-                                   DF,
-                                   pathOut,
-                                   predictFile,
-                                   lib,
-                                   pred, 
-                                   maxE,
-                                   Tp,
-                                   tau,
-                                   columns,
-                                   target,
-                                   embedded,
-                                   verbose,
-                                   numThreads )
+    D = pyBindEDM.EmbedDimension( pathIn,
+                                  dataFile,
+                                  DF,
+                                  pathOut,
+                                  predictFile,
+                                  lib,
+                                  pred, 
+                                  maxE,
+                                  Tp,
+                                  tau,
+                                  columns,
+                                  target,
+                                  embedded,
+                                  verbose,
+                                  numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -411,34 +405,34 @@ def PredictInterval( pathIn       = "./",
                      verbose      = False,
                      numThreads   = 4,
                      showPlot     = True ):
-    '''Estimate optimal prediction interval [1,10] on path/file.'''
+    '''Estimate optimal prediction interval [1:maxTp]'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictInterval()
     if dataFile :
-        DF = EDM_pybind.DF()
+        DF = pyBindEDM.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "PredictInterval(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "PredictInterval(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM PredictInterval
-    D = EDM_pybind.PredictInterval( pathIn,
-                                    dataFile,
-                                    DF,
-                                    pathOut,
-                                    predictFile,
-                                    lib,
-                                    pred, 
-                                    maxTp,
-                                    E,
-                                    tau,
-                                    columns,
-                                    target,
-                                    embedded,
-                                    verbose,
-                                    numThreads )
+    D = pyBindEDM.PredictInterval( pathIn,
+                                   dataFile,
+                                   DF,
+                                   pathOut,
+                                   predictFile,
+                                   lib,
+                                   pred, 
+                                   maxTp,
+                                   E,
+                                   tau,
+                                   columns,
+                                   target,
+                                   embedded,
+                                   verbose,
+                                   numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -472,35 +466,35 @@ def PredictNonlinear( pathIn       = "./",
                       verbose      = False,
                       numThreads   = 4,
                       showPlot     = True ):
-    '''Estimate S-map localisation on theta in [0.01,9] on path/file.'''
+    '''Estimate S-map localisation over theta.'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
     if dataFile :
-        DF = EDM_pybind.DF()
+        DF = pyBindEDM.DF()
     elif isinstance( dataFrame, DataFrame ) :
         if dataFrame.empty :
             raise Exception( "PredictNonlinear(): dataFrame is empty." )
-        DF = aux_funcs.PandasDataFrametoDF( dataFrame )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "PredictNonlinear(): Invalid data input." )
 
     # D is a Python dict from pybind11 < cppEDM PredictNonlinear
-    D = EDM_pybind.PredictNonlinear( pathIn,
-                                     dataFile,
-                                     DF,
-                                     pathOut,
-                                     predictFile,
-                                     lib,
-                                     pred, 
-                                     theta,
-                                     E,
-                                     Tp,
-                                     tau,
-                                     columns,
-                                     target,
-                                     embedded,
-                                     verbose,
-                                     numThreads )
+    D = pyBindEDM.PredictNonlinear( pathIn,
+                                    dataFile,
+                                    DF,
+                                    pathOut,
+                                    predictFile,
+                                    lib,
+                                    pred, 
+                                    theta,
+                                    E,
+                                    Tp,
+                                    tau,
+                                    columns,
+                                    target,
+                                    embedded,
+                                    verbose,
+                                    numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
