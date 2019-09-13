@@ -170,6 +170,7 @@ DataFrame<double> CCM( std::string pathIn       = "./data/",
                        std::string libSizes_str = "",
                        int         sample       = 0,
                        bool        random       = true,
+                       bool        replacement  = false,
                        unsigned    seed         = 0,     // seed=0: use RNG
                        bool        verbose      = true );
 
@@ -185,6 +186,7 @@ DataFrame<double> CCM( DataFrame< double > &dataFrameIn,
                        std::string libSizes_str = "",
                        int         sample       = 0,
                        bool        random       = true,
+                       bool        replacement  = false,
                        unsigned    seed         = 0,     // seed=0: use RNG
                        bool        verbose      = true );
 

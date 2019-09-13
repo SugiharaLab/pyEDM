@@ -278,6 +278,7 @@ def CCM( pathIn       = "./",
          libSizes     = "",
          sample       = 0,
          random       = True,
+         replacement  = False,
          seed         = 0,
          verbose      = False,
          showPlot     = False ):
@@ -309,6 +310,7 @@ def CCM( pathIn       = "./",
                        libSizes,
                        sample,
                        random,
+                       replacement,
                        seed,
                        verbose )
 

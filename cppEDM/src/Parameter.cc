@@ -39,6 +39,7 @@ Parameters::Parameters(
     std::string libSizes_str,
     int         sample,
     bool        random,
+    bool        replacement,
     unsigned    rseed,
     bool        noNeigh,
     bool        fwdTau
@@ -78,6 +79,7 @@ Parameters::Parameters(
     libSizes_str     ( libSizes_str ),
     subSamples       ( sample ),
     randomLib        ( random ),
+    replacement      ( replacement ),
     seed             ( rseed ),
     noNeighborLimit  ( noNeigh ),
     forwardTau       ( fwdTau ),

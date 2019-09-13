@@ -1,5 +1,5 @@
 
-import pyEDM
+import pyEDM as EDM
 import unittest
 import pkg_resources # Get data file names from EDM package
 
@@ -157,7 +157,7 @@ class test_EDM( unittest.TestCase ):
         df = EDM.CCM( "", self.Files[ "sardine_anchovy_sst.csv" ],
                       None, "./", "", 
                       3, 0, 0, 1, "anchovy", "np_sst",
-                      "10 75 5", 1, False, 0, True )
+                      "10 75 5", 1, False, False, 0, True )
 
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "CCM_anch_sst_cppEDM_valid.csv" ] )
