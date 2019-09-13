@@ -83,7 +83,7 @@ def Examples():
     #---------------------------------------------------------------
     cmd = str().join(['CCM( dataFrame = sampleData["sardine_anchovy_sst"],',
                       ' E = 3, Tp = 0, columns = "anchovy", target = "np_sst",',
-                      ' libSizes = "10 80 10", sample = 100, verbose = True, ',
+                      ' libSizes = "10 70 10", sample = 100, verbose = True, ',
                       ' showPlot = True) '])
     RunEDM( cmd )
 

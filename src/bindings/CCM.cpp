@@ -18,6 +18,7 @@ py::dict CCM_pybind( std::string pathIn,
                      std::string libSizes,
                      int         sample,
                      bool        random,
+                     bool        replacement,
                      unsigned    seed, 
                      bool        verbose ) {
     
@@ -39,6 +40,7 @@ py::dict CCM_pybind( std::string pathIn,
                          libSizes,
                          sample,
                          random,
+                         replacement,
                          seed,
                          verbose );
     }
@@ -57,6 +59,7 @@ py::dict CCM_pybind( std::string pathIn,
                          libSizes,
                          sample,
                          random,
+                         replacement,
                          seed,
                          verbose );
     }

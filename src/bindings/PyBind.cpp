@@ -138,6 +138,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("libSizes")    = std::string(""),
                py::arg("sample")      = 0,
                py::arg("random")      = true,
+               py::arg("replacement") = false,
                py::arg("seed")        = 0,
                py::arg("verbose")     = false );
     

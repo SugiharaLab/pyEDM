@@ -42,6 +42,7 @@ public:  // Not protected with accessors.
     std::vector<size_t> librarySizes;// CCM library sizes to evaluate
     int         subSamples;       // CCM number of samples to draw
     bool        randomLib;        // CCM randomly select subsets if true
+    bool        replacement;      // CCM random select with replacement if true
     unsigned    seed;             // CCM random selection RNG seed
     
     bool        noNeighborLimit;  // Strictly forbid neighbors outside library
@@ -103,6 +104,7 @@ public:  // Not protected with accessors.
         std::string libSizes_str = "",
         int         sample       = 0,
         bool        random       = true,
+        bool        replacement  = false,
         unsigned    seed         = 0,   // 0: Generate random seed in CCM
         bool        noNeighbor   = false,
         bool        forwardTau   = false

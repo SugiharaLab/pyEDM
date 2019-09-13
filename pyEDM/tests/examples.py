@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-import pyEDM
+import pyEDM as EDM
 import pkg_resources # Get data file names from EDM package
 
 #------------------------------------------------------------
@@ -62,7 +62,7 @@ def main():
     
     df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
                   3, 0, 0, 1, "anchovy", "np_sst",
-                  "10 80 10", 100, True, 0, True, True )
+                  "10 70 10", 100, True, False, 0, True, True )
 
 #------------------------------------------------------------
 #------------------------------------------------------------

@@ -1,6 +1,7 @@
 
 #include <cstdlib>
 #include <random>
+#include <unordered_set>
 #include <chrono>
 
 #ifdef CCM_THREADED // Defined in makefile
@@ -59,6 +60,7 @@ DataFrame <double > CCM( std::string pathIn,
                          std::string libSizes_str,
                          int         sample,
                          bool        random,
+                         bool        replacement,
                          unsigned    seed,
                          bool        verbose )
 {
@@ -81,6 +83,7 @@ DataFrame <double > CCM( std::string pathIn,
                                              libSizes_str,
                                              sample,
                                              random,
+                                             replacement,
                                              seed,
                                              verbose );
     delete dataFrameIn;
@@ -104,6 +107,7 @@ DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
                          std::string libSizes_str,
                          int         sample,
                          bool        random,
+                         bool        replacement,
                          unsigned    seed,
                          bool        verbose )
 {
@@ -122,7 +126,8 @@ DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
                                    "", "", E, Tp, knn, tau, 0, 0,
                                    columns, target, false, false, verbose,
                                    "", "", "", 0, 0, 0, 0,
-                                   libSizes_str, sample, random, seed );
+                                   libSizes_str, sample, random,
+                                   replacement, seed );
 
     if ( param.columnNames.size() > 1 ) {
         std::cout << "WARNING: CCM() Only the first column will be mapped.\n";
@@ -282,7 +287,7 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
     //-----------------------------------------------------------------
     size_t maxSamples;
     if ( paramCCM.randomLib ) {
-        // Random samples from library with replacement
+        // Random samples from library
         maxSamples = paramCCM.subSamples;
     }
     else {
@@ -291,7 +296,7 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
     }
 
     //-----------------------------------------------------------------
-    // Create random number generator
+    // Create random number generator: DefaultRandEngine
     //-----------------------------------------------------------------
     if ( paramCCM.randomLib ) {
         if ( paramCCM.seed == 0 ) {
@@ -302,8 +307,8 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
             paramCCM.seed = duration.count();
         }
     }
-    std::default_random_engine generator( paramCCM.seed );
-            
+    std::default_random_engine DefaultRandomEngine( paramCCM.seed );
+
     //-----------------------------------------------------------------
     // Distance for all possible pred : lib E-dimensional vector pairs
     // Distances is a square Matrix of all row to to row distances
@@ -332,7 +337,7 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
 
         size_t lib_size = paramCCM.librarySizes[ lib_size_i ];
 
-        // Create RNG sampler for this lib_size
+        // Create random RNG sampler for this lib_size
         std::uniform_int_distribution<size_t> distribution( 0, N_row - 1 );
         
 #ifdef DEBUG_ALL
@@ -351,9 +356,45 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
             std::vector< size_t > lib_i( lib_size );
 
             if ( paramCCM.randomLib ) {
-                // Uniform random sample of rows, with replacement
-                for ( size_t i = 0; i < lib_size; i++ ) {
-                    lib_i[ i ] = distribution( generator );
+                // Uniform random sample of rows
+                
+                if ( paramCCM.replacement ) {
+                    // With replacement
+                    for ( size_t i = 0; i < lib_size; i++ ) {
+                        lib_i[ i ] = distribution( DefaultRandomEngine );
+                    }
+                }
+                else {
+                    // Without replacement lib_size elements from [0, N_row-1]
+                    // Robert W. Floyd's algorithm
+                    // NOTE: c++17 has the sample() function in <algorithm>
+                    if ( lib_size >= N_row ) {
+                        std::stringstream errMsg;
+                        errMsg << "CrossMap(): lib_size=" << lib_size
+                               << " must be less than N_row=" << N_row
+                               << " for random sample with replacement.";
+                        throw std::runtime_error( errMsg.str() );
+                    }
+                    
+                    // unordered set to store samples
+                    std::unordered_set<size_t> samples;
+                    
+                    // Sample and insert values into samples
+                    for ( size_t r = N_row - lib_size; r < N_row; r++ ) {
+                        size_t v = distribution( DefaultRandomEngine );
+                        if ( not samples.insert( v ).second ) {
+                            samples.insert( r );
+                        }
+                    }
+                    
+                    // Copy samples into result
+                    std::vector<size_t> result(samples.begin(), samples.end());
+                    
+                    // Shuffle result
+                    std::shuffle( result.begin(), result.end(),
+                                  DefaultRandomEngine  );
+
+                    lib_i = result; // Copy result to lib_i
                 }
             }
             else {
