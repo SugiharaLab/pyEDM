@@ -61,8 +61,8 @@ class test_EDM( unittest.TestCase ):
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "Smplx_E3_block_3sp_pyEDM.csv" ] )
         
-        S1 =       dfv.get('Prediction_t(+1)')
-        S2 = round( df.get('Predictions'), 4 ) 
+        S1 =       dfv.get('Prediction_t(+1)')[1:95] # Skip row 0 Nan
+        S2 = round( df.get('Predictions'), 4 )[1:95] # Skip row 0 Nan
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
@@ -79,8 +79,8 @@ class test_EDM( unittest.TestCase ):
         dfv = EDM.ReadDataFrame( "",
                                  self.Files["Smplx_embd_block_3sp_pyEDM.csv"] )
         
-        S1 =       dfv.get('Prediction_t(+1)')
-        S2 = round( df.get('Predictions'), 4 ) 
+        S1 =       dfv.get('Prediction_t(+1)')[1:98] # Skip row 0 Nan
+        S2 = round( df.get('Predictions'), 4 )[1:98] # Skip row 0 Nan
         self.assertTrue( S1.equals( S2 ) )
         
     #------------------------------------------------------------
@@ -131,15 +131,17 @@ class test_EDM( unittest.TestCase ):
     def test_multiview( self ):
         print ( "--- Multiview ---" )
         M = EDM.Multiview( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
-                          "1 100", "101 198", 3, 1, 0, 1,
+                           "1 100", "101 198", 3, 1, 0, 1,
                            "x_t y_t z_t", "x_t", 0, False, 4 )
 
         df_pred  = M['Predictions']
         df_combo = round( M['Combo_rho'  ], 4 )
         
         # cppEDM and devPDM outputs are rounded to os.precision( 4 );
-        dfv = EDM.ReadDataFrame( "", self.Files[ "Multiview_pred_valid.csv" ] )
-        dfc = EDM.ReadDataFrame( "", self.Files[ "Multiview_combos_valid.csv" ])
+        dfv = EDM.ReadDataFrame( "", self.Files[ "Multiview_pred_valid.csv" ],
+                                 noTime = True )
+        dfc = EDM.ReadDataFrame( "", self.Files[ "Multiview_combos_valid.csv" ],
+                                 noTime = True )
 
         # Validate predictions
         M1 = dfv.get('Predictions')
@@ -160,8 +162,9 @@ class test_EDM( unittest.TestCase ):
                       "10 75 5", 1, False, False, 0, True )
 
         dfv = EDM.ReadDataFrame( "",
-                                 self.Files[ "CCM_anch_sst_cppEDM_valid.csv" ] )
-        
+                                 self.Files[ "CCM_anch_sst_cppEDM_valid.csv" ],
+                                 noTime = True )
+
         self.assertTrue( dfv.equals( round( df, 4 ) ) )
 
 #------------------------------------------------------------
