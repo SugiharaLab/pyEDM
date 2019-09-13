@@ -131,30 +131,33 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
     show( block = block )
     
 #------------------------------------------------------------------------
-# pybind C++  DF = list< pair< string, valarray<double> > >
-# pybind Py        [ ( string, array ),  ]
+# pybind C++  DF = struct { string timeName, vector<string> time, DataList }
+#             DataList = list< pair< string, valarray > >
+#
+# pybind Py   [ ( string, array ), ..., ]
 #------------------------------------------------------------------------
 def PandasDataFrametoDF( df ):
-    '''Convert Pandas DataFrame to list of tuples.'''
+    '''Convert Pandas DataFrame to DF struct.'''
 
     if df is None :
         raise RuntimeError( "PandasDataFrametoDF() empty DataFrame" )
+
+    # Here is a fundamental problem/incompatability between cppEDM and pyEDM
+    # cppEDM DataFrame stores time vector as strings, and data as valarray
+    # time values are not strictly required DataFrame( noTime = true )
+    # Here, we don't have a way to know if the Pandas dataframe passed in
+    # will have a time vector or not... So... We will just require/assume
+    # that the first column is ALWAYS a time or index vector.
+    timeName = df.columns[0]
+    timeVec  = df.get( timeName )
+    time     = [ str( x ) for x in timeVec ] # convert to list of strings
     
-    # Need to create lists separately since pybind list append not working ??
-    timeName = 'Time'
-    time     = []
     dataList = []
 
-    if df.columns[0] is timeName : 
-        time = df[ timeName ].tolist()
-    else : 
-        # Create time column if doesn't exist
-        time = [ str(i) for i in list( range( df.shape[0] ) ) ]
+    # Add time series data, Skipping the first column!!!
+    for column in df.columns[1:] :
+        dataList.append( ( column, df.get( column ) ) )
 
-    # Add time series data
-    for column in df.columns :
-        dataList.append( ( column, df.get( column ).tolist() ) )
-    
     # cppEDM DF struct
     DF          = pyBindEDM.DF()
     DF.timeName = timeName
@@ -176,13 +179,11 @@ def ComputeError( obs, pred ):
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
-def ReadDataFrame( path, file ):
+def ReadDataFrame( path, file, noTime = False ):
     '''Read path/file into DataFrame.'''
 
-    D = pyBindEDM.ReadDataFrame( path, file )
+    D = pyBindEDM.ReadDataFrame( path, file, noTime )
     
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     return df
-
-

@@ -38,8 +38,9 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
 
     // Load cppEDM DataFrame( path, file ) into py::dict
     pyMod.def( "ReadDataFrame", &ReadDataFrame,
-               py::arg("path") = "",
-               py::arg("file") = "" );
+               py::arg("path")   = "",
+               py::arg("file")   = "",
+               py::arg("noTime") = false );
     
     pyMod.def( "MakeBlock", &MakeBlock_pybind,
                py::arg("pyInput")     = DF(),

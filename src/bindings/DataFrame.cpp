@@ -118,11 +118,12 @@ py::dict DFtoDict( DF df ) {
 // Load path/file into cppEDM DataFrame, convert to Python
 // dict{ column : array }
 //---------------------------------------------------------------
-py::dict ReadDataFrame( std::string path, std::string file ) {
+py::dict ReadDataFrame( std::string path, std::string file,
+                        bool noTime = false ) {
 
     // DataFrame stores first column of time into
     // DataFrame.Time() vector< string > and dataFrame.TimeName()
-    DataFrame< double > dataFrame = DataFrame< double >( path, file );
+    DataFrame< double > dataFrame = DataFrame< double >( path, file, noTime );
 
     // list< pair< string, valarray<double> >>
     DF df = DataFrameToDF( dataFrame );
