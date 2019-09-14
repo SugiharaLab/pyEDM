@@ -372,7 +372,7 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
                         std::stringstream errMsg;
                         errMsg << "CrossMap(): lib_size=" << lib_size
                                << " must be less than N_row=" << N_row
-                               << " for random sample with replacement.";
+                               << " for random sample without replacement.";
                         throw std::runtime_error( errMsg.str() );
                     }
                     
