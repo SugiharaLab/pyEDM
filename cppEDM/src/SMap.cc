@@ -240,8 +240,8 @@ SMapValues SMap( DataFrame< double > &data,
         coefficients.ColumnNames().push_back( coefName.str() );
     }
 
-    // Coefficient output DataFrame
-    DataFrame< double > coefOut = DataFrame< double >( N_row, param.E + 2 );
+    // Coefficient output DataFrame : Includes time from predictions
+    DataFrame< double > coefOut = DataFrame< double >( N_row, param.E + 1 );
     
     // Prediction times
     std::vector<std::string> predTime( param.prediction.size() + param.Tp );
@@ -255,7 +255,6 @@ SMapValues SMap( DataFrame< double > &data,
     
     // Populate coefOut column names
     std::vector<std::string> coefNames;
-    coefNames.push_back( "Time" );
     for ( size_t col = 0; col < coefficients.ColumnNames().size(); col++ ) {
         coefNames.push_back( coefficients.ColumnNames()[ col ] );
     }
@@ -265,8 +264,8 @@ SMapValues SMap( DataFrame< double > &data,
     std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
 
     // Write coefficients to columns
-    for ( size_t col = 1; col < coefOut.NColumns(); col++ ) {
-        coefOut.WriteColumn( col, coefficients.Column( col - 1 ) );
+    for ( size_t col = 0; col < coefOut.NColumns(); col++ ) {
+        coefOut.WriteColumn( col, coefficients.Column( col ) );
     }
 
     if ( param.predictOutputFile.size() ) {
