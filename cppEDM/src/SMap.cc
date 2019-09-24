@@ -106,7 +106,7 @@ SMapValues SMap( DataFrame< double > &data,
     
     DataFrame<double> &dataIn = std::ref( *dataInRef );
     
-   // target_vec spans the entire dataBlock, subset targetLibVector
+    // target_vec spans the entire dataBlock, subset targetLibVector
     // to library for row indexing used below:
     std::slice lib_i = std::slice( param.library[0], param.library.size(), 1 );
     std::valarray<double> targetLibVector = target_vec[ lib_i ];
@@ -199,8 +199,8 @@ SMapValues SMap( DataFrame< double > &data,
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term
 
         for ( size_t e = 1; e < param.E + 1; e++ ) {
-            prediction = prediction + C[ e ] *
-                dataBlock( param.prediction[ row ], e );
+            prediction = prediction +
+                C[ e ] * dataBlock( param.prediction[ row ], e );
         }
 
         predictions[ row ] = prediction;
@@ -225,7 +225,7 @@ SMapValues SMap( DataFrame< double > &data,
     //----------------------------------------------------
     // Ouput
     //----------------------------------------------------
-    // Observations & predictions
+    // Observations & predictions: Adjust rows/nan for Tp
     DataFrame<double> dataOut = FormatOutput( param,
                                               predictions,
                                               const_predictions,
@@ -233,41 +233,38 @@ SMapValues SMap( DataFrame< double > &data,
                                               dataIn.Time(),
                                               dataIn.TimeName() );
     
-    // Insert coefficients DataFrame column names: C0, C1, C2, ...
-    for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
-        std::stringstream coefName;
-        coefName << "C" << col;
-        coefficients.ColumnNames().push_back( coefName.str() );
-    }
-
-    // Coefficient output DataFrame : Includes time from predictions
-    DataFrame< double > coefOut = DataFrame< double >( N_row, param.E + 1 );
+    // Coefficient output DataFrame: N_row + Tp rows
+    DataFrame< double > coefOut = DataFrame< double >( dataOut.NRows(),
+                                                       param.E + 1 );
     
-    // Prediction times
-    std::vector<std::string> predTime( param.prediction.size() + param.Tp );
-    
-    if ( dataIn.Time().size() ) {
-        FillTimes( param, dataIn.Time(), std::ref( predTime ) );
-        coefOut.Time()     = predTime;
-        coefOut.TimeName() = dataIn.TimeName();
+    // Set time from: dataIn -> FormatOutput() -> FillTimes() -> dataOut
+    if ( dataOut.Time().size() ) {
+        coefOut.Time()     = dataOut.Time();
+        coefOut.TimeName() = dataOut.TimeName();
     }
     // else { throw ? }  JP
     
-    // Populate coefOut column names
+    // Populate coefOut column names: C0, C1, C2, ...
     std::vector<std::string> coefNames;
-    for ( size_t col = 0; col < coefficients.ColumnNames().size(); col++ ) {
-        coefNames.push_back( coefficients.ColumnNames()[ col ] );
+    for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
+        std::stringstream coefName;
+        coefName << "C" << col;
+        coefNames.push_back( coefName.str() );
     }
     coefOut.ColumnNames() = coefNames;
 
-    // Prediction row slice
-    std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
-
-    // Write coefficients to columns
+    // coefficients have N_row's; coefOut has N_row + Tp
+    // Create coefficient column vector with Tp nan rows at the
+    // beginning of coefOut as in FormatOutput()
+    std::valarray<double> coefColumnVec( NAN, dataOut.NRows() );
+    
+    // Copy coefficients vectors into coefOut
+    std::slice coef_i = std::slice( param.Tp, N_row, 1 );
     for ( size_t col = 0; col < coefOut.NColumns(); col++ ) {
-        coefOut.WriteColumn( col, coefficients.Column( col ) );
+        coefColumnVec[ coef_i ] = coefficients.Column( col );
+        coefOut.WriteColumn( col, coefColumnVec );
     }
-
+    
     if ( param.predictOutputFile.size() ) {
         // Write predictions to disk
         dataOut.WriteData( param.pathOut, param.predictOutputFile );
