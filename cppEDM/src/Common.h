@@ -25,7 +25,7 @@
 #define DISTANCE_LIMIT 1E299  // Must be less than DISTANCE_MAX, but large
 
 // Enumerations
-enum class Method         { None, Embed, Simplex, SMap };
+enum class Method         { None, Embed, Simplex, SMap, CCM };
 enum class DistanceMetric { Euclidean, Manhattan };
 
 //---------------------------------------------------------
@@ -43,8 +43,9 @@ struct SMapValues {
 };
 
 struct MultiviewValues {
-    DataFrame< double > Combo_rho;
+    DataFrame< double > Combo_rho;              // col_i..., rho, MAE, RMSE
     DataFrame< double > Predictions;
+    std::vector< std::string > Combo_rho_table; // includes column names
 
 #ifdef MULTIVIEW_VALUES_OVERLOAD
     // Don't define constructors for the setuptools module build on Windows
@@ -54,9 +55,11 @@ struct MultiviewValues {
     // Constructors
     MultiviewValues();
 
-    MultiviewValues( DataFrame< double > combo_rho,
-                     DataFrame< double > predictions ):
-        Combo_rho( combo_rho ), Predictions( predictions ) {}
+    MultiviewValues( DataFrame< double >        combo_rho,
+                     DataFrame< double >        predictions,
+                     std::vector< std::string > combo_rho_table ):
+        Combo_rho( combo_rho ), Predictions( predictions ),
+        Combo_rho_table( combo_rho_table ) {}
 #endif
 };
 
@@ -190,6 +193,39 @@ DataFrame<double> CCM( DataFrame< double > &dataFrameIn,
                        unsigned    seed         = 0,     // seed=0: use RNG
                        bool        verbose      = true );
 
+MultiviewValues Multiview( std::string pathIn          = "./",
+                           std::string dataFile        = "",
+                           std::string pathOut         = "./",
+                           std::string predictFile     = "",
+                           std::string lib             = "",
+                           std::string pred            = "",
+                           int         E               = 0,
+                           int         Tp              = 1,
+                           int         knn             = 0,
+                           int         tau             = 1,
+                           std::string columns         = "",
+                           std::string target          = "",
+                           int         multiview       = 0,
+                           int         exclusionRadius = 0,
+                           bool        verbose         = false,
+                           unsigned    nThreads        = 4 );
+
+MultiviewValues Multiview( DataFrame< double >,
+                           std::string pathOut         = "./",
+                           std::string predictFile     = "",
+                           std::string lib             = "",
+                           std::string pred            = "",
+                           int         E               = 0,
+                           int         Tp              = 1,
+                           int         knn             = 0,
+                           int         tau             = 1,
+                           std::string columns         = "",
+                           std::string target          = "",
+                           int         multiview       = 0,
+                           int         exclusionRadius = 0,
+                           bool        verbose         = false,
+                           unsigned    nThreads        = 4 );
+
 DataFrame<double> EmbedDimension( std::string pathIn      = "./data/",
                                   std::string dataFile    = "",
                                   std::string pathOut     = "./",
@@ -278,35 +314,4 @@ DataFrame<double> PredictNonlinear( DataFrame< double > &dataFrameIn,
                                     bool        embedded    = false,
                                     bool        verbose     = true,
                                     unsigned    nThreads    = 4 );
-
-MultiviewValues Multiview( std::string pathIn      = "./",
-                           std::string dataFile    = "",
-                           std::string pathOut     = "./",
-                           std::string predictFile = "",
-                           std::string lib         = "",
-                           std::string pred        = "",
-                           int         E           = 0,
-                           int         Tp          = 1,
-                           int         knn         = 0,
-                           int         tau         = 1,
-                           std::string columns     = "",
-                           std::string target      = "",
-                           int         multiview   = 0,
-                           bool        verbose     = false,
-                           unsigned    nThreads    = 4 );
-
-MultiviewValues Multiview( DataFrame< double >,
-                           std::string pathOut     = "./",
-                           std::string predictFile = "",
-                           std::string lib         = "",
-                           std::string pred        = "",
-                           int         E           = 0,
-                           int         Tp          = 1,
-                           int         knn         = 0,
-                           int         tau         = 1,
-                           std::string columns     = "",
-                           std::string target      = "",
-                           int         multiview   = 0,
-                           bool        verbose     = false,
-                           unsigned    nThreads    = 4 );
 #endif

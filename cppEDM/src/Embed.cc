@@ -47,6 +47,22 @@ DataFrame< double > Embed( DataFrame< double > dataFrameIn,
         throw std::runtime_error("Embed(DataFrame): columnNameIndex empty.\n");
     }
 
+    // If columns provided, validate they are in dataFrameIn
+    for ( auto colName : param.columnNames ) {
+        auto ci = find( dataFrameIn.ColumnNames().begin(),
+                        dataFrameIn.ColumnNames().end(), colName );
+        
+        if ( ci == dataFrameIn.ColumnNames().end() ) {
+            std::stringstream errMsg;
+            errMsg << "Embed(DataFrame): Failed to find column "
+                   << colName << " in dataFrame with columns: [ ";
+            for ( auto col : dataFrameIn.ColumnNames() ) {
+                errMsg << col << " ";
+            } errMsg << " ]\n";
+            throw std::runtime_error( errMsg.str() );    
+        }
+    }
+
     // Get column names for MakeBlock
     std::vector< std::string > colNames;
     if ( param.columnNames.size() ) {
@@ -70,20 +86,17 @@ DataFrame< double > Embed( DataFrame< double > dataFrameIn,
     DataFrame< double > dataFrame;
     
     if ( param.columnNames.size() ) {
-        // Get a vector of column indices 
-        std::vector< size_t > col_i;
-        for ( auto colName : param.columnNames ) {
-            col_i.push_back( dataFrameIn.ColumnNameToIndex()[ colName ] );
-        }
-        dataFrame = dataFrameIn.DataFrameFromColumnIndex( col_i );
+        dataFrame = dataFrameIn.DataFrameFromColumnNames( param.columnNames );
     }
     else if ( param.columnIndex.size() ) {
         // already have column indices
+        // Note there will be no column names transferred
         dataFrame = dataFrameIn.DataFrameFromColumnIndex( param.columnIndex );
     }
-
+        
     DataFrame< double > embedding = MakeBlock( dataFrame, E, tau,
                                                colNames, verbose );
+        
     return embedding;
 }
 
