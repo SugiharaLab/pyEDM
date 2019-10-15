@@ -1,7 +1,30 @@
 
+//--------------------------------------------------------------------
+// Data input requires columns to specify timeseries columns
+// that will be embedded by Embed(), and target for predictions.
+// 
+// E represents the number of variables to combine for each
+// assessment, as well as the number of time delays to create in 
+// Embed() for each variable.
+// 
+// multiview is the number of top-ranked E-dimensional predictions
+// to "average" for the final prediction. Corresponds to parameter
+// k in Ye & Sugihara with default k = sqrt(m) where m is the
+// number of combinations C(n,E) available from the n = nColumns * E
+// columns taken E at-a-time. 
+//
+// Parameters.Validate() with Method::Simplex sets knn equal to E+1
+// if knn not specified.
+// 
+// Ye H., and G. Sugihara, 2016. Information leverage in
+// interconnected ecosystems: Overcoming the curse of dimensionality.
+// Science 353:922–925.
+//--------------------------------------------------------------------
+
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <queue>
 
 #include "Common.h"
 #include "AuxFunc.h"
@@ -10,9 +33,14 @@ namespace EDM_Multiview {
     // Thread Work Queue : Vector of combos indices
     typedef std::vector< int > WorkQueue;
     
+    // Thread exception_ptr queue
+    std::queue< std::exception_ptr > exceptionQ;
+    
     // atomic counter for all threads
     std::atomic<std::size_t> eval_i(0); // initialize to 0
+    
     std::mutex mtx;
+    std::mutex q_mtx;
 }
 
 //----------------------------------------------------------------
@@ -27,9 +55,13 @@ DataFrame<double> SimplexProjection( Parameters  param,
 void EvalComboThread( Parameters                            param,
                       EDM_Multiview::WorkQueue              workQ,
                       std::vector< std::vector< size_t > >  combos,
-                      DataFrame< double >                  &data,
+                      DataFrame< double >                  &embedding,
+                      std::valarray< double >              &targetVec,
                       DataFrame< double >                  &combos_rho,
                       std::vector< DataFrame< double > >   &prediction );
+
+std::vector< std::string > ComboRhoTable( DataFrame<double>          combosRho,
+                                          std::vector< std::string > colNames );
 
 //----------------------------------------------------------------
 // Multiview() : Evaluate Simplex rho vs. dimension E
@@ -49,6 +81,7 @@ MultiviewValues Multiview( std::string pathIn,
                            std::string columns,
                            std::string target,
                            int         multiview,
+                           int         exclusionRadius,
                            bool        verbose,
                            unsigned    nThreads ) {
 
@@ -67,6 +100,7 @@ MultiviewValues Multiview( std::string pathIn,
                                         columns,
                                         target,
                                         multiview,
+                                        exclusionRadius,
                                         verbose,
                                         nThreads );
     return result;
@@ -88,16 +122,18 @@ MultiviewValues  Multiview( DataFrame< double > data,
                             std::string         columns,
                             std::string         target,
                             int                 multiview,
+                            int                 exclusionRadius,
                             bool                verbose,
                             unsigned            nThreads ) {
 
     // Create local Parameters struct. Note embedded = true
     Parameters param = Parameters( Method::Simplex, "", "",
                                    pathOut, predictFile,
-                                   lib, pred, E, Tp, knn, tau, 0, 0,
-                                   columns, target, true, false, verbose,
+                                   lib, pred, E, Tp, knn, tau, 0,
+                                   exclusionRadius, columns, target,
+                                   true, false, verbose,
                                    "", "", "", 0, 0, 0, multiview );
-    
+
     if ( not param.columnNames.size() ) {
         throw std::runtime_error( "Multiview() requires column names." );
     }
@@ -112,6 +148,64 @@ MultiviewValues  Multiview( DataFrame< double > data,
         throw std::runtime_error( "Multiview() params not validated." );        
     }
 
+    // Validate that columns & target are in data
+    for ( auto colName : param.columnNames ) {
+        auto ci = find( data.ColumnNames().begin(),
+                        data.ColumnNames().end(), colName );
+        
+        if ( ci == data.ColumnNames().end() ) {
+            std::stringstream errMsg;
+            errMsg << "Multiview(): Failed to find column "
+                   << colName << " in dataFrame with columns: [ ";
+            for ( auto col : data.ColumnNames() ) {
+                errMsg << col << " ";
+            } errMsg << " ]\n";
+            throw std::runtime_error( errMsg.str() );
+        }
+    }
+    auto ti = find( data.ColumnNames().begin(),
+                    data.ColumnNames().end(), param.targetName );
+    if ( ti == data.ColumnNames().end() ) {
+        std::stringstream errMsg;
+        errMsg << "Multiview(): Failed to find target "
+               << param.targetName << " in dataFrame with columns: [ ";
+        for ( auto col : data.ColumnNames() ) {
+            errMsg << col << " ";
+        } errMsg << " ]\n";
+        throw std::runtime_error( errMsg.str() );
+    }
+
+    // Validate data rows against lib and pred indices
+    CheckDataRows( param, std::ref( data ), "Multiview()" );
+
+    //------------------------------------------------------------
+    // Generate embedding on param.columns_str
+    // embedding will have tau * (E-1) fewer rows than data
+    //------------------------------------------------------------
+    DataFrame< double > embedding = Embed( data,
+                                           param.E,
+                                           param.tau,
+                                           param.columns_str,
+                                           param.verbose );
+
+    size_t shift = std::max( 0, param.tau * (param.E - 1) );
+    
+    // Delete data top rows of partial data
+    if ( not data.PartialDataRowsDeleted() ) {
+        // Not thread safe
+        std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );
+        
+        data.DeletePartialDataRows( shift );
+    }
+        
+    // Adjust param.library and param.prediction vectors of indices
+    if ( shift > 0 ) {
+        param.DeleteLibPred( shift );
+    }
+
+    // Get target
+    std::valarray< double > targetVec = data.VectorColumnName(param.targetName);
+    
     // Save param.predictOutputFile and reset so Simplex() does not write 
     std::string outputFile = param.predictOutputFile;
     param.predictOutputFile = "";
@@ -158,15 +252,18 @@ MultiviewValues  Multiview( DataFrame< double > data,
     param.prediction = param.library;
 
     // Create column names for the results DataFrame
-    // One row for each combo, E columns (a combo), and rho
+    // One row for each combo: E columns (a combo), rho, MAE, RMSE
+    // JP: NOTE DataFrame is based on valarray, so we can't store non
+    //     numeric values (column names) in the results DataFrame.
     std::stringstream header;
     for ( auto i = 1; i <= param.E; i++ ) {
         header << "Col_" << i << " ";
     }
     header << "rho MAE RMSE";
 
-    // Results Data Frame: E columns (a combo), and rho mae rmse
+    // Results Data Frame: E columns (a combo), rho, mae, rmse
     DataFrame<double> combos_rho( combos.size(), param.E + 3, header.str() );
+    
     // Results vector of DataFrame's with prediction results
     std::vector< DataFrame< double > > combos_prediction( combos.size() );
         
@@ -188,7 +285,8 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                         param,
                                         workQ,
                                         combos,
-                                        std::ref( data ),
+                                        std::ref( embedding ),
+                                        std::ref( targetVec ),
                                         std::ref( combos_rho ),
                                         std::ref( combos_prediction ) ) );
     }
@@ -196,6 +294,21 @@ MultiviewValues  Multiview( DataFrame< double > data,
     // join threads
     for ( auto &thrd : threads ) {
         thrd.join();
+    }
+
+    // If thread threw exception, get from queue and rethrow
+    if ( not EDM_Multiview::exceptionQ.empty() ) {
+        std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
+
+        // Take the first exception in the queue
+        std::exception_ptr exceptionPtr = EDM_Multiview::exceptionQ.front();
+
+        // Unroll all other exception from the thread/loops
+        while( not EDM_Multiview::exceptionQ.empty() ) {
+            // JP When do these exception_ptr get deleted? Is it a leak?
+            EDM_Multiview::exceptionQ.pop();
+        }
+        std::rethrow_exception( exceptionPtr );
     }
 
     //-----------------------------------------------------------------
@@ -239,7 +352,7 @@ MultiviewValues  Multiview( DataFrame< double > data,
         combo_best( combo_sort.begin(),
                     combo_sort.begin() + param.MultiviewEnsemble );
    
-#ifdef DEBUG
+#ifdef DEBUG_ALL
     std::cout << "Multiview(): Best combos:\n";
     for ( auto i = 0; i < combo_best.size(); i++ ) {
         std::pair< double, int > combo_pair = combo_best[ i ];
@@ -283,7 +396,8 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                              param,
                                              workQ_pred,
                                              combos_best,
-                                             std::ref( data ),
+                                             std::ref( embedding ),
+                                             std::ref( targetVec ),
                                              std::ref( combos_rho_pred ),
                                              std::ref( combos_rho_prediction)));
     }
@@ -291,6 +405,21 @@ MultiviewValues  Multiview( DataFrame< double > data,
     // join threads
     for ( auto &thrd : threads_pred ) {
         thrd.join();
+    }
+    
+    // If thread threw exception, get from queue and rethrow
+    if ( not EDM_Multiview::exceptionQ.empty() ) {
+        std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
+
+        // Take the first exception in the queue
+        std::exception_ptr exceptionPtr = EDM_Multiview::exceptionQ.front();
+
+        // Unroll all other exception from the thread/loops
+        while( not EDM_Multiview::exceptionQ.empty() ) {
+            // JP When do these exception_ptr get deleted? Is it a leak?
+            EDM_Multiview::exceptionQ.pop();
+        }
+        std::rethrow_exception( exceptionPtr );
     }
     
 #ifdef DEBUG_ALL
@@ -350,13 +479,20 @@ MultiviewValues  Multiview( DataFrame< double > data,
         Prediction.WriteData( param.pathOut, outputFile );
     }
 
+    // Create combos_rho table with column names
+    std::vector< std::string > comboTable =
+        ComboRhoTable( combos_rho_pred, embedding.ColumnNames() );
+
     if ( param.verbose ) {
         std::cout << "Multiview(): rho " << ve.rho
                   << "  MAE " << ve.MAE << "  RMSE " << ve.RMSE << std::endl;
-        std::cout << combos_rho_pred;
+        std::cout << std::endl << "Multiview Combinations:" << std::endl;
+        for ( auto tableRow : comboTable ) {
+            std::cout << tableRow << std::endl;
+        } std::cout << std::endl; 
    }
 
-    struct MultiviewValues MV( combos_rho_pred, Prediction );
+    struct MultiviewValues MV( combos_rho_pred, Prediction, comboTable );
     
     return MV;
 }
@@ -369,7 +505,8 @@ MultiviewValues  Multiview( DataFrame< double > data,
 void EvalComboThread( Parameters                            param,
                       EDM_Multiview::WorkQueue              workQ,
                       std::vector< std::vector< size_t > >  combos,
-                      DataFrame< double >                  &data,
+                      DataFrame< double >                  &embedding,
+                      std::valarray< double >              &targetVec,
                       DataFrame< double >                  &combos_rho,
                       std::vector< DataFrame< double > >   &combos_prediction )
 {
@@ -386,6 +523,8 @@ void EvalComboThread( Parameters                            param,
         // Get the combo for this thread
         std::vector< size_t > combo = combos[ combo_i ];
 
+        try {
+        
         // Local copy with combo column indices (zero-offset)
         std::vector< size_t > combo_cols( combo );
 
@@ -399,7 +538,6 @@ void EvalComboThread( Parameters                            param,
             std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );
             std::cout << "EvalComboThread() Thread ["
                       << std::this_thread::get_id() << "] ";
-            //std::cout << data;
             std::cout << "combo: [";
             for ( auto i = 0; i < combo.size(); i++ ) {
                 std::cout << combo[i] << ",";
@@ -408,16 +546,14 @@ void EvalComboThread( Parameters                            param,
 #endif
 
         // Select combo columns from the data
-        DataFrame<double> comboData = data.DataFrameFromColumnIndex(combo_cols);
+        DataFrame<double> comboData =
+            embedding.DataFrameFromColumnIndex(combo_cols);
 
         // Compute neighbors on comboData
         Neighbors neighbors = FindNeighbors( comboData, param );
 
-        std::valarray<double> targetVec =
-            data.VectorColumnName( param.targetName );
-
         // Pack embedding, target, neighbors for SimplexProjection
-        DataEmbedNN embedNN = DataEmbedNN( &data,      comboData,
+        DataEmbedNN embedNN = DataEmbedNN( &embedding, comboData,
                                             targetVec, neighbors );
 
         // combo prediction
@@ -434,11 +570,15 @@ void EvalComboThread( Parameters                            param,
         {
             std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );
             std::cout << ve.rho << std::endl;
+            std::cout << "-------------- embedding -------------------\n";
+            std::cout << embedding;
+            std::cout << "-------------- comboData -------------------\n";
+            std::cout << comboData;
         }
 #endif
 
         // Write combo and rho to the Data Frame
-        // E columns (a combo), and rho
+        // E columns (a combo), E column names, rho, MAE, RMSE
         std::valarray< double > combo_row( combo.size() + 3 );
         for ( auto i = 0; i < combo.size(); i++ ) {
             combo_row[ i ] = combo[ i ];
@@ -448,7 +588,14 @@ void EvalComboThread( Parameters                            param,
         combo_row[ combo.size() + 2 ] = ve.RMSE;
         
         combos_rho.WriteRow( eval_i, combo_row );
-        
+
+        } // try
+        catch(...) {
+            // push exception pointer onto queue for main thread to catch
+            std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
+            EDM_Multiview::exceptionQ.push( std::current_exception() );
+        }
+    
         eval_i = std::atomic_fetch_add(&EDM_Multiview::eval_i, std::size_t(1));
     }
     
@@ -485,3 +632,60 @@ std::vector< std::vector< size_t > > Combination( int n, int k ) {
     return combos;
 }
 
+//----------------------------------------------------------------
+// Return combos_rho_pred DataFrame as a vector of strings
+// with column names. 
+//----------------------------------------------------------------
+std::vector< std::string > ComboRhoTable(
+    DataFrame<double>          combos_rho_pred,
+    std::vector< std::string > columnNames )
+{
+
+    // combos_rho_pred has E + 3 columns: Col_1, ... Col_E, rho, MAE, RMSE
+    size_t nCol = combos_rho_pred.NColumns() - 3; // JP Hardcoded silliness!
+
+    if ( nCol > columnNames.size() ) {
+        std::stringstream errMsg;
+        errMsg << "ComboRhoTable(): Combos_rho has " << nCol
+               << " columns, but the data embedding has "
+               << columnNames.size() << " elements.";
+        throw std::runtime_error( errMsg.str() );
+    }
+
+    std::vector< std::string > table;
+    
+    // Header
+    std::stringstream header;
+    for ( size_t col = 0; col < nCol; col++ ) {  // column indices
+        header << "col_" << col + 1 << ", ";
+    }
+    for ( size_t col = 0; col < nCol; col++ ) {  // column names
+        header << "name_" << col + 1 << ", ";
+    }
+    header << "rho, MAE, RMSE";
+    table.push_back( header.str() );
+
+    // Process each row of combos_rho_pred
+    for ( size_t row = 0; row < combos_rho_pred.NRows(); row++ ) {
+        std::stringstream rowsstring;
+        rowsstring.precision( 4 );
+        
+        std::valarray< double > rowValues = combos_rho_pred.Row( row );
+        
+        for ( size_t col = 0; col < nCol; col++ ) {
+            rowsstring << std::setw(4) << rowValues[ col ] <<  ", ";
+        }
+        for ( size_t col = 0; col < nCol; col++ ) {
+            size_t col_i = (size_t) rowValues[ col ];
+            rowsstring << columnNames[ col_i - 1 ] <<  ", ";
+        }
+
+        rowsstring << std::setw(6) << rowValues[ nCol     ] <<  ", "; // rho
+        rowsstring << std::setw(6) << rowValues[ nCol + 1 ] <<  ", "; // MAE
+        rowsstring << std::setw(6) << rowValues[ nCol + 2 ];          // RMSE
+        
+        table.push_back( rowsstring.str() );
+    }
+    
+    return table;
+}

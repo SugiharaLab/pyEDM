@@ -19,6 +19,7 @@ std::map< std::string, py::dict > Multiview_pybind (
     std::string  columns,
     std::string  target,
     int          multiview,
+    int          exclusionRadius,
     bool         verbose,
     unsigned int numThreads ) {
 
@@ -40,6 +41,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         columns,
                         target,
                         multiview,
+                        exclusionRadius,
                         verbose,
                         numThreads );
     }
@@ -58,6 +60,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         columns,
                         target,
                         multiview,
+                        exclusionRadius,
                         verbose,
                         numThreads );
     }
@@ -65,13 +68,13 @@ std::map< std::string, py::dict > Multiview_pybind (
         throw std::runtime_error( "Multiview_pybind(): Invalid input.\n" );
     }
 
-    DF df_combo_rho   = DataFrameToDF( MV.Combo_rho   );
-    DF df_predictions = DataFrameToDF( MV.Predictions );
+    DF predictions = DataFrameToDF( MV.Predictions );
+    DF combo_rho   = DataFrameToDF( MV.Combo_rho   );
 
     std::map< std::string, py::dict > MV_;
 
-    MV_["Combo_rho"  ] = DFtoDict( df_combo_rho   );
-    MV_["Predictions"] = DFtoDict( df_predictions );
+    MV_["View"  ]      = DFtoDict( combo_rho   );
+    MV_["Predictions"] = DFtoDict( predictions );
 
     return MV_;
 }

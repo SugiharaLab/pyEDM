@@ -194,14 +194,14 @@ public:
     //-----------------------------------------------------------------
     // Return (sub)DataFrame of specified column indices
     //-----------------------------------------------------------------
-    DataFrame<double> DataFrameFromColumnIndex( std::vector<size_t> columns ) {
+    DataFrame<double> DataFrameFromColumnIndex( std::vector<size_t> column_i ) {
         
-        DataFrame<double> M = DataFrame( n_rows, columns.size() );
+        DataFrame<double> M = DataFrame( n_rows, column_i.size() );
 
         size_t col_j = 0;
         
-        for ( size_t i = 0; i < columns.size(); i++ ) {
-            size_t col_i = columns[ i ];
+        for ( size_t i = 0; i < column_i.size(); i++ ) {
+            size_t col_i = column_i[ i ];
 
             if ( col_i >= n_columns ) {
                 std::stringstream errMsg;
@@ -221,6 +221,15 @@ public:
         if ( time.size() ) {
             M.Time()     = time;
             M.TimeName() = timeName;
+        }
+        // Add columnNames if present
+        if ( columnNames.size() ) {
+            std::vector < std::string > colNames;
+            for ( auto col_i : column_i ) {
+                colNames.push_back( columnNames.at( col_i ) );
+            }
+            M.ColumnNames() = colNames;
+            M.BuildColumnNameIndex();
         }
         
         return M;
@@ -263,9 +272,11 @@ public:
         
         DataFrame<double> M_col = DataFrameFromColumnIndex( col_i_vec );
         
-        // Now insert the columnNames
-        M_col.ColumnNames() = colNames;
-        M_col.BuildColumnNameIndex();
+        // Insert columnNames if not already present
+        if ( not M_col.ColumnNames().size() ) {
+            M_col.ColumnNames() = colNames;
+            M_col.BuildColumnNameIndex();
+        }
         
         return M_col;
     }
@@ -326,7 +337,7 @@ public:
 
         if ( partialDataRowsDeleted ) {
             std::cout << "DeletePartialDataRows(): Partial data rows have "
-                         "already beed deleted." << std::endl;
+                         "already been deleted." << std::endl;
             return;
         }
         

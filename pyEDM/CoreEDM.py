@@ -203,23 +203,24 @@ def SMap( pathIn       = "./",
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def Multiview( pathIn       = "./",
-               dataFile     = "",
-               dataFrame    = None,
-               pathOut      = "./",
-               predictFile  = "",
-               lib          = "",
-               pred         = "",
-               E            = 0, 
-               Tp           = 1,
-               knn          = 0,
-               tau          = 1,
-               columns      = "",
-               target       = "",
-               multiview    = 0,
-               verbose      = False,
-               numThreads   = 4,
-               showPlot     = False ):
+def Multiview( pathIn          = "./",
+               dataFile        = "",
+               dataFrame       = None,
+               pathOut         = "./",
+               predictFile     = "",
+               lib             = "",
+               pred            = "",
+               E               = 0, 
+               Tp              = 1,
+               knn             = 0,
+               tau             = 1,
+               columns         = "",
+               target          = "",
+               multiview       = 0,
+               exclusionRadius = 0,
+               verbose         = False,
+               numThreads      = 4,
+               showPlot        = False ):
     '''Multiview prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
@@ -233,7 +234,7 @@ def Multiview( pathIn       = "./",
         raise Exception( "Multiview(): Invalid data input." )
     
     # D is a Python dict from pybind11 < cppEDM Multiview:
-    #  { "Combo_rho" : {}, "Predictions" : {} }
+    #  { "View" : < vector< string >, "Predictions" : {} }
     D = pyBindEDM.Multiview( pathIn,
                              dataFile,
                              DF,
@@ -248,16 +249,17 @@ def Multiview( pathIn       = "./",
                              columns,
                              target,
                              multiview,
+                             exclusionRadius,
                              verbose,
                              numThreads )
     
     df_pred = DataFrame( D['Predictions'] ) # Convert to pandas DataFrame
-    df_rho  = DataFrame( D['Combo_rho']   ) # Convert to pandas DataFrame
+    view    = DataFrame( D['View'] )
 
     if showPlot :
         pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp )
 
-    MV = { 'Predictions' : df_pred, 'Combo_rho' : df_rho }
+    MV = { 'Predictions' : df_pred, 'View' : view }
     
     return MV
 

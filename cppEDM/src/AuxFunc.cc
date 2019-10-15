@@ -7,15 +7,19 @@ namespace EDM_AuxFunc {
 }
 
 //---------------------------------------------------------------
-// Common code for Simplex and Smap that embeds, extracts
-// the target vector and computes neighbors.
+// Common code for Simplex and Smap:
+//   1) Extract or Embed() data into dataBlock
+//   2) Get target (library) vector
+//   3) DeletePartialDataRows()
+//   4) Adjust param.library and param.prediction indices
+//   5) FindNeighbors()
 //
 // NOTE: time column is not returned in the embedding dataBlock.
 //
-// NOTE: If dataIn is embedded by Embed(), the returned dataBlock
-//       has tau * (E-1) fewer rows than dataIn. Since dataIn is
+// NOTE: If data is embedded by Embed(), the returned dataBlock
+//       has tau * (E-1) fewer rows than data. Since data is
 //       included in the returned DataEmbedNN struct, the first
-//       tau * (E-1) dataIn rows are deleted from dataIn to match.
+//       tau * (E-1) data rows are deleted to match dataBlock.
 //       The target vector is also reduced.
 //
 // NOTE: If rows are deleted, then the library and prediction
@@ -107,47 +111,8 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
 
         // Adjust param.library and param.prediction vectors of indices
         if ( shift > 0 ) {
-            size_t library_len    = param.library.size();
-            size_t prediction_len = param.prediction.size();
-
-            // If 0, 1, ... shift are in library or prediction
-            // those rows were deleted, delete these elements.
-            // First, create a vector of indices to delete
-            std::vector< size_t > deleted_elements( shift, 0 );
-            std::iota( deleted_elements.begin(), deleted_elements.end(), 0 );
-
-            // erase elements of row indices that were deleted
-            for ( auto element =  deleted_elements.begin();
-                  element != deleted_elements.end(); element++ ) {
-
-                std::vector< size_t >::iterator it;
-                it = std::find( param.library.begin(),
-                                param.library.end(), *element );
-
-                if ( it != param.library.end() ) {
-                    param.library.erase( it );
-                }
-                
-                it = std::find( param.prediction.begin(),
-                                param.prediction.end(), *element );
-
-                if ( it != param.prediction.end() ) {
-                    param.prediction.erase( it );
-                }
-            }
-            
-            // Now offset all values by shift so that vectors indices
-            // in library and prediction refer to the same data rows
-            // before the deletion/shift.
-            for ( auto li =  param.library.begin();
-                       li != param.library.end(); li++ ) {
-                *li = *li - shift;
-            }
-            for ( auto pi =  param.prediction.begin();
-                       pi != param.prediction.end(); pi++ ) {
-                *pi = *pi - shift;
-            }
-        } // if ( shift > 0 )
+            param.DeleteLibPred( shift );
+        }
     }
     
     //----------------------------------------------------------
@@ -268,7 +233,7 @@ DataFrame<double> FormatOutput( Parameters               param,
 
 //----------------------------------------------------------
 // Copy strings of time values into timeOut.
-// If prediction times exceed times from the data, then
+// If prediction times exceed times from the data,
 // create new entries for the additional times. 
 //----------------------------------------------------------
 void FillTimes( Parameters                param,
@@ -312,7 +277,7 @@ void FillTimes( Parameters                param,
             }
             else {
                 int time_delta = i - N_row + 1;
-                // Get last two datetimes to compute time diff to add time delta 
+                // Get last two datetimes to compute time diff to add time delta
                 std::string time_new( time[ max_pred_i     ] );
                 std::string time_old( time[ max_pred_i - 1 ] );
                 std::string new_time =
@@ -324,7 +289,7 @@ void FillTimes( Parameters                param,
                 }
                 else {
                     tss << time[ max_pred_i ] << " +" << i - N_row + 1;
-                    
+
                     if ( not time_format_warning_printed ) {
                         std::cout << "FillTimes(): "
                                   << "time column is unrecognized time format."
@@ -362,7 +327,8 @@ void CheckDataRows( Parameters         param,
 
     if ( dataFrameIn.NRows() <= prediction_max_i + shift ) {
         std::stringstream errMsg;
-        errMsg << "CheckDataRows(): The prediction index + tau(E-1) "
+        errMsg << "CheckDataRows(): " << call
+               << ": The prediction index + tau(E-1) "
                << prediction_max_i + shift
                << " equals or exceeds the number of data rows "
                << dataFrameIn.NRows();
@@ -371,7 +337,8 @@ void CheckDataRows( Parameters         param,
     
     if ( dataFrameIn.NRows() <= library_max_i + shift ) {
         std::stringstream errMsg;
-        errMsg << "CheckDataRows(): The library index + tau(E-1) "
+        errMsg << "CheckDataRows(): " << call
+               << ": The library index + tau(E-1) "
                << library_max_i + shift
                << " equals or exceeds the number of data rows "
                << dataFrameIn.NRows();

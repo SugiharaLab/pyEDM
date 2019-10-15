@@ -2,6 +2,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <queue>
 
 #include "Common.h"
 
@@ -9,11 +10,18 @@ namespace EDM_Eval {
     // Thread Work Queue : Vector of int
     typedef std::vector< int > WorkQueue;
     
+    // Thread exception_ptr queue
+    std::queue< std::exception_ptr > embedDimExceptQ;
+    std::queue< std::exception_ptr > predictIntExceptQ;
+    std::queue< std::exception_ptr > predictNLExceptQ;
+    
     // atomic counters for all threads
     std::atomic<std::size_t> tp_count_i   (0); // initialize to 0
     std::atomic<std::size_t> embed_count_i(0); // initialize to 0
     std::atomic<std::size_t> smap_count_i (0); // initialize to 0
+
     std::mutex mtx;
+    std::mutex q_mtx;
 }
 
 //----------------------------------------------------------------
@@ -165,6 +173,21 @@ DataFrame<double> EmbedDimension( DataFrame< double > &data,
         thrd.join();
     }
     
+    // If thread threw exception, get from queue and rethrow
+    if ( not EDM_Eval::embedDimExceptQ.empty() ) {
+        std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+
+        // Take the first exception in the queue
+        std::exception_ptr exceptionPtr = EDM_Eval::embedDimExceptQ.front();
+
+        // Unroll all other exception from the thread/loops
+        while( not EDM_Eval::embedDimExceptQ.empty() ) {
+            // JP When do these exception_ptr get deleted? Is it a leak?
+            EDM_Eval::embedDimExceptQ.pop();
+        }
+        std::rethrow_exception( exceptionPtr );
+    }
+    
     if ( predictFile.size() ) {
         E_rho.WriteData( pathOut, predictFile );
     }
@@ -201,35 +224,42 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
         DataFrame< double > localData( data );
-        
-        DataFrame<double> S = Simplex( std::ref( localData ),
-                                       "",          // pathOut,
-                                       "",          // predictFile,
-                                       lib,
-                                       pred,
-                                       E,
-                                       Tp,
-                                       0,           // knn
-                                       tau,
-                                       0,           // exclusionRadius
-                                       colNames,
-                                       targetName,
-                                       embedded,
-                                       false,       // const_predict
-                                       verbose );
-         
-        VectorError ve = ComputeError( S.VectorColumnName( "Observations" ),
-                                       S.VectorColumnName( "Predictions"  ) );
 
-        E_rho.WriteRow( i, std::valarray<double>({ (double) E, ve.rho }));
+        try {
+            DataFrame<double> S = Simplex( std::ref( localData ),
+                                           "",          // pathOut,
+                                           "",          // predictFile,
+                                           lib,
+                                           pred,
+                                           E,
+                                           Tp,
+                                           0,           // knn
+                                           tau,
+                                           0,           // exclusionRadius
+                                           colNames,
+                                           targetName,
+                                           embedded,
+                                           false,       // const_predict
+                                           verbose );
+            
+            VectorError ve = ComputeError( S.VectorColumnName("Observations"),
+                                           S.VectorColumnName("Predictions"));
+
+            E_rho.WriteRow( i, std::valarray<double>({ (double) E, ve.rho }));
         
-        if ( verbose ) {
-            std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
-            std::cout << "EmbedThread() workQ[" << workQ[i] << "]  E " << E 
-                      << "  rho " << ve.rho << "  RMSE " << ve.RMSE
-                      << "  MAE " << ve.MAE << std::endl << std::endl;
+            if ( verbose ) {
+                std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
+                std::cout << "EmbedThread() workQ[" << workQ[i] << "]  E " << E 
+                          << "  rho " << ve.rho << "  RMSE " << ve.RMSE
+                          << "  MAE " << ve.MAE << std::endl << std::endl;
+            }
         }
-    
+        catch(...) {
+            // push exception pointer onto queue for main thread to catch
+            std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+            EDM_Eval::embedDimExceptQ.push( std::current_exception() );
+        }
+        
         i = std::atomic_fetch_add(&EDM_Eval::embed_count_i, std::size_t(1));
     }
     
@@ -333,6 +363,21 @@ DataFrame<double> PredictInterval( DataFrame< double > &data,
         thrd.join();
     }
     
+    // If thread threw exception, get from queue and rethrow
+    if ( not EDM_Eval::predictIntExceptQ.empty() ) {
+        std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+
+        // Take the first exception in the queue
+        std::exception_ptr exceptionPtr = EDM_Eval::predictIntExceptQ.front();
+
+        // Unroll all other exception from the thread/loops
+        while( not EDM_Eval::predictIntExceptQ.empty() ) {
+            // JP When do these exception_ptr get deleted? Is it a leak?
+            EDM_Eval::predictIntExceptQ.pop();
+        }
+        std::rethrow_exception( exceptionPtr );
+    }
+    
     if ( predictFile.size() ) {
         Tp_rho.WriteData( pathOut, predictFile );
     }
@@ -367,36 +412,43 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
         DataFrame< double > localData( data );
-                  
-        DataFrame<double> S = Simplex( std::ref( localData ),
-                                       "",          // pathOut,
-                                       "",          // predictFile,
-                                       lib,
-                                       pred,
-                                       E,
-                                       Tp,
-                                       0,           // knn
-                                       tau,
-                                       0,           // exclusionRadius
-                                       colNames,
-                                       targetName,
-                                       embedded,
-                                       false,       // const_pred
-                                       verbose );
-        
-        VectorError ve = ComputeError( S.VectorColumnName( "Observations" ),
-                                       S.VectorColumnName( "Predictions"  ) );
 
-        Tp_rho.WriteRow( i, std::valarray<double>({ (double) Tp, ve.rho }));
+        try {
+            DataFrame<double> S = Simplex( std::ref( localData ),
+                                           "",          // pathOut,
+                                           "",          // predictFile,
+                                           lib,
+                                           pred,
+                                           E,
+                                           Tp,
+                                           0,           // knn
+                                           tau,
+                                           0,           // exclusionRadius
+                                           colNames,
+                                           targetName,
+                                           embedded,
+                                           false,       // const_pred
+                                           verbose );
+            
+            VectorError ve = ComputeError( S.VectorColumnName("Observations"),
+                                           S.VectorColumnName("Predictions"));
+
+            Tp_rho.WriteRow( i, std::valarray<double>({ (double) Tp, ve.rho }));
         
-        if ( verbose ) {
-            std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
-            std::cout << "PredictIntervalThread() workQ[" << workQ[i]
-                      << "]  Tp " << Tp 
-                      << "  rho " << ve.rho << "  RMSE " << ve.RMSE
-                      << "  MAE " << ve.MAE << std::endl << std::endl;
+            if ( verbose ) {
+                std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
+                std::cout << "PredictIntervalThread() workQ[" << workQ[i]
+                          << "]  Tp " << Tp 
+                          << "  rho " << ve.rho << "  RMSE " << ve.RMSE
+                          << "  MAE " << ve.MAE << std::endl << std::endl;
+            }
         }
-    
+        catch(...) {
+            // push exception pointer onto queue for main thread to catch
+            std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+            EDM_Eval::predictIntExceptQ.push( std::current_exception() );
+        }
+        
         i = std::atomic_fetch_add( &EDM_Eval::tp_count_i, std::size_t(1) );
     }
     
@@ -527,6 +579,21 @@ DataFrame<double> PredictNonlinear( DataFrame< double > &data,
         thrd.join();
     }
 
+    // If thread threw exception, get from queue and rethrow
+    if ( not EDM_Eval::predictNLExceptQ.empty() ) {
+        std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+
+        // Take the first exception in the queue
+        std::exception_ptr exceptionPtr = EDM_Eval::predictNLExceptQ.front();
+
+        // Unroll all other exception from the thread/loops
+        while( not EDM_Eval::predictNLExceptQ.empty() ) {
+            // JP When do these exception_ptr get deleted? Is it a leak?
+            EDM_Eval::predictNLExceptQ.pop();
+        }
+        std::rethrow_exception( exceptionPtr );
+    }
+    
     if ( predictFile.size() ) {
         Theta_rho.WriteData( pathOut, predictFile );
     }
@@ -563,42 +630,49 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
         DataFrame< double > localData( data );
-                  
-        SMapValues S = SMap( std::ref( localData ),
-                             "",
-                             "",        // predictFile
-                             lib,
-                             pred,
-                             E,
-                             Tp,
-                             0,         // knn
-                             tau,
-                             theta,
-                             0,         // exclusionRadius
-                             colNames,
-                             targetName,
-                             "",        // smapFile
-                             "",        // derivatives
-                             embedded,
-                             false,     // const_predict
-                             verbose );
-        
-        DataFrame< double > predictions  = S.predictions;
-        DataFrame< double > coefficients = S.coefficients;
-        
-        VectorError ve = ComputeError(
-            predictions.VectorColumnName( "Observations" ),
-            predictions.VectorColumnName( "Predictions"  ) );
 
-        Theta_rho.WriteRow( i, std::valarray<double>({ theta, ve.rho }));
-        
-        if ( verbose ) {
-            std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
-            std::cout << "Theta " << theta
-                      << "  rho " << ve.rho << "  RMSE " << ve.RMSE
-                      << "  MAE " << ve.MAE << std::endl << std::endl;
+        try {
+            SMapValues S = SMap( std::ref( localData ),
+                                 "",
+                                 "",        // predictFile
+                                 lib,
+                                 pred,
+                                 E,
+                                 Tp,
+                                 0,         // knn
+                                 tau,
+                                 theta,
+                                 0,         // exclusionRadius
+                                 colNames,
+                                 targetName,
+                                 "",        // smapFile
+                                 "",        // derivatives
+                                 embedded,
+                                 false,     // const_predict
+                                 verbose );
+            
+            DataFrame< double > predictions  = S.predictions;
+            DataFrame< double > coefficients = S.coefficients;
+            
+            VectorError ve = ComputeError(
+                predictions.VectorColumnName( "Observations" ),
+                predictions.VectorColumnName( "Predictions"  ) );
+            
+            Theta_rho.WriteRow( i, std::valarray<double>({ theta, ve.rho }));
+            
+            if ( verbose ) {
+                std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
+                std::cout << "Theta " << theta
+                          << "  rho " << ve.rho << "  RMSE " << ve.RMSE
+                          << "  MAE " << ve.MAE << std::endl << std::endl;
+            }
         }
-    
+        catch(...) {
+            // push exception pointer onto queue for main thread to catch
+            std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
+            EDM_Eval::predictNLExceptQ.push( std::current_exception() );
+        }
+        
         i = std::atomic_fetch_add( &EDM_Eval::smap_count_i, std::size_t(1) );
     }
     
