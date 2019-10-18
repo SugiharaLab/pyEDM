@@ -156,7 +156,7 @@ def PandasDataFrametoDF( df ):
 
     # Add time series data, Skipping the first column!!!
     for column in df.columns[1:] :
-        dataList.append( ( column, df.get( column ) ) )
+        dataList.append( ( column, df.get( column ).tolist() ) )
 
     # cppEDM DF struct
     DF          = pyBindEDM.DF()
