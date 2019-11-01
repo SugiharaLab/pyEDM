@@ -127,11 +127,12 @@ class BuildExt( build_ext ):
     
     c_opts = {
         'msvc': ['/EHsc'],
-        'unix': [],
+        'unix': [ '-llapack' ],
     }
 
     if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        c_opts['unix'] += ['-stdlib=libc++', '-llapack',
+                           '-mmacosx-version-min=10.7']
 
     def build_extensions(self):
         ct = self.compiler.compiler_type
@@ -164,8 +165,8 @@ Extension_modules = [
         ],
         
         language     = 'c++',
-        library_dirs = [ EDM_Lib_Path ], # cppEDM libEDM.a -fPIC
-        libraries    = ['EDM'],          # cppEDM libEDM.a -fPIC
+        library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
+        libraries    = ['EDM','lapack'],
     ),
 ]
 
