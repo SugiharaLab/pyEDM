@@ -282,6 +282,22 @@ public:
     }
 
     //-----------------------------------------------------------------
+    // Return Elements in Column Major order (Fortran)
+    //-----------------------------------------------------------------
+    std::valarray<T> ColumnMajorData() const {
+
+        std::valarray<T> colMajorElements( elements.size() );
+        
+        for ( size_t col = 0; col < n_columns; col++ ) {
+            // slice( size_t start, size_t length, size_t stride )
+            colMajorElements[ std::slice( col * n_rows, n_rows, 1 ) ] =
+                Column( col );
+        }
+
+        return colMajorElements;
+    }
+
+    //-----------------------------------------------------------------
     // Write array to row
     //-----------------------------------------------------------------
     void WriteRow( size_t row, std::valarray<T> array ) {

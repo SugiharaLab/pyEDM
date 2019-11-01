@@ -1,32 +1,19 @@
 
-//-------------------------------------------------------------------------
-// Eigen can internally call LAPACKE instead of Eigen::JacobiSVD()
-// https://eigen.tuxfamily.org/dox/TopicUsingBlasLapack.html
-//-------------------------------------------------------------------------
-// #define EIGEN_USE_LAPACKE_STRICT
-// EIGEN_USE_LAPACKE: Enables the use of external Lapack routines via
-// the Lapacke C interface to Lapack (compatible with F77 LAPACK interface).
-// EIGEN_USE_LAPACKE_STRICT: Same as EIGEN_USE_LAPACKE but algorithms of
-// lower numerical robustness are disabled. This currently concerns only
-// JacobiSVD which otherwise would be replaced by gesvd that is less robust
-// than Jacobi rotations.
-//
-//-------------------------------------------------------------------------
-// The Lapack SVD routine dgesdd_() can also be called directly without
-// need for Eigen. An example is in etc/lapack_dgesdd.cc
-//-------------------------------------------------------------------------
-
-#include <Eigen/Dense>
-
 #include "Common.h"
 #include "Parameter.h"
 #include "Embed.h"
 #include "Neighbors.h"
 #include "AuxFunc.h"
 
-// forward declaration
+// forward declarations
 std::valarray < double > SVD( DataFrame    < double > A,
                               std::valarray< double > B );
+
+std::valarray< double >  Lapack_SVD( int     m,
+                                     int     n,
+                                     double *a,
+                                     double *b,
+                                     double  rcond );
 
 //----------------------------------------------------------------
 // Overload 1: Explicit data file path/name
@@ -282,65 +269,147 @@ SMapValues SMap( DataFrame< double > &data,
 }
 
 //----------------------------------------------------------------
-// Singular Value Decomposition using Eigen C++ template library
+// Singular Value Decomposition
 //----------------------------------------------------------------
-std::valarray < double >  SVD( DataFrame    < double > A_,
-                               std::valarray< double > B_ ) {
+std::valarray < double > SVD( DataFrame    < double > A,
+                              std::valarray< double > B ) {
 
-    // Eigen::Map<> allows "raw" initialization from a pointer
-    // The Map (A) is then a mapping to the memory location pointer (a)
-    double *a = &(A_.Elements()[0]);
+    // NOTE: A elements are Row Major format
+    // Convert A to column major for LAPACK dgelss()
+    // a is the memory start location pointer to colMajorElements
+    std::valarray < double > colMajorElements = A.ColumnMajorData();
+    double *a = &( colMajorElements[0] );
 
-    // Eigen defaults to storing in column-major: use RowMajor flag
-    Eigen::Map< Eigen::Matrix< double,
-                               Eigen::Dynamic,
-                               Eigen::Dynamic,
-                               Eigen::RowMajor> > A( a,
-                                                     A_.NRows(),
-                                                     A_.NColumns() );
+    double *b = &( B[0] );
 
-    double *b = &(B_[0]);
-    Eigen::VectorXd B = Eigen::Map< Eigen::VectorXd >( b, B_.size() );
-
-    //-------------------------------------------------------------------
-    // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
-    //-------------------------------------------------------------------
-    // The recommended method is the BDCSVD class, which scale well for
-    // large problems and automatically fall-back to the JacobiSVD class
-    // for smaller problems.
-    //
-    // JacobiSVD implements two-sided Jacobi iterations that are
-    // numerically very accurate, fast for small matrices, but very
-    // slow for larger ones.
-    //
-    // BDCSVD implements a recursive divide & conquer strategy on top of
-    // an upper-bidiagonalization which remains fast for large problems.
-    // Warning:  This algorithm is unlikely to provide accurate result when
-    // compiled with unsafe math optimizations. For instance, this concerns
-    // Intel's compiler (ICC), which perfroms such optimization by default
-    // unless you compile with the -fp-model precise option. Likewise,
-    // the -ffast-math option of GCC or clang will significantly degrade
-    // the accuracy.
-    // NOTE gcc: -ffast-math is not turned on by any -O option besides -Ofast
+    std::valarray < double > C =
+        Lapack_SVD( A.NRows(),     // number of rows
+                    A.NColumns(),  // number of columns
+                    a,             // A
+                    b,             // b
+                    1.E-9 );       // rcond
     
-    Eigen::VectorXd C =
-        A.bdcSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).solve( B );
-
-    // Extract fit coefficients from Eigen::VectorXd to valarray<>
-    std::valarray < double > C_( C.data(), A_.NColumns() );
-
-#ifdef DEBUG_ALL
-        double relative_error = (A*C - B).norm() / B.norm(); // L2 norm
-        std::cout << "SVD relative error: " << relative_error << std::endl;
-#endif
-
 #ifdef DEBUG_ALL
     std::cout << "SVD------------------------\n";
-    std::cout << "Eigen A ----------\n";
+    std::cout << "A ----------\n";
     std::cout << A << std::endl;
-    std::cout << "Eigen B ----------\n";
-    std::cout << B << std::endl;
+#endif
+
+    return C;
+}
+
+//-------------------------------------------------------------------------
+// subroutine dgelss()
+//-----------------------------------------------------------------------
+// DGELSS computes the minimum norm solution to a real linear least
+// squares problem:
+// 
+// Minimize 2-norm(| b - A*x |).
+// 
+// using the singular value decomposition (SVD) of A. A is an M-by-N
+// matrix which may be rank-deficient.
+// 
+// Several right hand side vectors b and solution vectors x can be
+// handled in a single call; they are stored as the columns of the
+// M-by-NRHS right hand side matrix B and the N-by-NRHS solution matrix X.
+// 
+// The effective rank of A is determined by treating as zero those
+// singular values which are less than RCOND times the largest singular
+// value.
+// 
+// INFO is INTEGER
+//   = 0:  successful exit
+//   < 0:  if INFO = -i, the i-th argument had an illegal value.
+//   > 0:  the algorithm for computing the SVD failed to converge;
+//         if INFO = i, i off-diagonal elements of an intermediate
+//         bidiagonal form did not converge to zero.
+//-----------------------------------------------------------------------
+//-------------------------------------------------------------------------
+// DOUBLE PRECISION = REAL*8 = c++ double
+//-------------------------------------------------------------------------
+extern "C" {
+    
+    void dgelss_( int    *M,
+                  int    *N,
+                  int    *NRHS,
+                  double *A,
+                  int    *LDA,
+                  double *B,
+                  int    *LDB,
+                  double *S,
+                  double *RCOND,
+                  int    *RANK,
+                  double *WORK,
+                  int    *LWORK,
+                  int    *INFO );
+}
+
+//-----------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------
+std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
+                                    int     n, // number of columns in matrix
+                                    double *a, // pointer to top-left corner
+                                    double *b,
+                                    double  rcond )
+{
+    // s to hold singular values
+    int    N_SingularValues = m < n ? m : n;
+    double s [ N_SingularValues ];
+
+    int    lda  = m; // LDA >= max(1,M)
+    int    ldb  = m; // LDB >= max(1,max(M,N))
+    int    nrhs = 1;
+
+    // Workspace and info variables:
+    int    iwork[ 8 * N_SingularValues ];
+    double workSize = 0;  // To query optimal work size
+    int    lwork    = -1; // To query optimal work size
+    int    info     = 0;  // return code
+    int    rank     = 0;
+
+#ifdef DEBUG_ALL
+    std::cout << "m.row=" << m << " n.col=" << n << " lda=" << lda
+              << " s.n=" << N_SingularValues << std::endl;
+
+    for ( size_t i = 0; i < m*n; i++ ) {
+        std::cout << a[i] << " ";
+    } std::cout << std::endl;
 #endif
     
-    return C_;
+    // Call dgelss with lwork = -1 to query optimal workspace size:
+    dgelss_( &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond,
+             &rank, &workSize, &lwork, &info );
+    
+    if ( info ) {
+        throw std::runtime_error( "Lapack_SVD(): dgelss failed on query.\n" );
+    }
+    
+#ifdef DEBUG_ALL
+    std::cout << "Optimal work size is " << workSize << std::endl;
+#endif
+    
+    // Optimal workspace size is returned in workSize.
+    double work[ (size_t) workSize ]; 
+    lwork = (int) workSize;
+
+    // Call dgelss for SVD solution using lwork workSize:
+    dgelss_( &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond,
+             &rank, work, &lwork, &info );
+
+    if ( info ) {
+        throw std::runtime_error( "Lapack_SVD(): dgelss failed.\n" );
+    }
+
+#ifdef DEBUG_ALL
+    std::cout << "Solution: [ ";
+    for ( auto i = 0; i < N_SingularValues; i++ ) {
+        std::cout << b[i] << " ";
+    } std::cout << "]" << std::endl;
+#endif
+
+    // Copy solution vector in b to C
+    std::valarray< double > C( b, N_SingularValues );
+
+    return C;
 }
