@@ -239,10 +239,23 @@ void Parameters::Validate() {
                                 "CCM librarySizes must be three integers.\n" );
             throw std::runtime_error( errMsg );
         }
+        
         size_t start     = std::stoi( libsize_vec[0] );
         size_t stop      = std::stoi( libsize_vec[1] );
         size_t increment = std::stoi( libsize_vec[2] );
         size_t N_lib     = std::floor((stop-start)/increment + 1/increment)+1;
+
+        if ( start < E ) {
+            std::stringstream errMsg;
+            errMsg << "Parameters::Validate(): "
+                   << "CCM librarySizes start < E = " << E << "\n";
+            throw std::runtime_error( errMsg.str() );
+        }
+        else if ( start < 3 ) {
+            std::string errMsg( "Parameters::Validate(): "
+                                "CCM librarySizes start < 3.\n" );
+            throw std::runtime_error( errMsg );
+        }
 
         // Create the librarySizes vector
         librarySizes = std::vector<size_t>( N_lib, 0 );
