@@ -353,16 +353,20 @@ std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
                                     double *b,
                                     double  rcond )
 {
-    // s to hold singular values
-    int    N_SingularValues = m < n ? m : n;
-    double s [ N_SingularValues ];
+    int N_SingularValues = m < n ? m : n;
 
-    int    lda  = m; // LDA >= max(1,M)
-    int    ldb  = m; // LDB >= max(1,max(M,N))
-    int    nrhs = 1;
+    // s to hold singular values
+    // MSVC BS: Have to use static const int size, or new
+    double *s = new double[ N_SingularValues ];
+
+    int lda  = m; // LDA >= max(1,M)
+    int ldb  = m; // LDB >= max(1,max(M,N))
+    int nrhs = 1;
 
     // Workspace and info variables:
-    int    iwork[ 8 * N_SingularValues ];
+    // MSVC BS: Have to use static const int size, or new
+    int *iwork = new int[ 8 * N_SingularValues ];
+    
     double workSize = 0;  // To query optimal work size
     int    lwork    = -1; // To query optimal work size
     int    info     = 0;  // return code
@@ -390,7 +394,9 @@ std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
 #endif
     
     // Optimal workspace size is returned in workSize.
-    double work[ (size_t) workSize ]; 
+    // MSVC BS: Have to use static const int size, or new
+    double *work = new double[ (size_t) workSize ];
+    
     lwork = (int) workSize;
 
     // Call dgelss for SVD solution using lwork workSize:
@@ -411,5 +417,9 @@ std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
     // Copy solution vector in b to C
     std::valarray< double > C( b, N_SingularValues );
 
+    delete s;
+    delete work;
+    delete iwork;
+    
     return C;
 }
