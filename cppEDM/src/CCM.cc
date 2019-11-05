@@ -177,22 +177,6 @@ DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
     std::cout << inverseParam;
 #endif
 
-    //--------------------------------------------------------------
-    // Remove dataFrameIn rows to match embedded dataBlock with
-    // partial data rows ignored: CrossMap() -> Embed() -> MakeBlock()
-    // This removal of partial data rows is also done in EmbedNN()
-    //--------------------------------------------------------------
-    // If we support negative tau, this will change
-    // For now, assume only positive tau is allowed
-    size_t shift = std::max( 0, param.tau * (param.E - 1) );
-    {
-        std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
-        if ( not dataFrameIn.PartialDataRowsDeleted() ) {
-            // Not thread safe.
-            dataFrameIn.DeletePartialDataRows( shift );
-        }
-    }
-
 #ifdef CCM_THREADED
     DataFrame<double> col_to_target( param.librarySizes.size(), 4,
                                      "LibSize rho RMSE MAE" );
