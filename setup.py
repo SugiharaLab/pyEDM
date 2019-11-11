@@ -145,6 +145,7 @@ class BuildExt( build_ext ):
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
+            # opts.append('/link /MACHINE:X86')
         for ext in self.extensions:
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
@@ -165,6 +166,7 @@ Extension_modules = [
         ],
         
         language     = 'c++',
+        #library_dirs = [ EDM_Lib_Path, '/usr/lib/', '"C:/JP/lapack/w32"'],
         library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
         libraries    = ['EDM','lapack'],
     ),
