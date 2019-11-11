@@ -5,12 +5,13 @@ OBJ = Common.obj AuxFunc.obj DateTimeUtil.obj Parameter.obj Embed.obj\
 	Multiview.obj SMap.obj 
 
 LIB = EDM.lib
+LAPACK_LIB = liblapack.lib
+LAPACK_LIB_PATH = ..\..\..\lapack\w32
 
-# Assume Eigen\ is at the same level as cppEDM (..\..)
-CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /I..\.. /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
+CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
 
 all:	$(LIB)
-	lib  /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB) $(OBJ)
+	lib /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB) /LIBPATH:$(LAPACK_LIB_PATH) $(LAPACK_LIB) $(OBJ)
 	cp $(LIB) ..\lib
 
 clean:
@@ -56,6 +57,8 @@ Multiview.obj: Multiview.cc
 
 SMap.obj: SMap.cc
 	$(CC) /c SMap.cc $(CFLAGS)
+
+
 
 # Depedencies from makedepend on Linux
 Common.obj: Common.h DataFrame.h
