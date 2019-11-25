@@ -58,8 +58,6 @@ Multiview.obj: Multiview.cc
 SMap.obj: SMap.cc
 	$(CC) /c SMap.cc $(CFLAGS)
 
-
-
 # Depedencies from makedepend on Linux
 Common.obj: Common.h DataFrame.h
 AuxFunc.obj: AuxFunc.h Common.h DataFrame.h Neighbors.h Parameter.h Version.h
