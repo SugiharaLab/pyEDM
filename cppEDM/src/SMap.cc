@@ -92,11 +92,6 @@ SMapValues SMap( DataFrame< double > &data,
     Neighbors             neighbors  = dataEmbedNN.neighbors;
     
     DataFrame<double> &dataIn = std::ref( *dataInRef );
-    
-    // target_vec spans the entire dataBlock, subset targetLibVector
-    // to library for row indexing used below:
-    std::slice lib_i = std::slice( param.library[0], param.library.size(), 1 );
-    std::valarray<double> targetLibVector = target_vec[ lib_i ];
 
     //----------------------------------------------------------
     // SMap projection
@@ -150,9 +145,11 @@ SMapValues SMap( DataFrame< double > &data,
         // Populate matrix A (exp weighted future prediction), and
         // vector B (target BC's) for this row (observation).
         size_t lib_row;
+        size_t lib_row_base;
         
         for ( size_t k = 0; k < param.knn; k++ ) {
-            lib_row = neighbors.neighbors( row, k ) + param.Tp;
+            lib_row_base = neighbors.neighbors( row, k );
+            lib_row      = lib_row_base + param.Tp;
             
             if ( lib_row > library_N_row ) {
                 // The knn index + Tp is outside the library domain
@@ -162,18 +159,27 @@ SMapValues SMap( DataFrame< double > &data,
                     msg << "SMap() in row " << row << " libRow " << lib_row
                         << " exceeds library domain.\n";
                     std::cout << msg.str();
-                }
-                
+                }                
                 // Use the neighbor at the 'base' of the trajectory
-                B[ k ] = targetLibVector[ lib_row - param.Tp ];
+                B[ k ] = target_vec[ lib_row_base ];
             }
             else {
-                B[ k ] = targetLibVector[ lib_row ];
+                B[ k ] = target_vec[ lib_row ];
             }
 
-            A( k, 0 ) = w[ k ];
+            //---------------------------------------------------------------
+            // Linear system coefficient matrix
+            //---------------------------------------------------------------
+            // NOTE: The matrix A has a (weighted) constant (1) first column
+            //       to enable a linear intercept/bias term.
+            // NOTE: The dataBlock does not have a time vector, and only
+            //       has columns from the embedding.  So the coefficient
+            //       matrix A has E+1 columns, while the dataBlock has E.
+            //---------------------------------------------------------------
+            A( k, 0 ) = w[ k ]; // Intercept bias terms in column 0 (weighted)
+            
             for ( size_t j = 1; j < param.E + 1; j++ ) {
-                A( k, j ) = w[k] * dataBlock( param.prediction[ row ], j );
+                A( k, j ) = w[k] * dataBlock( lib_row_base, j-1 );
             }
         }
 
@@ -184,10 +190,10 @@ SMapValues SMap( DataFrame< double > &data,
 
         // Prediction is local linear projection
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term
-
+        
         for ( size_t e = 1; e < param.E + 1; e++ ) {
             prediction = prediction +
-                C[ e ] * dataBlock( param.prediction[ row ], e );
+                         C[ e ] * dataBlock( param.prediction[ row ], e-1 );
         }
 
         predictions[ row ] = prediction;
