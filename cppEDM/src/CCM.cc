@@ -28,15 +28,15 @@ namespace EDM_CCM {
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
 void CrossMap(       Parameters           param,
-                     DataFrame< double > &dataFrameIn,
+                     DataFrame< double >  dataFrameIn,
                const DataFrame< double > &LibStats );
 #else
-DataFrame< double > CrossMap( Parameters param,
-                              DataFrame< double > &dataFrameIn );
+DataFrame< double > CrossMap( Parameters          param,
+                              DataFrame< double > dataFrameIn );
 #endif
 
 DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
-                                        Parameters param );
+                                        Parameters           param );
 
 Neighbors CCMNeighbors( const DataFrame< double >   &Distances,
                               std::vector< size_t >  lib_i,
@@ -68,14 +68,12 @@ DataFrame <double > CCM( std::string pathIn,
                          unsigned    seed,
                          bool        verbose )
 {
-
     //----------------------------------------------------------
     // Load data to dataFrameIn
     //----------------------------------------------------------
-    DataFrame< double > *dataFrameIn =
-        new DataFrame< double >( pathIn, dataFile );
+    DataFrame< double > dataFrameIn( pathIn, dataFile );
 
-    DataFrame <double > PredictLibRho = CCM( std::ref( *dataFrameIn ),
+    DataFrame <double > PredictLibRho = CCM( dataFrameIn,
                                              pathOut,
                                              predictFile,
                                              E,
@@ -90,8 +88,6 @@ DataFrame <double > CCM( std::string pathIn,
                                              replacement,
                                              seed,
                                              verbose );
-    delete dataFrameIn;
-    
     return PredictLibRho;
 }
 
@@ -99,21 +95,21 @@ DataFrame <double > CCM( std::string pathIn,
 // API Overload 2: DataFrame passed in
 //   Implemented a wrapper for CrossMap()
 //----------------------------------------------------------------
-DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
-                         std::string pathOut,
-                         std::string predictFile,
-                         int         E,
-                         int         Tp,
-                         int         knn,
-                         int         tau,
-                         std::string columns,
-                         std::string target,
-                         std::string libSizes_str,
-                         int         sample,
-                         bool        random,
-                         bool        replacement,
-                         unsigned    seed,
-                         bool        verbose )
+DataFrame <double > CCM( DataFrame< double > dataFrameIn,
+                         std::string         pathOut,
+                         std::string         predictFile,
+                         int                 E,
+                         int                 Tp,
+                         int                 knn,
+                         int                 tau,
+                         std::string         columns,
+                         std::string         target,
+                         std::string         libSizes_str,
+                         int                 sample,
+                         bool                random,
+                         bool                replacement,
+                         unsigned            seed,
+                         bool                verbose )
 {
     if ( not columns.size() ) {
         throw std::runtime_error("CCM() must specify the column to embed.");
@@ -184,12 +180,10 @@ DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
     DataFrame<double> target_to_col( param.librarySizes.size(), 4,
                                      "LibSize rho RMSE MAE" );
 
-    std::thread CrossMapColTarget( CrossMap, param,
-                                   std::ref( dataFrameIn ),
+    std::thread CrossMapColTarget( CrossMap, param, dataFrameIn,
                                    std::ref( col_to_target ) );
     
-    std::thread CrossMapTargetCol( CrossMap, inverseParam,
-                                   std::ref( dataFrameIn ),
+    std::thread CrossMapTargetCol( CrossMap, inverseParam, dataFrameIn,
                                    std::ref( target_to_col ) );
 
     CrossMapColTarget.join();
@@ -245,17 +239,31 @@ DataFrame <double > CCM( DataFrame< double > &dataFrameIn,
 // CrossMap()
 // Worker function for CCM.
 // Return DataFrame of rho, RMSE, MAE values for param.librarySizes
+//
+// NOTE: This is a bit of a kludge at the moment... would be nice
+//       to pass in a reference to dataFrameIn, however... Embed()
+//       returns a dataBlock with (E-1)*tau fewer rows since
+//       partial data vectors are removed. To maintain proper
+//       alignment with the target in the dataFrameIn,
+//       dataFrameIn.DeletePartialDataRows() is called.  If we use
+//       a reference to dataFrameIn, then the second thread will
+//       receive a reference to dataFrameIn that has rows deleted
+//       and Embed() will then not be correct.  So at the moment
+//       we'll pass a copy of the dataFrameIn to each thread. 
 //----------------------------------------------------------------
 #ifdef CCM_THREADED
 void CrossMap(       Parameters           paramCCM,
-                     DataFrame< double > &dataFrameIn,
+                     DataFrame< double >  dataFrameIn,
                const DataFrame< double > &LibStatsIn ) {
     
-    DataFrame< double > &LibStats =
-        const_cast< DataFrame< double > & >( LibStatsIn );
+DataFrame< double > &LibStats =
+    const_cast< DataFrame< double > & >( LibStatsIn );
 #else
-DataFrame< double > CrossMap( Parameters           paramCCM,
-                              DataFrame< double > &dataFrameIn ) {
+DataFrame< double > CrossMap( Parameters          paramCCM,
+                              DataFrame< double > dataFrameIn ) {
+// Output DataFrame
+DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
+                            "LibSize rho RMSE MAE" );
 #endif
     
     if ( paramCCM.verbose ) {
@@ -289,13 +297,32 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
     //       [param.DeleteLibPred( shift );] since pred will be created
     //       below based on N_row of dataBlock.
     
+    //--------------------------------------------------------------
+    // Remove dataFrameIn rows to match embedded dataBlock with
+    // partial data rows ignored: CrossMap() -> Embed() -> MakeBlock()
+    // This removal of partial data rows is also done in EmbedNN()
+    //--------------------------------------------------------------
+    // If we support negative tau, this will change
+    // For now, assume only positive tau is allowed
+    size_t shift = std::max( 0, paramCCM.tau * (paramCCM.E - 1) );
+    {
+        std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
+        if ( not dataFrameIn.PartialDataRowsDeleted() ) {
+            // Not thread safe.
+            dataFrameIn.DeletePartialDataRows( shift );
+        }
+    }
+    
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
     std::cout << ">>>> CrossMap() dataFrameIn-----------------------\n";
     std::cout << dataFrameIn;
     std::cout << "<<<< dataFrameIn----------------------------------\n";
     std::cout << ">>>> dataBlock------------------------------------\n";
     std::cout << dataBlock;
     std::cout << "<<<< dataBlock------------------------------------\n";
+    }
 #endif
     
     //-----------------------------------------------------------------
@@ -344,20 +371,17 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
                                                   paramCCM );
 
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
     std::cout << "CrossMap() " << paramCCM.columnNames[0] << " to "
               << paramCCM.targetName << " Distances: " << Distances.NRows()
               << " x " << Distances.NColumns() << std::endl;
+    }
 #endif
     
     //----------------------------------------------------------
     // Predictions
     //----------------------------------------------------------
-#ifndef CCM_THREADED
-    // Output DataFrame
-    DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
-                                "LibSize rho RMSE MAE" );
-#endif
-    
     // Loop for library sizes
     for ( size_t lib_size_i = 0;
                  lib_size_i < paramCCM.librarySizes.size(); lib_size_i++ ) {
@@ -368,8 +392,11 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
         std::uniform_int_distribution<size_t> distribution( 0, N_row - 1 );
         
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
         std::cout << "lib_size: " << lib_size
                   << " ------------------------------------------\n";
+    }
 #endif
             
         std::valarray< double > rho ( maxSamples );
@@ -465,10 +492,13 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
             }
             
 #ifdef DEBUG_ALL
+            {
+            std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
             std::cout << "lib_i: (" << lib_i.size() << ") ";
             for ( size_t i = 0; i < lib_i.size(); i++ ) {
                 std::cout << lib_i[i] << " ";
             } std::cout << std::endl;
+            }
 #endif
 
             //----------------------------------------------------------
@@ -491,8 +521,11 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
                 dataFrameLib_i.VectorColumnName( paramCCM.targetName );
             
 #ifdef DEBUG_ALL
+            {
+            std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
             std::cout << "dataFrameLib_i -------------------------------\n";
             std::cout << dataFrameLib_i;
+            }
 #endif
             
             //----------------------------------------------------------
@@ -511,11 +544,14 @@ DataFrame< double > CrossMap( Parameters           paramCCM,
                 S.VectorColumnName( "Predictions"  ) );
             
 #ifdef DEBUG_ALL
+            {
+            std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
             std::cout << "CCM Simplex ---------------------------------\n";
             S.MaxRowPrint() = S.NRows();
             std::cout << S;
             std::cout << "rho " << ve.rho << "  RMSE " << ve.RMSE
                       << "  MAE " << ve.MAE << std::endl;
+            }
 #endif
             
             rho [ n ] = ve.rho;
@@ -618,6 +654,8 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
     size_t knn   = param.knn;
 
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
     std::cout << "CCMNeighbors Distances\n";
     for ( size_t r = 0; r < 5; r++ ) {
         for ( int c = 0; c < 5; c++ ) {
@@ -626,8 +664,9 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
     }
     std::cout << "lib_i N_row: " << N_row
               << "  DistancesIn NRow: " << DistancesIn.NRows() << std::endl;
+    }
 #endif
-    
+
     // Matrix to hold libraryMatrix row indices
     // One row for each prediction vector, knn columns for each index
     DataFrame< size_t > neighbors( N_row, knn );
@@ -643,10 +682,13 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
     std::valarray< size_t > knn_neighbors( knn );
 
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
     std::cout << "CCMNeighbors lib_i: ";
     for ( size_t i = 0; i < lib_i.size(); i++ ) {
         std::cout << lib_i[i] << " ";
     } std::cout << std::endl << std::flush;
+    }
 #endif    
 
     for ( auto row_i : lib_i ) {
@@ -693,12 +735,15 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
     ccmNeighbors.distances = distances;
 
 #ifdef DEBUG_ALL
+    {
+    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
     std::cout << "CCMNeighbors knn_neighbors\n";
     for ( size_t r = 0; r < 5; r++ ) {
         for ( int c = 0; c < ccmNeighbors.neighbors.NColumns(); c++ ) {
             std::cout << ccmNeighbors.neighbors(r,c) << "  ";
         } std::cout << std::endl;
-    }        
+    }
+    }
 #endif
 
     return ccmNeighbors;
