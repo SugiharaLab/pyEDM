@@ -74,7 +74,7 @@ struct MultiviewValues {
 //       for the API and provide default argument values
 //-------------------------------------------------------------
 std::string ToLower   ( std::string str );
-bool        OnlyDigits( std::string str );
+bool        OnlyDigits( std::string str, bool integerOnly );
 
 std::vector<std::string> SplitString( std::string inString, 
                                       std::string delimeters );

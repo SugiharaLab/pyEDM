@@ -271,7 +271,7 @@ void FillTimes( Parameters                param,
         for ( auto i = N_row; i < N_row + param.Tp; i++ ) {
             std::stringstream tss;
             
-            if ( OnlyDigits( time[ max_pred_i ] ) ) {
+            if ( OnlyDigits( time[ max_pred_i ], false ) ) {
                 // Numeric so add Tp
                 tss << std::stod( time[ max_pred_i ] ) + i - N_row + 1;
             }
