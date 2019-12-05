@@ -1,5 +1,6 @@
 
 #include <algorithm>
+#include <cstring>
 
 #include "Common.h"
 
@@ -16,27 +17,30 @@ std::string ToLower( std::string str ) {
 }
 
 //----------------------------------------------------------------
-// true  : str has only digits
-// false : str has non-digits
+// true  : str has only numeric characters
+// false : str has non-numeric characters
 //----------------------------------------------------------------
-bool OnlyDigits( std::string str ) {
+bool OnlyDigits( std::string str, bool integer ) {
 
     if ( not str.size() ) {
         throw std::runtime_error( "OnlyDigits(): String is empty.\n" );
     }
 
-    bool onlyDigits = true; 
+    // Remove whitespace
     std::string str_( str );
-    
-    // remove whitespace
     str_.erase( std::remove_if( str_.begin(), str_.end(), ::isspace ),
                 str_.end() );
 
-    const char *cstr = str_.c_str(); // isdigit() is a C function...
-    
-    for ( size_t i = 0; i < str_.size(); i++ ) {
-        if ( not isdigit( cstr[i] ) ) { onlyDigits = false; break; }
+    std::string digits;
+    if ( integer ) {
+        digits = "0123456789";
     }
+    else {
+        digits = "-.0123456789";
+    }
+    
+    // Is str_ purely numeric characters?
+    bool onlyDigits = strspn(str_.c_str(), digits.c_str()) == str_.size();
 
     return onlyDigits;
 }

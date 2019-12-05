@@ -17,7 +17,7 @@
 // Since #include DataFrame.h is in Common.h, need forward declaration
 extern std::vector<std::string> SplitString( std::string inString, 
                                              std::string delimeters = "," );
-extern bool OnlyDigits( std::string str );
+extern bool OnlyDigits( std::string str, bool integerOnly );
 
 // Type definition for CSV NamedData to pair column names & column data
 typedef std::vector<std::pair<std::string, std::vector<double>>> NamedData;
@@ -659,7 +659,7 @@ private:
         for ( auto si =  firstLineWords.begin();
                    si != firstLineWords.end(); ++si ){
 
-            onlyDigits = OnlyDigits( *si );
+            onlyDigits = OnlyDigits( *si, false );
             
             if ( not onlyDigits ) { break; }
         }

@@ -182,8 +182,8 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     
     // Columns
-    // If columns are purely numeric, then populate vector<size_t> columnIndex
-    // otherwise fill in vector<string> columnNames
+    // If columns are purely integer, then populate vector<size_t> columnIndex
+    // Otherwise fill in vector<string> columnNames
     if ( columns_str.size() ) {
         
         std::vector<std::string> columns_vec = SplitString( columns_str,
@@ -192,7 +192,9 @@ void Parameters::Validate() {
         bool onlyDigits = false;
         
         for ( auto ci = columns_vec.begin(); ci != columns_vec.end(); ++ci ) {
-            onlyDigits = OnlyDigits( *ci );
+            onlyDigits = OnlyDigits( *ci, true );
+            
+            if ( not onlyDigits ) { break; }
         }
         
         if ( onlyDigits ) {
@@ -208,7 +210,7 @@ void Parameters::Validate() {
     
     // target
     if ( target_str.size() ) {
-        bool onlyDigits = OnlyDigits( target_str );
+        bool onlyDigits = OnlyDigits( target_str, true );
         if ( onlyDigits ) {
             targetIndex = std::stoi( target_str );
         }
