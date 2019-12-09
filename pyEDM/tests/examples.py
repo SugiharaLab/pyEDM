@@ -38,7 +38,7 @@ def main():
                               "TentMap", "", False, False, 4 );
 
     df = EDM.PredictNonlinear( "", Files[ "TentMapNoise_rEDM.csv" ], None,
-                               "./", "", "1 100", "201 500", "", 2, 1, 1,
+                               "./", "", "1 100", "201 500", "", 2, 1, 0, 1,
                                "TentMap", "", False, False, 4 )
     
     # Tent map simplex : specify multivariable columns embedded = True
