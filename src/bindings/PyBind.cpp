@@ -189,6 +189,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("theta")       = std::string(""),
                py::arg("E")           = 0,
                py::arg("Tp")          = 1,
+               py::arg("knn")         = 0,
                py::arg("tau")         = 1,
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
