@@ -134,9 +134,8 @@ void Parameters::Validate() {
             // Don't check if None, Embed or CCM since default of "1 1" is used.
             if ( lib_start >= lib_end ) {
                 std::stringstream errMsg;
-                errMsg << "Parameters::Validate(): library start index "
-                       << lib_start << " index exceeeds end "
-                       << lib_end << ".\n";
+                errMsg << "Parameters::Validate(): library start "
+                       << lib_start << " exceeds end " << lib_end << ".\n";
                 throw std::runtime_error( errMsg.str() );
             }
         }
@@ -162,9 +161,8 @@ void Parameters::Validate() {
             // Don't check if None, Embed or CCM since default of "1 1" is used.
             if ( pred_start >= pred_end ) {
                 std::stringstream errMsg;
-                errMsg << "Parameters::Validate(): prediction start index "
-                       << pred_start << " index exceeeds end "
-                       << pred_end << ".\n";
+                errMsg << "Parameters::Validate(): prediction start "
+                       << pred_start << " exceeds end " << pred_end << ".\n";
                 throw std::runtime_error( errMsg.str() );
             }
         }
