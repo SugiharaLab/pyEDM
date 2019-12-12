@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 0, 1, "2019-12-9" )
+    version          ( 1, 0, 1, "2019-12-12" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -129,6 +129,17 @@ void Parameters::Validate() {
         }
         int lib_start = std::stoi( lib_vec[0] );
         int lib_end   = std::stoi( lib_vec[1] );
+
+        if ( method == Method::Simplex or method == Method::SMap ) {
+            // Don't check if None, Embed or CCM since default of "1 1" is used.
+            if ( lib_start >= lib_end ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): library start index "
+                       << lib_start << " index exceeeds end "
+                       << lib_end << ".\n";
+                throw std::runtime_error( errMsg.str() );
+            }
+        }
         
         library = std::vector<size_t>( lib_end - lib_start + 1 );
         std::iota ( library.begin(), library.end(), lib_start - 1 );
@@ -146,6 +157,17 @@ void Parameters::Validate() {
         }
         int pred_start = std::stoi( pred_vec[0] );
         int pred_end   = std::stoi( pred_vec[1] );
+        
+        if ( method == Method::Simplex or method == Method::SMap ) {
+            // Don't check if None, Embed or CCM since default of "1 1" is used.
+            if ( pred_start >= pred_end ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): prediction start index "
+                       << pred_start << " index exceeeds end "
+                       << pred_end << ".\n";
+                throw std::runtime_error( errMsg.str() );
+            }
+        }
         
         prediction = std::vector<size_t>( pred_end - pred_start + 1 );
         std::iota ( prediction.begin(), prediction.end(), pred_start - 1 );
