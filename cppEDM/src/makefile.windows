@@ -5,13 +5,11 @@ OBJ = Common.obj AuxFunc.obj DateTimeUtil.obj Parameter.obj Embed.obj\
 	Multiview.obj SMap.obj 
 
 LIB = EDM.lib
-LAPACK_LIB = liblapack.lib
-LAPACK_LIB_PATH = ..\..\..\lapack\w32
 
 CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
 
 all:	$(LIB)
-	lib /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB) /LIBPATH:$(LAPACK_LIB_PATH) $(LAPACK_LIB) $(OBJ)
+	lib /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB)  $(OBJ)
 	cp $(LIB) ..\lib
 
 clean:

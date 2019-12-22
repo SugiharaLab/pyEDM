@@ -1,10 +1,6 @@
 
 strategy:
   matrix:
-    Windows_3.5.4:
-      vmImage: 'vs2017-win2016'
-      build_name: 'Windows_3.5.4_EDM'
-      python.version: '3.5.4'
     Windows_3.6.8:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.6.8_EDM'
@@ -12,19 +8,7 @@ strategy:
     Windows_3.7.4:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.7.4_EDM'
-      python.version: '3.7.4'
-    MacOS_2.7.16:
-      vmImage: 'macos-10.13'
-      build_name: 'MacOS_2.7.16_EDM'
-      python.version: '2.7.16'
-    MacOS_3.4.10:
-      vmImage: 'macos-10.13'
-      build_name: 'MacOS_3.4.10_EDM'
-      python.version: '3.4.10'
-    MacOS_3.5.7:
-      vmImage: 'macos-10.13'
-      build_name: 'MacOS_3.5.7_EDM'
-      python.version: '3.5.7'
+      python.version: '3.7.5'
     MacOS_3.6.9:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.6.9_EDM'
@@ -32,7 +16,7 @@ strategy:
     MacOS_3.7.4:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.7.4_EDM'
-      python.version: '3.7.4'
+      python.version: '3.7.5'
 
 pool:
   vmImage: $(vmImage)
@@ -47,12 +31,6 @@ steps:
     modifyEnvironment: True 
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
   displayName: setup visual studio env on windows
-
-
-#download eigen for cppEDM
-- script: git clone https://github.com/eigenteam/eigen-git-mirror eigen_git
-  displayName: download eigen
-- script: mv eigen_git/Eigen .
 
 #print which version python using for testing
 - script: python --version
@@ -70,9 +48,11 @@ steps:
     versionSpec: '$(python.version)'
 
 #build the package and download
-- script: pip install pybind11
-- script: pip install wheel
+- script: pip install pybind11 --user
+- script: pip install wheel --user
 - script: python setup.py bdist_wheel
+- script: python setup.py install --user
+- script: python pyEDM/tests/tests.py
 
 - publish: $(System.DefaultWorkingDirectory)/dist
   condition: eq( variables['Agent.OS'], 'Darwin' )

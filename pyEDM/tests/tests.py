@@ -128,6 +128,7 @@ class test_EDM( unittest.TestCase ):
     #------------------------------------------------------------
     # Multiview
     #------------------------------------------------------------
+    """
     def test_multiview( self ):
         print ( "--- Multiview ---" )
         M = EDM.Multiview( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
@@ -150,6 +151,7 @@ class test_EDM( unittest.TestCase ):
 
         # Validate combinations
         self.assertTrue( dfc.equals( df_combo ) )
+    """
 
     #------------------------------------------------------------
     # CCM

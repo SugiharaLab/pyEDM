@@ -50,6 +50,8 @@ __version__ = '1.0.1'  # Get version from cppEDM Parameter.cc ?
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
 EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
+OBLAS_Lib_Path = os.path.join( tmpInstallPath, "pyEDM/win_64_dependencies" )
+Bindings_Path  = os.path.join( tmpInstallPath, "src/bindings/" )
 
 # Set default cppEDM library name
 platform = sys.platform
@@ -150,6 +152,9 @@ class BuildExt( build_ext ):
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
 
+
+on_windows = sys.platform.startswith('win')
+
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
@@ -157,7 +162,7 @@ Extension_modules = [
     Extension(
         name = 'pyBindEDM',
 
-        sources = [ 'src/bindings/PyBind.cpp' ],
+        sources = [ Bindings_Path + 'PyBind.cpp' ],
         
         include_dirs = [
             get_pybind_include(), # Path to pybind11 headers
@@ -166,9 +171,8 @@ Extension_modules = [
         ],
         
         language     = 'c++',
-        #library_dirs = [ EDM_Lib_Path, '/usr/lib/', '"C:/JP/lapack/w32"'],
-        library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
-        libraries    = ['EDM','lapack'],
+        library_dirs = [ EDM_Lib_Path, '/usr/lib/', OBLAS_Lib_Path ],
+        libraries    = ['EDM','libopenblas'] if on_windows else ['EDM'],
     ),
 ]
 
@@ -189,7 +193,8 @@ setup(
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
     ext_modules      = Extension_modules,
-    package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py'] },
+    package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py', 
+                            'win_64_dependencies/*.dll' if on_windows else ''] },
     #test_suite      = "tests", # ??? [1]
     install_requires = ['pybind11>=2.2', 'pandas>=0.20.3', 'matplotlib>=2.2'],
     python_requires  = '>=3',
