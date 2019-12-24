@@ -57,6 +57,11 @@ Bindings_Path  = os.path.join( tmpInstallPath, "src/bindings/" )
 platform = sys.platform
 if platform == 'darwin' or platform == 'linux':
     cppLibName = 'libEDM.a'
+    import subprocess
+    build_libEDM = subprocess.Popen(["make", "-C", "./cppEDM/src"], 
+                                           stderr=subprocess.STDOUT)
+    build_libEDM.wait()
+
 elif sys.platform == 'win32':
     cppLibName = 'EDM.lib'
 else: # assume unix
@@ -172,7 +177,7 @@ Extension_modules = [
         
         language     = 'c++',
         library_dirs = [ EDM_Lib_Path, '/usr/lib/', OBLAS_Lib_Path ],
-        libraries    = ['EDM','libopenblas'] if on_windows else ['EDM'],
+        libraries    = ['EDM','libopenblas'] if on_windows else ['EDM','lapack'],
     ),
 ]
 
