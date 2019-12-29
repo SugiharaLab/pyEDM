@@ -54,7 +54,15 @@ void parse_datetime_str ( struct tm & time_obj,
         time_obj.tm_min  = stod(tokens[1]);
         time_obj.tm_hour = stod(tokens[0]);
     }
-    mktime( &time_obj );
+
+    int err = mktime( &time_obj );
+
+    if ( err < 0 ) {
+        std::stringstream errMsg;
+        errMsg << "parse_datetime_str() mktime failed on "
+               << datetime_str;
+        throw( errMsg.str() );
+    }
 }
 
 //----------------------------------------------------------------------
@@ -92,7 +100,6 @@ datetime_info parse_datetime ( std::string datetime ) {
     }
     else {
         output.unrecognized_fmt = true;
-        return output;
     }
     return output; 
 }
@@ -113,7 +120,8 @@ std::string increment_datetime_str ( std::string datetime1,
     datetime_info dtinfo1 = parse_datetime( datetime1 );
     datetime_info dtinfo2 = parse_datetime( datetime2 );
     
-    if ( dtinfo1.unrecognized_fmt ) {
+    if ( dtinfo1.unrecognized_fmt or dtinfo2.unrecognized_fmt ) {
+        // return empty string
         return std::string();
     }
     
@@ -128,10 +136,26 @@ std::string increment_datetime_str ( std::string datetime1,
     // increment the time and format
     dtinfo2.time.tm_sec += tp * seconds_diff;
     
-    mktime( &dtinfo2.time );
+    int err = mktime( &dtinfo2.time );
+    
+    if ( err < 0 ) {
+        std::stringstream errMsg;
+        errMsg << "increment_datetime_str() mktime failed on "
+               << datetime2;
+        throw( errMsg.str() );
+    }
     
     // format incremented time
     char tmp_buffer [ BUFSIZ ];
-    strftime( tmp_buffer, BUFSIZ, dtinfo2.datetime_fmt.c_str(), &dtinfo2.time );
+    
+    size_t n_char = strftime( tmp_buffer, BUFSIZ,
+                              dtinfo2.datetime_fmt.c_str(), &dtinfo2.time );
+    if ( n_char == 0 ) {
+        std::stringstream errMsg;
+        errMsg << "increment_datetime_str(): Failed on "
+               << datetime1 << ", " << datetime2 << " tp = " << tp;
+        throw( errMsg.str() );
+    }
+
     return std::string( tmp_buffer );
 }

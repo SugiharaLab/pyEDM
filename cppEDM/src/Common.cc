@@ -16,10 +16,16 @@ std::string ToLower( std::string str ) {
     return lowerStr;
 }
 
-//----------------------------------------------------------------
-// true  : str has only numeric characters
-// false : str has non-numeric characters
-//----------------------------------------------------------------
+//-------------------------------------------------------------------
+// Called in two different contexts:
+// DataFrame.h  ReadData() Are data columns numeric or labels?
+// Parameter.cc Validate() Are columns/target integer index or label?
+//
+// param integer : true: only digits, false: digits plus '-', '.'
+// return
+//        true  : str has only numeric characters
+//        false : str has non-numeric characters
+//-------------------------------------------------------------------
 bool OnlyDigits( std::string str, bool integer ) {
 
     if ( not str.size() ) {
