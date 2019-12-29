@@ -265,13 +265,17 @@ void FillTimes( Parameters                param,
         }
     }
     else {
-        bool time_format_warning_printed = false;
-        
         // Tp introduces time values beyond the range of time
+        bool time_format_warning_printed = false;
+
+        // Try to parse the last time vector string as a date or datetime
+        // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
+        datetime_info dtinfo = parse_datetime( time[ max_pred_i ] );
+            
         for ( auto i = N_row; i < N_row + param.Tp; i++ ) {
             std::stringstream tss;
             
-            if ( OnlyDigits( time[ max_pred_i ], false ) ) {
+            if ( dtinfo.unrecognized_fmt ) {
                 // Numeric so add Tp
                 tss << std::stod( time[ max_pred_i ] ) + i - N_row + 1;
             }
