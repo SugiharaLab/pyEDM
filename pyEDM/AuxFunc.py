@@ -122,10 +122,17 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
             "  S-Map Coefficients"
     
+    if "time" in df.columns :
+        time_col = "time"
+    elif "Time" in df.columns :
+        time_col = "Time"
+    else :
+        raise RuntimeError( "PlotCoeff() Time column not found." )
+    
     # Coefficient columns can be in any column
-    coef_cols = [ x for x in df.columns if "Time" not in x ]
+    coef_cols = [ x for x in df.columns if time_col not in x ]
 
-    df.plot( "Time", coef_cols, title = title, linewidth = 3,
+    df.plot( time_col, coef_cols, title = title, linewidth = 3,
              subplots = True )
     
     show( block = block )
