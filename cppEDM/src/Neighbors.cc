@@ -23,12 +23,13 @@ Neighbors FindNeighbors(
         throw( std::runtime_error( errMsg ) );
     }
 
-    if ( parameters.embedded and parameters.E != dataFrame.NColumns() ) {
+    if ( parameters.embedded and parameters.E > dataFrame.NColumns() ) {
         std::stringstream errMsg;
-        errMsg << "FindNeighbors(): The number of dataFrame columns ("
-               << dataFrame.NColumns() << ") does not match the embedding "
+        errMsg << "WARNING: FindNeighbors() Multivariate data "
+               << "(embedded = true): The number of dataFrame columns ("
+               << dataFrame.NColumns() << ") is less than the embedding "
                << "dimension E (" << parameters.E << ")\n";
-        throw std::runtime_error( errMsg.str() );
+        std::cout << errMsg.str();
     }
 
     size_t N_library_rows    = parameters.library.size();
