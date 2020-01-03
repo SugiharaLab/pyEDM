@@ -147,8 +147,8 @@ VectorError ComputeError( std::valarray< double > obsIn,
     std::valarray<double> obs ( predIn.size() - 2 * nanPred );
     if ( nanPred > 0 ) {
         // ignore nanPred initial pred, and nanObs end obs
-        pred = predIn[ std::slice( nanPred, pred.size() - nanPred - 1, 1 ) ];
-        obs  = obsIn [ std::slice( nanPred, pred.size() - nanPred - 1, 1 ) ];
+        pred = predIn[ std::slice( nanPred, pred.size(), 1 ) ];
+        obs  = obsIn [ std::slice( nanPred, pred.size(), 1 ) ];
     }
     else {
         pred = std::valarray<double>( predIn );
