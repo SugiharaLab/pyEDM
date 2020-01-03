@@ -139,8 +139,6 @@ class BuildExt( build_ext ):
         build_ext.build_extensions(self)
 
 
-on_windows = sys.platform.startswith('win')
-
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
@@ -160,9 +158,9 @@ Extension_modules = [
         library_dirs = [ EDM_Lib_Path, '/usr/lib/'],
         extra_compile_args=['-std=c++11',"-D_hypot=hypot"],
         libraries    = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
-                                        if on_windows else ['EDM','lapack'],
+                        if sys.platform.startswith('win') else ['EDM','lapack'],
         extra_link_args=["-static", "-static-libgfortran", "-static-libgcc"]\
-                                        if on_windows else [],
+                        if sys.platform.startswith('win') else [],
     ),
 ]
 
