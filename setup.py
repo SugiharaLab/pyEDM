@@ -1,4 +1,4 @@
-#
+##
 # Build the pyEDM Python binding to cppEDM.
 #
 # The core library is the C++ cppEDM libEDM.a
@@ -16,58 +16,38 @@
 #
 # Most of this setup is cloned from pybind11 example setup.py
 # https://github.com/pybind/python_example
-#
-# This only works if the directory structure for the module to
-# be installed (pyEDM) is:
-#
-# pyEDM/  # Any name
-#   setup.py
-#   pyEDM/
-#     __init__.py # import ./EDM
-#     pyEDM.py
-#     data/
-#     tests/
-#
-# Getting this to work reasonably is just mind-numbing and insensible. 
-# There seem to be many implicit requirements such as the directory 
-# stucture, name conventions, apparent incongruitues between using
-# package_data, MANIFEST.in, etc...
-#
-# Note on the use of setup.py in pip:
-# If the package has a valid wheel, it's installed, perhaps from PyPI.
-# If the package is not a wheel, pip tries to build a wheel for it via
-# "setup.py bdist_wheel". If that fails pip falls back to installing
-# via "setup.py install".
-#
+##
+
 import sys, os
 import setuptools
 from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
-__version__ = '1.0.2'  # Get version from cppEDM Parameter.cc ?
+# set msvc runtime dll for windows build
+import distutils.cygwinccompiler
+distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
+
+__version__ = '1.0.3'  # Get version from cppEDM Parameter.cc ?
 
 # e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
 EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
-OBLAS_Lib_Path = os.path.join( tmpInstallPath, "pyEDM/win_64_dependencies" )
 Bindings_Path  = os.path.join( tmpInstallPath, "src/bindings/" )
 
-# Set default cppEDM library name
-platform = sys.platform
-if platform == 'darwin' or platform == 'linux':
-    cppLibName = 'libEDM.a'
-    import subprocess
-    build_libEDM = subprocess.Popen(["make", "-C", "./cppEDM/src"], 
-                                           stderr=subprocess.STDOUT)
-    build_libEDM.wait()
+# build libEDM.a 
 
-elif sys.platform == 'win32':
-    cppLibName = 'EDM.lib'
-else: # assume unix
-    cppLibName = 'libEDM.a'
+import subprocess
+cppLibName   = "libEDM.a"
 
-# We are building the package, see if libEDM exists
+if not os.path.exists(EDM_Lib_Path): # in case of sdist build, mkdir lib
+    os.makedirs(EDM_Lib_Path)
+
+build_libEDM = subprocess.Popen(["make", "-C", "./cppEDM/src"], 
+                                       stderr=subprocess.STDOUT)
+build_libEDM.wait()
+
+# check that libEDM exists
 if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
     errStr = "Error: " + os.path.join( "./cppEDM/src/lib", cppLibName ) +\
              " does not exist.\n\nYou can install cppEDM manually per: " +\
@@ -129,8 +109,9 @@ def cpp_flag( compiler ):
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
+
+
 class BuildExt( build_ext ):
-    """A custom build extension for adding compiler-specific options."""
     
     c_opts = {
         'msvc': ['/EHsc'],
@@ -176,8 +157,12 @@ Extension_modules = [
         ],
         
         language     = 'c++',
-        library_dirs = [ EDM_Lib_Path, '/usr/lib/', OBLAS_Lib_Path ],
-        libraries    = ['EDM','libopenblas'] if on_windows else ['EDM','lapack'],
+        library_dirs = [ EDM_Lib_Path, '/usr/lib/'],
+        extra_compile_args=['-std=c++11',"-D_hypot=hypot"],
+        libraries    = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+                                        if on_windows else ['EDM','lapack'],
+        extra_link_args=["-static", "-static-libgfortran", "-static-libgcc"]\
+                                        if on_windows else [],
     ),
 ]
 
@@ -198,8 +183,7 @@ setup(
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
     ext_modules      = Extension_modules,
-    package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py', 
-                            'win_64_dependencies/*.dll' if on_windows else ''] },
+    package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
     install_requires = ['pybind11>=2.2', 'pandas>=0.20.3', 'matplotlib>=2.2'],
     python_requires  = '>=3',

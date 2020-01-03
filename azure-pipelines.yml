@@ -1,62 +1,73 @@
 
 strategy:
   matrix:
-    Windows_3.6.8:
+    Windows_3.5:
       vmImage: 'vs2017-win2016'
-      build_name: 'Windows_3.6.8_EDM'
-      python.version: '3.6.8'
-    Windows_3.7.4:
+      build_name: 'Windows_3.5_EDM'
+      python.version: '3.5'
+    Windows_3.6:
       vmImage: 'vs2017-win2016'
-      build_name: 'Windows_3.7.4_EDM'
-      python.version: '3.7.5'
-    MacOS_3.6.9:
+      build_name: 'Windows_3.6_EDM'
+      python.version: '3.6'
+    Windows_3.7:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.7_EDM'
+      python.version: '3.7'
+    MacOS_3.5:
+      vmImage: 'macos-10.13'
+      build_name: 'MacOS_3.5_EDM'
+      python.version: '3.5'
+    MacOS_3.6:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.6.9_EDM'
-      python.version: '3.6.9'
-    MacOS_3.7.4:
+      python.version: '3.6'
+    MacOS_3.7:
       vmImage: 'macos-10.13'
-      build_name: 'MacOS_3.7.4_EDM'
-      python.version: '3.7.5'
+      build_name: 'MacOS_3.7_EDM'
+      python.version: '3.7'
 
 pool:
+
   vmImage: $(vmImage)
   python.version: $(python.version)
 
 steps:
-#only setup the visual studio environment if on windowz
-- task: BatchScript@1
-  inputs:
-    filename: 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat'
-    arguments: 'amd64'
-    modifyEnvironment: True 
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-  displayName: setup visual studio env on windows
-
-#print which version python using for testing
-- script: python --version
-
-#build cppEDM with respective makefile
-- script: make -C cppEDM/src -f makefile.windows
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-  displayName: building cppEDM on windows
-- script: make -C cppEDM/src
-  condition: eq( variables['Agent.OS'], 'Darwin' )
-  displayName: building cppEDM on macOS
 
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '$(python.version)'
 
-#build the package and download
-- script: pip install pybind11 --user
-- script: pip install wheel --user
+- task: BatchScript@1
+  inputs:
+    filename: 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat'
+    arguments: 'amd64'
+    modifyEnvironment: True 
+  displayName: setup visual studio env on windows
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+# took this from the scipy azure build script so credit to them in case needed
+- powershell: |
+    $wc = New-Object net.webclient;
+    $wc.Downloadfile("https://3f23b170c54c2533c070-1c8a9b3114517dc5fe17b7c3f8c63a43.ssl.cf2.rackcdn.com/openblas-v0.3.7-win_amd64-gcc_7_1_0.zip", "openblas.zip")
+    $tmpdir = New-TemporaryFile | %{ rm $_; mkdir $_ }
+    Expand-Archive "openblas.zip" $tmpdir
+    cp $tmpdir\64\lib\libopenblas_v0.3.7-gcc_7_1_0.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
+  displayName: 'download openblas'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+- bash: |
+    distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
+    echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
+  displayName: setup mingw compiler option for windows build
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+- script: |
+    pip install -r requirements.txt
+    pip install wheel
+  displayName: install required python modules for pyEDM build
+
 - script: python setup.py bdist_wheel
-- script: python setup.py install --user
-- script: python pyEDM/tests/tests.py
+  displayName: build pyEDM wheel
 
 - publish: $(System.DefaultWorkingDirectory)/dist
-  condition: eq( variables['Agent.OS'], 'Darwin' )
-  artifact: $(build_name)
-- publish: $(System.DefaultWorkingDirectory)/dist
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
   artifact: $(build_name)
