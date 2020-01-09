@@ -179,7 +179,7 @@ def PandasDataFrametoDF( df ):
 def ComputeError( obs, pred ):
     '''Pearson rho, RMSE, MAE.'''
 
-    D = pyBindEDM.ComputeError( list(obs), list(pred) )
+    D = pyBindEDM.ComputeError( obs, pred )
 
     return D
              
