@@ -27,7 +27,7 @@ from   setuptools.command.build_ext import build_ext
 import distutils.cygwinccompiler
 distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
 
-__version__ = '1.0.3'  # Get version from cppEDM Parameter.cc ?
+__version__ = '1.1.0'  # Get version from cppEDM Parameter.cc ?
 
 # e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
@@ -183,7 +183,7 @@ setup(
     ext_modules      = Extension_modules,
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
-    install_requires = ['pybind11>=2.2', 'pandas>=0.20.3', 'matplotlib>=2.2'],
+    install_requires = ['pybind11>=2.3', 'pandas>=0.20.3', 'matplotlib>=2.2'],
     python_requires  = '>=3',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
     zip_safe         = False,
