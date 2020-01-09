@@ -392,11 +392,11 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
         std::uniform_int_distribution<size_t> distribution( 0, N_row - 1 );
         
 #ifdef DEBUG_ALL
-    {
-    std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
-        std::cout << "lib_size: " << lib_size
-                  << " ------------------------------------------\n";
-    }
+        {
+        std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
+            std::cout << "lib_size: " << lib_size
+                      << " ------------------------------------------\n";
+        }
 #endif
             
         std::valarray< double > rho ( maxSamples );
@@ -611,8 +611,8 @@ DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
         std::valarray< double > v1 = v1_[ std::slice( 0, E, 1 ) ];
 
         // Only compute upper triangular D, the diagonal and
-        // lower left are redundant: (col < N_row - 1); row >= col
-        for ( size_t col = 0; col < N_row - 1; col++ ) {
+        // lower left are redundant: (col < N_row); row >= col
+        for ( size_t col = 0; col < N_row; col++ ) {
             // Avoid redundant computations
             if ( row >= col ) {
                 continue; // Computed in upper triangle, copied below
@@ -708,17 +708,17 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
         }
 
         for ( size_t col_i = 0; col_i < N_row; col_i++ ) {
+
+            if ( col_i > N_row - param.tau * param.E ) {
+                continue;
+            }
+            
             double d_i = dist_row[ lib_i[col_i] ];
             // If d_i is less than values in knn_distances, add to list
             auto max_it = std::max_element( begin( knn_distances ),
-                                            end( knn_distances ) );
+                                            end  ( knn_distances ) );
             if ( d_i < *max_it ) {
                 size_t max_i = std::distance( begin(knn_distances), max_it );
-
-                if ( col_i >= N_row - param.tau * param.E ) {
-                    continue;
-                }
-                
                 knn_neighbors[ max_i ] = col_i;  // Save the index
                 knn_distances[ max_i ] = d_i;    // Save the value
             }

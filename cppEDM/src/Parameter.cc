@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 0, 1, "2019-12-12" )
+    version          ( 1, 1, 0, "2020-01-09" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -265,7 +265,24 @@ void Parameters::Validate() {
         size_t start     = std::stoi( libsize_vec[0] );
         size_t stop      = std::stoi( libsize_vec[1] );
         size_t increment = std::stoi( libsize_vec[2] );
-        size_t N_lib     = std::floor((stop-start)/increment + 1/increment)+1;
+
+        if ( increment < 1 ) {
+            std::stringstream errMsg;
+            errMsg << "Parameters::Validate(): "
+                   << "CCM librarySizes increment " << increment
+                   << " is invalid.\n";
+            throw std::runtime_error( errMsg.str() );
+        }
+        
+        if ( start > stop ) {
+            std::stringstream errMsg;
+            errMsg << "Parameters::Validate(): "
+                   << "CCM librarySizes start " << start
+                   << " stop " << stop  << " are invalid.\n";
+            throw std::runtime_error( errMsg.str() );
+        }
+        
+        size_t N_lib = std::floor( (stop-start)/increment + 1/increment ) + 1;
 
         if ( start < E ) {
             std::stringstream errMsg;
