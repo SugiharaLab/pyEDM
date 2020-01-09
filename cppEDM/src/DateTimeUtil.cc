@@ -18,6 +18,8 @@ std::regex  regEx_hhmmss        ("\\d{2}:\\d{2}:\\d{2}");
 std::string fmt_hhmmss          ("%H:%M:%S");
 std::regex  regEx_yymmddthhmmss ("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 std::string fmt_yymmddthhmmss   ("%Y-%m-%dT%H:%M:%S");
+std::regex  regEx_yymmddhhmmss  ("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
+std::string fmt_yymmddhhmmss    ("%Y-%m-%d %H:%M:%S");
 std::regex  regEx_hhmmsssss     ("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}");
 std::string fmt_hhmmsssss       ("%H:%M:%S");
 
@@ -82,6 +84,15 @@ datetime_info parse_datetime ( std::string datetime ) {
     else if ( std::regex_match( datetime, regEx_hhmmss )) {
         output.datetime_fmt = fmt_hhmmss; 
         parse_datetime_str( output.time, datetime, false );            
+    }
+    else if ( std::regex_match( datetime, regEx_yymmddhhmmss )) {
+        output.datetime_fmt = fmt_yymmddhhmmss; 
+        // split by " ", then split first by - second by :
+        int delim_pos       = datetime.find(' ');
+        std::string date    = datetime.substr(0, delim_pos);
+        std::string time    = datetime.substr(delim_pos+1, datetime.size());
+        parse_datetime_str( output.time, date, true );            
+        parse_datetime_str( output.time, time, false );            
     }
     else if ( std::regex_match( datetime, regEx_yymmddthhmmss )) {
         output.datetime_fmt = fmt_yymmddthhmmss; 
