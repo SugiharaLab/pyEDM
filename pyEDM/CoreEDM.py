@@ -106,8 +106,10 @@ def Simplex( pathIn       = "./",
         raise Exception( "Simplex(): Invalid data input." )
 
     # convert exclusion matrix to dataframe
-    exclusionMatrix = pyBindEDM.DF() if exclusionMatrix is None else \
-                            pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix )
+    if ( exclusionMatrix is None ) :
+        exclusionMatrix = pyBindEDM.DF() 
+    else:
+        exclusionMatrix = pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix, True )
 
     # D is a Python dict from pybind11 < cppEDM Simplex 
     D = pyBindEDM.Simplex( pathIn,
@@ -172,10 +174,12 @@ def SMap( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "SMap(): Invalid data input." )
-    
+
     # convert exclusion matrix to dataframe
-    exclusionMatrix = pyBindEDM.DF() if exclusionMatrix is None else \
-                            pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix )
+    if ( exclusionMatrix is None ) :
+        exclusionMatrix = pyBindEDM.DF() 
+    else:
+        exclusionMatrix = pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix, True )
     
     # D is a Python dict from pybind11 < cppEDM SMap:
     #  { "predictions" : {}, "coefficients" : {} }
@@ -246,9 +250,12 @@ def Multiview( pathIn          = "./",
     else :
         raise Exception( "Multiview(): Invalid data input." )
 
-    # convert exclusion matrix to dataframe
-    exclusionMatrix = pyBindEDM.DF() if exclusionMatrix is None else \
-                            pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix )
+     # convert exclusion matrix to dataframe
+    if ( exclusionMatrix is None ) :
+        exclusionMatrix = pyBindEDM.DF() 
+    else:
+        exclusionMatrix = pyEDM.AuxFunc.PandasDataFrametoDF( exclusionMatrix, True )
+    
     
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "View" : < vector< string >, "Predictions" : {} }

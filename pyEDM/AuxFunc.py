@@ -143,11 +143,18 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
 #
 # pybind Py   [ ( string, array ), ..., ]
 #------------------------------------------------------------------------
-def PandasDataFrametoDF( df ):
+def PandasDataFrametoDF( df, noTime=False ):
     '''Convert Pandas DataFrame to DF struct.'''
 
     if df is None :
         raise RuntimeError( "PandasDataFrametoDF() empty DataFrame" )
+
+    if noTime:
+        df.insert( 0, "time", list(df.index) )
+
+    # set columns to list in case not for df 
+    
+    df.columns = list(map( str, list(df.columns) ))
 
     # Here is a fundamental problem/incompatability between cppEDM and pyEDM
     # cppEDM DataFrame stores time vector as strings, and data as valarray
