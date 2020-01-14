@@ -78,12 +78,12 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("knn")         = 0,
                py::arg("tau")         = 1,
                py::arg("exclusionRadius") = 0,
+               py::arg("exclusionMatrix") = DF(),
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
                py::arg("embedded")    = false,
                py::arg("const_pred")  = false,
                py::arg("verbose")     = false );
-    
     pyMod.def( "SMap", &SMap_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
@@ -98,6 +98,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("tau")         = 1,
                py::arg("theta")       = 0,
                py::arg("exclusionRadius") = 0,
+               py::arg("exclusionMatrix") = DF(),
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
                py::arg("smapFile")    = std::string(""),
@@ -122,6 +123,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("target")          = std::string(""),
                py::arg("multiview")       = 0,
                py::arg("exclusionRadius") = 0,
+               py::arg("exclusionMatrix") = DF(),
                py::arg("verbose")         = false,
                py::arg("numThreads")      = 4 );
     

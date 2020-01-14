@@ -92,26 +92,45 @@ Neighbors FindNeighbors(
         //--------------------------------------------------------------
         for ( size_t row_j = 0; row_j < parameters.library.size(); row_j++ ) {
             // Get the library vector for this lib_row index
+
             size_t lib_row = parameters.library[ row_j ];
+
             std::valarray<double> lib_vec = dataFrame.Row( lib_row );
-            
+
             // If the library point is degenerate with the prediction,
             // ignore it.
             if ( lib_row == pred_row ) {
-#ifdef DEBUG_ALL
-                if ( parameters.verbose ) {
-                    std::stringstream msg;
-                    msg << "FindNeighbors(): Ignoring degenerate lib_row "
-                        << lib_row << " and pred_row " << pred_row << std::endl;
-                    std::cout << msg.str();
-                }
-#endif
                 continue;
             }
 
+            //skip excluded neighbors in exclusion matrix if provided
+            if ( parameters.exclusionMatrix.NRows() and 
+                                           parameters.method != Method::CCM) {
+                 
+                bool exclude_row = false;
+
+                //if neighb idx OR any idx's in its lag are excluded, skip
+
+                int lead_time_idx = (parameters.E-1)*parameters.tau + lib_row;
+                int pred_time_row = pred_row + parameters.tau*(parameters.E-1);
+
+                for ( int curr_row = lib_row; curr_row <= lead_time_idx; 
+                                                  curr_row += parameters.tau ) {
+                    if( parameters.exclusionMatrix( pred_time_row , curr_row ) ){
+                        exclude_row = true; 
+                    }
+                }
+
+                if ( exclude_row ) { 
+                     continue; 
+                }
+
+            }
+    
             // Apply temporal exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
                 int xrad = (int) lib_row - pred_row;
+
                 if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
                     continue;
                 }

@@ -39,8 +39,8 @@ DataFrame< double > Embed( DataFrame< double > dataFrameIn,
     // Parameter.Validate will convert columns into a vector of names
     // or a vector of column indices
     Parameters param = Parameters( Method::Embed, "", "", "", "",
-                                   "1 1", "1 1", E, 0, 0, tau, 0, 0,
-                                   columns, "", false, false, verbose );
+                           "1 1", "1 1", E, 0, 0, tau, 0, 0, DataFrame<double>(),
+                           columns, "", false, false, verbose );
 
     if ( not param.columnIndex.size() and
          dataFrameIn.ColumnNameToIndex().empty() ) {

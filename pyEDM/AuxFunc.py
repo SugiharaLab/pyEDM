@@ -94,8 +94,8 @@ def PlotObsPred( df, dataFile = None, E = None, Tp = None, block = True ):
     '''Plot observations and predictions'''
     
     # stats: {'MAE': 0., 'RMSE': 0., 'rho': 0. }
-    stats = pyBindEDM.ComputeError( df['Observations'],
-                                    df['Predictions' ] )
+    stats = pyBindEDM.ComputeError( list(df['Observations']),
+                                    list(df['Predictions' ]) )
 
     title = dataFile + "\nE=" + str(E) + " Tp=" + str(Tp) +\
             "  ρ="   + str( round( stats['rho'],  2 ) )   +\

@@ -21,6 +21,8 @@ public:  // Not protected with accessors.
     int         knn;                // k nearest neighbors
     int         tau;                // block embedding delay
     int         exclusionRadius;    // temporal rows to ignore in predict
+
+    const DataFrame<double> &exclusionMatrix;
     
     float       theta;              // S Map localization
     float       SVDSignificance;    // SVD singular value cutoff
@@ -84,6 +86,8 @@ public:  // Not protected with accessors.
         int         tau         = 1,
         float       theta       = 0,
         int         exclusionRadius = 0,
+
+        const DataFrame<double> &exclusionMatrix = DataFrame<double>(),
 
         std::string columns_str = "",
         std::string target_str  = "",

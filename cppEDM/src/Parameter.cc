@@ -20,6 +20,8 @@ Parameters::Parameters(
     float       theta,
     int         exclusionRadius,
 
+    const DataFrame<double> &exclusionMatrix,
+
     std::string columns_str,
     std::string target_str,
     
@@ -58,6 +60,8 @@ Parameters::Parameters(
     tau              ( tau ),
     theta            ( theta ),
     exclusionRadius  ( exclusionRadius ),
+
+    exclusionMatrix  ( exclusionMatrix ),
     
     columns_str      ( columns_str ),
     target_str       ( target_str ),
@@ -86,7 +90,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 1, 0, "2020-01-09" )
+    version          ( 1, 0, 1, "2019-12-12" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -142,6 +146,7 @@ void Parameters::Validate() {
         
         library = std::vector<size_t>( lib_end - lib_start + 1 );
         std::iota ( library.begin(), library.end(), lib_start - 1 );
+
     }
 
     //--------------------------------------------------------------
@@ -169,6 +174,19 @@ void Parameters::Validate() {
         
         prediction = std::vector<size_t>( pred_end - pred_start + 1 );
         std::iota ( prediction.begin(), prediction.end(), pred_start - 1 );
+    
+        //also check exclusion matrix size while we have pred string parsed
+
+        if ( exclusionMatrix.NRows() and method != Method::CCM and (
+                        exclusionMatrix.NRows() < pred_end or 
+                        exclusionMatrix.NColumns() < pred_end ) ){
+            
+            std::string errMsg( "Parameters::Validate(): "
+                    "The range of rows in the Exclusion Matrix "
+                    "is smaller than range predicting on.\n" );
+            throw std::runtime_error( errMsg );
+        }
+    
     }
     
     if ( method == Method::Simplex or method == Method::SMap ) {
@@ -192,6 +210,7 @@ void Parameters::Validate() {
             prediction = std::vector<size_t>( 1, 0 );
         }
     }
+    
     
 #ifdef DEBUG_ALL
     PrintIndices( library, prediction );
@@ -253,6 +272,7 @@ void Parameters::Validate() {
         }
     }
 
+
     // CCM librarySizes
     if ( libSizes_str.size() > 0 ) {
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
@@ -265,24 +285,7 @@ void Parameters::Validate() {
         size_t start     = std::stoi( libsize_vec[0] );
         size_t stop      = std::stoi( libsize_vec[1] );
         size_t increment = std::stoi( libsize_vec[2] );
-
-        if ( increment < 1 ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): "
-                   << "CCM librarySizes increment " << increment
-                   << " is invalid.\n";
-            throw std::runtime_error( errMsg.str() );
-        }
-        
-        if ( start > stop ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): "
-                   << "CCM librarySizes start " << start
-                   << " stop " << stop  << " are invalid.\n";
-            throw std::runtime_error( errMsg.str() );
-        }
-        
-        size_t N_lib = std::floor( (stop-start)/increment + 1/increment ) + 1;
+        size_t N_lib     = std::floor((stop-start)/increment + 1/increment)+1;
 
         if ( start < E ) {
             std::stringstream errMsg;
