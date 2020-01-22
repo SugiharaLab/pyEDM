@@ -302,14 +302,12 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
     // partial data rows ignored: CrossMap() -> Embed() -> MakeBlock()
     // This removal of partial data rows is also done in EmbedNN()
     //--------------------------------------------------------------
-    // If we support negative tau, this will change
-    // For now, assume only positive tau is allowed
-    size_t shift = std::max( 0, paramCCM.tau * (paramCCM.E - 1) );
+    size_t shift = abs( paramCCM.tau ) * ( paramCCM.E - 1 );
     {
         std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
         if ( not dataFrameIn.PartialDataRowsDeleted() ) {
             // Not thread safe.
-            dataFrameIn.DeletePartialDataRows( shift );
+            dataFrameIn.DeletePartialDataRows( shift, paramCCM.tau );
         }
     }
     
@@ -691,6 +689,8 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
     }
 #endif    
 
+    size_t shift0 = abs( param.tau ) * param.E;
+
     for ( auto row_i : lib_i ) {
   
         // Take Distances( row, col ) a row at a time
@@ -709,7 +709,7 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
 
         for ( size_t col_i = 0; col_i < N_row; col_i++ ) {
 
-            if ( col_i > N_row - param.tau * param.E ) {
+            if ( col_i > N_row - shift0 ) {
                 continue;
             }
             

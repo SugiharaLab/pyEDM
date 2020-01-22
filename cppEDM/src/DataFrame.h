@@ -344,10 +344,10 @@ public:
     }
 
     //-----------------------------------------------------------------
-    // Delete nrows from the top
+    // Delete nrows from the top or bottom depending on tau
     // Requires that rows are contiguous: [ 0 : nrows ]
     //-----------------------------------------------------------------
-    void DeletePartialDataRows( size_t nrows ) {
+    void DeletePartialDataRows( size_t nrows, int tau ) {
 
         // NOTE : Not thread safe
 
@@ -361,7 +361,7 @@ public:
 
         if ( nrows > n_rows ) {
             std::stringstream errMsg;
-            errMsg << "DataFrame::DeleteContiguousRows() "
+            errMsg << "DataFrame::DeletePartialDataRows() "
                    << " nrows (" << nrows << " larger than DataFrame "
                    << "NRows (" << n_rows << ")" << std::endl;
             throw( std::runtime_error( errMsg.str() ) );
@@ -371,7 +371,12 @@ public:
         n_rows = n_rows - nrows;
 
         // Update time
-        time.erase( time.begin(), time.begin() + nrows );
+        if ( tau < 0 ) {
+            time.erase( time.begin(), time.begin() + nrows );
+        }
+        else {
+            time.erase( time.end() - nrows, time.end() );
+        }
 
         // Copy elements into data
         std::valarray< double > data( elements );
@@ -381,7 +386,14 @@ public:
         elements.resize( n_elements );
 
         // Copy non deleted data to resized elements. NOTE: Row major format
-        std::slice elements_i( nrows * n_columns, n_elements, 1 );
+        std::slice elements_i;
+        if ( tau < 0 ) {
+            elements_i = std::slice( nrows * n_columns, n_elements, 1 );
+        }
+        else {
+            elements_i = std::slice( 0, n_elements, 1 );
+        }
+
         // Bogus cast for MSVC 
         elements[ std::slice( 0, n_elements, 1 ) ] =
             ( std::valarray< double > ) data[ elements_i ];

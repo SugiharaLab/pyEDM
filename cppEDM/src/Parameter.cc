@@ -41,8 +41,7 @@ Parameters::Parameters(
     bool        random,
     bool        replacement,
     unsigned    rseed,
-    bool        noNeigh,
-    bool        fwdTau
+    bool        noNeigh
     ) :
     // Variable initialization from Parameters arguments
     method           ( method ),
@@ -82,11 +81,10 @@ Parameters::Parameters(
     replacement      ( replacement ),
     seed             ( rseed ),
     noNeighborLimit  ( noNeigh ),
-    forwardTau       ( fwdTau ),
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 1, 0, "2020-01-09" )
+    version          ( 1, 2, 0, "2020-01-21" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -116,6 +114,18 @@ void Parameters::Load() {}
 void Parameters::Validate() {
 
     validated = true;
+
+    if ( not embedded and tau == 0 ) {
+        std::string errMsg( "Parameters::Validate(): "
+                            "tau must be non-zero.\n" );
+        throw std::runtime_error( errMsg );
+    }
+
+    if ( Tp < 0 ) {
+        std::string errMsg( "Parameters::Validate(): "
+                            "Tp must be positive.\n" );
+        throw std::runtime_error( errMsg );
+    }
 
     //--------------------------------------------------------------
     // Generate library indices: Apply zero-offset
@@ -227,6 +237,13 @@ void Parameters::Validate() {
             columnNames = columns_vec;
         }
     }
+
+    if ( not columnIndex.size() and not columnNames.size() ) {
+        std::stringstream errMsg;
+        errMsg << "Parameters::Validate(): Simplex/CCM: "
+               << " No valid columns found." << std::endl;
+        throw std::runtime_error( errMsg.str() );
+    }
     
     // target
     if ( target_str.size() ) {
@@ -308,16 +325,34 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------------
-    // If Simplex and knn not specified, knn set to E+1
-    // If S-Map require knn > E + 1, default is all neighbors.
+    // Simplex and knn not specified: not embedded : knn set to E+1
+    //                                    embedded : knn set to size( columns )
+    // S-Map require knn > E + 1, default is all neighbors.
     if ( method == Method::Simplex or method == Method::CCM ) {
         if ( knn < 1 ) {
-            knn = E + 1;
-            if ( verbose ) {
-                std::stringstream msg;
-                msg << "Parameters::Validate(): Set knn = " << knn
-                    << " (E+1) for Simplex. " << std::endl;
-                std::cout << msg.str();
+            if ( not embedded ) {
+                knn = E + 1;
+                if ( verbose ) {
+                    std::stringstream msg;
+                    msg << "Parameters::Validate(): Set knn = " << knn
+                        << " (E+1) for Simplex. " << std::endl;
+                    std::cout << msg.str();
+                }
+            }
+            else { // embedded = true
+                if ( columnIndex.size() ) {
+                    knn = columnIndex.size() + 1;
+                }
+                else if ( columnNames.size() ) {
+                    knn = columnNames.size() + 1;
+                }
+                
+                if ( verbose ) {
+                    std::stringstream msg;
+                    msg << "Parameters::Validate(): Set knn = " << knn
+                        << " for Simplex (embedded = true). " << std::endl;
+                    std::cout << msg.str();
+                }
             }
         }
         if ( knn < E + 1 ) {
@@ -337,7 +372,7 @@ void Parameters::Validate() {
             }
         }
         else {
-            // knn = 0
+            // default knn = 0, set knn value
             knn = library.size() - Tp * (E + 1);
             if ( verbose ) {
                 std::stringstream msg;
@@ -403,23 +438,33 @@ void Parameters::Validate() {
 //------------------------------------------------------------
 // Adjust lib/pred concordant with Embed() removal of tau(E-1)
 // rows, and DeletePartialDataRow()
-// If we support negative tau, this will change
-// For now, assume only positive tau is allowed
 //------------------------------------------------------------
 void Parameters::DeleteLibPred( size_t shift ) {
     
     size_t library_len    = library.size();
     size_t prediction_len = prediction.size();
 
-    // If 0, 1, ... shift are in library or prediction
-    // those rows were deleted, delete these elements.
-    // First, create a vector of indices to delete
-    std::vector< size_t > deleted_elements( shift, 0 );
-    std::iota( deleted_elements.begin(), deleted_elements.end(), 0 );
+    // If [0, 1, ... shift]  (negative tau) or
+    // [N-shift, ... N-1, N] (positive tau) are in library or prediction
+    // those rows were deleted, delete these index elements.
+    // First, create vectors of indices to delete.
+    std::vector< size_t > deleted_pred_elements( shift, 0 );
+    std::vector< size_t > deleted_lib_elements ( shift, 0 );
 
-    // erase elements of row indices that were deleted
-    for ( auto element =  deleted_elements.begin();
-          element != deleted_elements.end(); element++ ) {
+    if ( tau < 0 ) {
+        std::iota(deleted_pred_elements.begin(), deleted_pred_elements.end(),0);
+        std::iota(deleted_lib_elements.begin(),  deleted_lib_elements.end(), 0);
+    }
+    else {
+        std::iota( deleted_pred_elements.begin(),
+                   deleted_pred_elements.end(), prediction_len - shift );
+        std::iota( deleted_lib_elements.begin(),
+                   deleted_lib_elements.end(), library_len - shift );
+    }
+
+    // Erase elements of row indices that were deleted
+    for ( auto element  = deleted_lib_elements.begin();
+               element != deleted_lib_elements.end(); element++ ) {
 
         std::vector< size_t >::iterator it;
         it = std::find( library.begin(), library.end(), *element );
@@ -427,7 +472,12 @@ void Parameters::DeleteLibPred( size_t shift ) {
         if ( it != library.end() ) {
             library.erase( it );
         }
+    }
                 
+    for ( auto element  = deleted_pred_elements.begin();
+               element != deleted_pred_elements.end(); element++ ) {
+
+        std::vector< size_t >::iterator it;
         it = std::find( prediction.begin(),
                         prediction.end(), *element );
 
@@ -439,14 +489,15 @@ void Parameters::DeleteLibPred( size_t shift ) {
     // Now offset all values by shift so that vectors indices
     // in library and prediction refer to the same data rows
     // before the deletion/shift.
-    for ( auto li =  library.begin();
-          li != library.end(); li++ ) {
-        *li = *li - shift;
+    if ( tau < 0 ) {
+        for ( auto li = library.begin(); li != library.end(); li++ ) {
+            *li = *li - shift;
+        }
+        for ( auto pi = prediction.begin(); pi != prediction.end(); pi++ ) {
+            *pi = *pi - shift;
+        }
     }
-    for ( auto pi =  prediction.begin();
-          pi != prediction.end(); pi++ ) {
-        *pi = *pi - shift;
-    }
+    // tau > 0  : Forward shifting: no adjustment needed from origin
 }
 
 //------------------------------------------------------------------
