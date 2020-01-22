@@ -19,8 +19,8 @@ namespace EDM_AuxFunc {
 // NOTE: If data is embedded by Embed(), the returned dataBlock
 //       has tau * (E-1) fewer rows than data. Since data is
 //       included in the returned DataEmbedNN struct, the first
-//       tau * (E-1) data rows are deleted to match dataBlock.
-//       The target vector is also reduced.
+//       (or last) tau * (E-1) data rows are deleted to match
+//       dataBlock.  The target vector is also reduced.
 //
 // NOTE: If rows are deleted, then the library and prediction
 //       vectors in Parameters are updated to reflect this. 
@@ -32,7 +32,7 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
     DataFrame<double> &dataIn = std::ref( *data );
     
     if ( checkDataRows ) {
-        CheckDataRows( param, dataIn, "EmbedNN" );
+        CheckDataRows( param, dataIn, "EmbedNN: Input data" );
     }
     
     //----------------------------------------------------------
@@ -60,7 +60,7 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
         dataBlock = Embed( dataIn, param.E, param.tau,
                            param.columns_str, param.verbose );
     }
-    
+
     //----------------------------------------------------------
     // Get target (library) vector
     //----------------------------------------------------------
@@ -82,16 +82,22 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
     // Adjust param.library and param.prediction indices
     //------------------------------------------------------------
     if ( not param.embedded ) {
-        // If we support negative tau, this will change
-        // For now, assume only positive tau is allowed
-        size_t shift = std::max( 0, param.tau * (param.E - 1) );
+        
+        size_t shift = abs( param.tau ) * ( param.E - 1 );
 
         // Copy targetIn excluding partial data into targetEmbed
         std::valarray<double> targetEmbed( dataIn.NRows() - shift );
+        
         // Bogus cast to ( std::valarray<double> ) for MSVC
         // as it doesn't export its own slice_array applied to []
-        targetEmbed = ( std::valarray<double> )
-            targetIn[ std::slice( shift, targetIn.size() - shift, 1 ) ];
+        if ( param.tau < 0 ) {
+            targetEmbed = ( std::valarray<double> )
+                targetIn[ std::slice( shift, targetIn.size() - shift, 1 ) ];
+        }
+        else {
+            targetEmbed = ( std::valarray<double> )
+                targetIn[ std::slice( 0, targetIn.size() - shift, 1 ) ];
+        }
         
         // Resize targetIn to ignore partial data rows
         targetIn.resize( targetEmbed.size() );
@@ -101,17 +107,22 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
         targetIn[ targetEmbed_i ] = ( std::valarray<double> )
             targetEmbed[ targetEmbed_i ];
 
-        // Delete dataIn top rows of partial data
+        // Delete dataIn top or bottom rows of partial data
         if ( not dataIn.PartialDataRowsDeleted() ) {
             // Not thread safe
             std::lock_guard<std::mutex> lck( EDM_AuxFunc::mtx );
             
-            dataIn.DeletePartialDataRows( shift );
+            dataIn.DeletePartialDataRows( shift, param.tau );
         }
 
         // Adjust param.library and param.prediction vectors of indices
         if ( shift > 0 ) {
             param.DeleteLibPred( shift );
+        }
+
+        // Check boundaries again since rows were removed
+        if ( checkDataRows ) {
+            CheckDataRows( param, dataIn, "EmbedNN: Embedded data" );
         }
     }
     
@@ -136,18 +147,6 @@ DataFrame<double> FormatOutput( Parameters               param,
                                 std::vector<std::string> time,
                                 std::string              timeName )
 {
-
-#ifdef DEBUG_ALL
-    std::cout << "FormatOutput() param.prediction.size: "
-              << param.prediction.size() << " >>> ";
-    for( auto i = 0; i < param.prediction.size(); i++ ) {
-        std::cout << param.prediction[i] << ",";
-    } std::cout << std::endl;
-    std::cout << "FormatOutput() time.size: " << time.size() << " >>> ";
-    for( auto i = 0; i < time.size(); i++ ) {
-        std::cout << time[i] << ",";
-    } std::cout << std::endl;
-#endif
 
     //----------------------------------------------------
     // Time vector with additional Tp points
@@ -244,6 +243,11 @@ void FillTimes( Parameters                param,
     size_t N_row      = param.prediction.size();
     size_t max_pred_i = param.prediction[ N_row - 1 ];
 
+    if ( max_pred_i >= N_time ) {
+        // If tau > 0 end rows were deleted. max_pred_i might exceed time bounds
+        max_pred_i = N_time - 1;
+    }
+        
     if ( timeOut.size() != N_row + param.Tp ) {
         std::stringstream errMsg;
         errMsg << "FillTimes(): timeOut vector length " << timeOut.size()
@@ -254,9 +258,12 @@ void FillTimes( Parameters                param,
     
     // Fill in times guaranteed to be in param.prediction indices
     for ( auto i = 0; i < N_row; i++ ) {
-        timeOut[ i ] = time[ param.prediction[ i ] ];
+        size_t pred_i = param.prediction[ i ];
+        if ( pred_i < N_time ) {
+            timeOut[ i ] = time[ pred_i ];
+        }
     }
-    
+
     // Now fill in times beyond param.prediction indices
     if ( max_pred_i + param.Tp < N_time ) {
         // All prediction times are available in time, get the rest
@@ -271,16 +278,16 @@ void FillTimes( Parameters                param,
         // Try to parse the last time vector string as a date or datetime
         // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
         datetime_info dtinfo = parse_datetime( time[ max_pred_i ] );
-            
-        for ( auto i = N_row; i < N_row + param.Tp; i++ ) {
+
+        for ( auto i = 0; i < param.Tp; i++ ) {
             std::stringstream tss;
             
             if ( dtinfo.unrecognized_fmt ) {
                 // Numeric so add Tp
-                tss << std::stod( time[ max_pred_i ] ) + i - N_row + 1;
+                tss << std::stod( time[ max_pred_i ] ) + i + 1;
             }
             else {
-                int time_delta = i - N_row + 1;
+                int time_delta = i + 1;
                 // Get last two datetimes to compute time diff to add time delta
                 std::string time_new( time[ max_pred_i     ] );
                 std::string time_old( time[ max_pred_i - 1 ] );
@@ -292,7 +299,7 @@ void FillTimes( Parameters                param,
                     tss << new_time;
                 }
                 else {
-                    tss << time[ max_pred_i ] << " +" << i - N_row + 1;
+                    tss << time[ max_pred_i ] << " +" << i + 1;
 
                     if ( not time_format_warning_printed ) {
                         std::cout << "FillTimes(): "
@@ -304,7 +311,7 @@ void FillTimes( Parameters                param,
                 }
             }
             
-            timeOut[ i ] = tss.str();
+            timeOut[ N_row + i ] = tss.str();
         }
     }
 }
@@ -326,7 +333,7 @@ void CheckDataRows( Parameters         param,
         shift = 0;
     }
     else {
-        shift = std::max( 0, param.tau * (param.E - 1) );
+        shift = abs( param.tau ) * ( param.E - 1 );
     }
 
     if ( dataFrameIn.NRows() <= prediction_max_i ) {

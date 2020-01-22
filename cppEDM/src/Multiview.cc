@@ -188,14 +188,14 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                            param.columns_str,
                                            param.verbose );
 
-    size_t shift = std::max( 0, param.tau * (param.E - 1) );
+    size_t shift = abs( param.tau ) * ( param.E - 1 );
     
     // Delete data top rows of partial data
     if ( not data.PartialDataRowsDeleted() ) {
         // Not thread safe
         std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );
         
-        data.DeletePartialDataRows( shift );
+        data.DeletePartialDataRows( shift, param.tau );
     }
         
     // Adjust param.library and param.prediction vectors of indices
