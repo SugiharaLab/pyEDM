@@ -107,6 +107,10 @@ DataFrame<double> SimplexProjection( Parameters  param,
     size_t library_N_row = param.library.size();
     size_t N_row         = neighbors.neighbors.NRows();
 
+    auto max_lib_it = std::max_element( param.library.begin(),
+                                        param.library.end() );
+    size_t max_lib_index = *max_lib_it;
+
 #ifdef DEBUG_ALL
     std::cout << "SimplexProjection -------------------------\n";
     std::cout << "Neighbors: (" << neighbors.neighbors.NRows() << "x"
@@ -172,7 +176,7 @@ DataFrame<double> SimplexProjection( Parameters  param,
         for ( size_t k = 0; k < param.knn; k++ ) {
             size_t libRow = (size_t) neighbors.neighbors( row, k ) + param.Tp;
 
-            if ( libRow > library_N_row ) {
+            if ( libRow > max_lib_index ) {
                 // The k_NN index + Tp is outside the library domain
                 // Can only happen if noNeighborLimit = true is used.
                 if ( param.verbose ) {
