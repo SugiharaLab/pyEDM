@@ -100,6 +100,10 @@ SMapValues SMap( DataFrame< double > &data,
     size_t predict_N_row = param.prediction.size();
     size_t N_row         = neighbors.neighbors.NRows();
 
+    auto max_lib_it = std::max_element( param.library.begin(),
+                                        param.library.end() );
+    size_t max_lib_index = *max_lib_it;
+    
     if ( predict_N_row != N_row ) {
         std::stringstream errMsg;
         errMsg << "SMap(): Number of prediction rows (" << predict_N_row
@@ -151,7 +155,7 @@ SMapValues SMap( DataFrame< double > &data,
             lib_row_base = neighbors.neighbors( row, k );
             lib_row      = lib_row_base + param.Tp;
             
-            if ( lib_row > library_N_row ) {
+            if ( lib_row > max_lib_index ) {
                 // The knn index + Tp is outside the library domain
                 // Can only happen if noNeighborLimit = true is used.
                 if ( param.verbose ) {

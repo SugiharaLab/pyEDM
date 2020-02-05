@@ -36,6 +36,10 @@ Neighbors FindNeighbors(
     size_t N_prediction_rows = parameters.prediction.size();
     size_t N_columns         = dataFrame.NColumns();
     
+    auto max_lib_it = std::max_element( parameters.library.begin(),
+                                        parameters.library.end() );
+    size_t max_lib_index = *max_lib_it;
+    
     // Maximum column index.
     // We assume that the dataFrame has been selected to the proper columns
     size_t maxCol_i = N_columns - 1;
@@ -117,10 +121,10 @@ Neighbors FindNeighbors(
                 }
             }
                 
-            // If this lib_row + args.Tp >= library_N_row, then this neighbor
+            // If this lib_row + args.Tp >= max_lib_index, then this neighbor
             // would be outside the library, keep looking if noNeighborLimit
             if ( not parameters.noNeighborLimit ) {
-                if ( lib_row + parameters.Tp >= N_library_rows ) {
+                if ( lib_row + parameters.Tp > max_lib_index ) {
                     continue;
                 }
             }
@@ -144,8 +148,9 @@ Neighbors FindNeighbors(
         if ( *std::max_element( begin( k_NN_distances ),
                                 end  ( k_NN_distances ) ) > DISTANCE_LIMIT ) {
             std::stringstream errMsg;
-            errMsg << "FindNeighbors(): Library is too small to resolve "
-                   << parameters.knn << " knn neighbors." << std::endl;
+            errMsg << "FindNeighbors(): Failed to find "
+                   << parameters.knn << " knn neighbors. The library "
+                   << "may be too small." << std::endl;
             throw std::runtime_error( errMsg.str() );
         }
 
