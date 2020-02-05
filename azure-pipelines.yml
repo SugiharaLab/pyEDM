@@ -1,3 +1,6 @@
+variables:
+    CIBW_BUILD: cp35-* cp36-* cp37-*
+    CIBW_BEFORE_BUILD: yum install -y lapack-devel libpng-devel freetype-devel freetype blas-devel pkg-config; pip install -r requirements.txt; 
 
 strategy:
   matrix:
@@ -25,6 +28,10 @@ strategy:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.7_EDM'
       python.version: '3.7'
+    Linux:
+      vmImage: 'Ubuntu-16.04'
+      build_name: 'manylinux'
+      python.version: '3.7'
 
 pool:
 
@@ -42,6 +49,13 @@ steps:
     sed -i '/#define hypot _hypot/d' $pyconf_path/pyconfig.h
   displayName: remove conflicting hypot bug in pyconf
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+- bash: |
+        python -m pip install --upgrade pip
+        python -m pip install cibuildwheel==1.1.0 --user
+        python -m cibuildwheel --output-dir wheelhouse .
+  displayName: manylinux build
+  condition: eq( variables['Agent.OS'], 'Linux' )
 
 - task: BatchScript@1
   inputs:
@@ -69,11 +83,18 @@ steps:
 
 - script: |
     pip install -r requirements.txt
-    pip install wheel
+    pip install --upgrade wheel
+    pip install --upgrade setuptools
   displayName: install required python modules for pyEDM build
 
 - script: python setup.py bdist_wheel
   displayName: build pyEDM wheel
+  condition: ne( variables['Agent.OS'], 'Linux' )
 
 - publish: $(System.DefaultWorkingDirectory)/dist
   artifact: $(build_name)
+  condition: ne( variables['Agent.OS'], 'Linux' )
+
+- task: PublishBuildArtifacts@1
+  inputs: {pathtoPublish: 'wheelhouse'}
+  condition: eq( variables['Agent.OS'], 'Linux' )

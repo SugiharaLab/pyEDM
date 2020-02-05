@@ -27,7 +27,7 @@ from   setuptools.command.build_ext import build_ext
 import distutils.cygwinccompiler
 distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
 
-__version__ = '1.2.0.0'  # Get version from cppEDM Parameter.cc ?
+__version__ = '1.2.0.1'  # Get version from cppEDM Parameter.cc ?
 
 # e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
