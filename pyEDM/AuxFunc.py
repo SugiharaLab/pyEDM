@@ -155,9 +155,21 @@ def PandasDataFrametoDF( df ):
     # Here, we don't have a way to know if the Pandas dataframe passed in
     # will have a time vector or not... So... We will just require/assume
     # that the first column is ALWAYS a time or index vector.
+    # Validate that at least 2 columns are provided
+    if df.shape[1] < 2:
+        raise RuntimeError( "PandasDataFrametoDF() DataFrame must have"
+                            " at least 2 columns. First column is time." )
     timeName = df.columns[0]
     timeVec  = df.get( timeName )
     time     = [ str( x ) for x in timeVec ] # convert to list of strings
+
+    # Also require data homogeneity : all numeric, no mixed-data
+    # but allow a Time first column that is an object...
+    # in .dtypes: non-numerics are converted to dtype "object"
+    if any( df.dtypes[1:] == "object" ) :
+        print( df.dtypes )
+        raise RuntimeError( "PandasDataFrametoDF() non-numeric data is not"
+                            " allowed in a DataFrame." )
     
     dataList = []
 
