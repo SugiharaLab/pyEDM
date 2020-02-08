@@ -14,40 +14,39 @@
 # Python dictionaries into Pandas DataFrames and provide rudimentary
 # plotting via matplotlib.pyplot.  
 #
-# Most of this setup is cloned from pybind11 example setup.py
+# Some of this setup is cloned from pybind11 example setup.py
 # https://github.com/pybind/python_example
 ##
 
-import sys, os
+import sys
+import os
+import re
+import subprocess
 import setuptools
 from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
-# set msvc runtime dll for windows build
+# Set msvc runtime dll for windows build
 import distutils.cygwinccompiler
 distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
 
-__version__ = '1.2.1.0'  # Get version from cppEDM Parameter.cc ?
-
-# e.g. /tmp/pip-req-build-9ljrp27z/
+# Package paths e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
 EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
 Bindings_Path  = os.path.join( tmpInstallPath, "src/bindings/" )
 
-# build libEDM.a 
-
-import subprocess
-cppLibName   = "libEDM.a"
+# Build libEDM.a 
+cppLibName = "libEDM.a"
 
 if not os.path.exists(EDM_Lib_Path): # in case of sdist build, mkdir lib
     os.makedirs(EDM_Lib_Path)
 
 build_libEDM = subprocess.Popen(["make", "-C", "./cppEDM/src"], 
-                                       stderr=subprocess.STDOUT)
+                                stderr=subprocess.STDOUT)
 build_libEDM.wait()
 
-# check that libEDM exists
+# Check that libEDM exists
 if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
     errStr = "Error: " + os.path.join( "./cppEDM/src/lib", cppLibName ) +\
              " does not exist.\n\nYou can install cppEDM manually per: " +\
@@ -109,8 +108,6 @@ def cpp_flag( compiler ):
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
-
-
 class BuildExt( build_ext ):
     
     c_opts = {
@@ -137,7 +134,6 @@ class BuildExt( build_ext ):
         for ext in self.extensions:
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
-
 
 #----------------------------------------------------------------------
 #
@@ -167,10 +163,25 @@ Extension_modules = [
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
+def read_version(*file_paths):
+    '''Read __init__.py to get __version__'''
+    with open(os.path.join( tmpInstallPath, *file_paths ), 'r') as fp:
+        version_file =  fp.read()
+
+    # Why don't we just use re syntax as unbreakable crypto-keys?
+    version_re = r'^__version__ = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"$'
+    
+    version_match = re.search( version_re, version_file, re.MULTILINE )
+    if version_match:
+        return version_match.group()
+    raise RuntimeError("find_version(): Unable to find version string.")
+
+#----------------------------------------------------------------------
+#
+#----------------------------------------------------------------------
 setup(
-    # name of the *-version.dist-info directory
-    name             = 'pyEDM', 
-    version          = __version__,
+    name             = 'pyEDM', # name of *-version.dist-info directory
+    version          = read_version( 'pyEDM', '__init__.py' ),
     author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
     url              = 'https://github.com/SugiharaLab/pyEDM',
