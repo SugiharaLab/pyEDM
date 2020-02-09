@@ -270,6 +270,18 @@ void Parameters::Validate() {
         }
     }
 
+    //--------------------------------------------------------------------
+    // CCM sample not 0 if random is true
+    if ( method == Method::CCM ) {
+        if ( randomLib ) {
+            if ( subSamples < 1 ) {
+                std::string errMsg( "Parameters::Validate(): "
+                                    "CCM samples must be > 0.\n" );
+                throw std::runtime_error( errMsg );
+            }
+        }
+    }
+
     // CCM librarySizes
     if ( libSizes_str.size() > 0 ) {
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
