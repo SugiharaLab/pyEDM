@@ -119,6 +119,12 @@ DataFrame< double > MakeBlock( DataFrame< double >      dataFrame,
         throw std::runtime_error( errMsg.str() );
     }
     
+    if ( E < 1 ) {
+        std::stringstream errMsg;
+        errMsg << "MakeBlock(): E = " << E << " is invalid.\n" ;
+        throw std::runtime_error( errMsg.str() );
+    }
+    
     size_t NRows    = dataFrame.NRows();        // number of input rows
     size_t NColOut  = dataFrame.NColumns() * E; // number of output columns
     size_t NPartial = abs( tau ) * (E-1);       // rows to shift & delete

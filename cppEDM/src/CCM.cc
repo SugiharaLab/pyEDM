@@ -21,6 +21,10 @@ namespace EDM_CCM {
     std::mutex mtx;
     std::mutex q_mtx;
     std::queue< std::exception_ptr > exceptionQ;
+    // Define the initial maximum distance for neigbors to avoid sort()
+    // DBL_MAX is a Macro equivalent to: std::numeric_limits<double>::max()
+    double DistanceMax   = std::numeric_limits<double>::max();
+    double DistanceLimit = std::numeric_limits<double>::max() - 1;
 }
 
 //----------------------------------------------------------------
@@ -267,6 +271,7 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
 #endif
     
     if ( paramCCM.verbose ) {
+        std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
         std::stringstream msg;
         msg << "CrossMap(): Simplex cross mapping from "
             << paramCCM.columnNames[0]
@@ -302,6 +307,12 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
     // partial data rows ignored: CrossMap() -> Embed() -> MakeBlock()
     // This removal of partial data rows is also done in EmbedNN()
     //--------------------------------------------------------------
+    if ( paramCCM.E < 1 ) {
+        std::stringstream errMsg;
+        errMsg << "CrossMap(): E = " << paramCCM.E << " is invalid.\n" ;
+        throw std::runtime_error( errMsg.str() );
+    }
+        
     size_t shift = abs( paramCCM.tau ) * ( paramCCM.E - 1 );
     {
         std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
@@ -589,15 +600,15 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
 //---------------------------------------------------------------------
 DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
                                         Parameters           param ) {
-
+    
     size_t N_row = dataBlock.NRows();
 
     size_t E = param.E;
 
     DataFrame< double > D = DataFrame< double >( N_row, N_row );
 
-    // Initialise D to DISTANCE_MAX to avoid sort() : Add init constructor?
-    std::valarray< double > row_init( DISTANCE_MAX, N_row );
+    // Initialise D to DistanceMax to avoid sort() : Add init constructor?
+    std::valarray< double > row_init( EDM_CCM::DistanceMax, N_row );
     for ( size_t row = 0; row < N_row; row++ ) {
         D.WriteRow( row, row_init );
     }
@@ -704,7 +715,7 @@ Neighbors CCMNeighbors( const DataFrame< double >   &DistancesIn,
         for ( size_t i = 0; i < knn; i++ ) {
             knn_neighbors[ i ] = 0;
             // This avoids the need to sort the distances of this row
-            knn_distances[ i ] = DISTANCE_MAX;
+            knn_distances[ i ] = EDM_CCM::DistanceMax;
         }
 
         for ( size_t col_i = 0; col_i < N_row; col_i++ ) {

@@ -82,6 +82,12 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
     // Adjust param.library and param.prediction indices
     //------------------------------------------------------------
     if ( not param.embedded ) {
+
+        if ( param.E < 1 ) {
+            std::stringstream errMsg;
+            errMsg << "EmbedNN(): E = " << param.E << " is invalid.\n" ;
+            throw std::runtime_error( errMsg.str() );
+        }
         
         size_t shift = abs( param.tau ) * ( param.E - 1 );
 
@@ -333,6 +339,12 @@ void CheckDataRows( Parameters         param,
         shift = 0;
     }
     else {
+        if ( param.E < 1 ) {
+            std::stringstream errMsg;
+            errMsg << "CheckDataRows(): E = " << param.E << " is invalid.\n" ;
+            throw std::runtime_error( errMsg.str() );
+        }
+    
         shift = abs( param.tau ) * ( param.E - 1 );
     }
 

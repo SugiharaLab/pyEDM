@@ -188,6 +188,11 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                            param.columns_str,
                                            param.verbose );
 
+    if ( E < 1 ) {
+        std::stringstream errMsg;
+        errMsg << " Multiview(): E = " << param.E << " is invalid.\n" ;
+        throw std::runtime_error( errMsg.str() );
+    }
     size_t shift = abs( param.tau ) * ( param.E - 1 );
     
     // Delete data top rows of partial data
