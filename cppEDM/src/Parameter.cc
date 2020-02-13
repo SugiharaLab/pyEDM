@@ -69,8 +69,8 @@ Parameters::Parameters(
     SmapOutputFile   ( SmapFile ),
     blockOutputFile  ( blockFile ),
 
-    SVDSignificance  ( svdSig ),
     derivatives_str  ( derivatives_str ),
+    SVDSignificance  ( svdSig ),
     TikhonovAlpha    ( tikhonov ),
     ElasticNetAlpha  ( elasticNet ),
     
