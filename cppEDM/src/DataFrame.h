@@ -39,9 +39,9 @@ struct ParsedData {
 template <class T>
 class DataFrame {
     
-    std::valarray<T> elements;
-    size_t           n_columns;
     size_t           n_rows;
+    size_t           n_columns;
+    std::valarray<T> elements;
     
     std::vector< std::string >      columnNames;
     std::map< std::string, size_t > columnNameToIndex;
@@ -49,9 +49,9 @@ class DataFrame {
     std::vector< std::string > time;
     std::string                timeName;
     
+    size_t maxRowPrint;
     bool   noTime;
     bool   partialDataRowsDeleted;
-    size_t maxRowPrint;
     
 public:
     //-----------------------------------------------------------------
