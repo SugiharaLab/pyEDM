@@ -1,6 +1,6 @@
 ## Empirical Dynamic Modeling (EDM)
 ---
-This package provides a Python/Pandas DataFrame interface to the [cppEDM](https://github.com/SugiharaLab/cppEDM) library for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/).  [Documentation](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf) is available at [pyEDM](https://github.com/SugiharaLab/pyEDM).
+This package provides a Python/Pandas DataFrame interface to the [cppEDM](https://github.com/SugiharaLab/cppEDM "cppEDM") library for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/ "EDM @ Sugihara Lab").  Introduction and documentation are are avilable [online](https://sugiharalab.github.io/EDM_Documentation/ "EDM Docs"), or in the package [API docs](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf "pyEDM API").
 
 Functionality includes:
 * Simplex projection (Sugihara and May 1990)
@@ -13,7 +13,7 @@ Functionality includes:
 ## Installation
 
 ### Python Package Index (PyPI)
-Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can  be installed using the Python pip module.  The module is located at [pypi.org/project/pyEDM](https://pypi.org/project/pyEDM/).
+Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can be installed using the Python pip [pyEDM](https://pypi.org/project/pyEDM/) module on PyPI.
 
 Installation can be executed as: `python -m pip install pyEDM`
 
