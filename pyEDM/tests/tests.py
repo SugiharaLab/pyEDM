@@ -96,7 +96,7 @@ class test_EDM( unittest.TestCase ):
         # Passing Pandas DataFrame input to Smap rather than path/file
         SM = EDM.SMap( "", "", dfc, "", "",
                        "1 100", "101 198", 2, 1, 0, -1, 4, 0,
-                       "x y", "x", "", "", True, False, True, False )
+                       "x y", "x", "", "", None, True, False, True, False )
         
         df = SM['predictions']
         
@@ -114,7 +114,8 @@ class test_EDM( unittest.TestCase ):
         print ( "--- S-map block_3sp embedded = True ---" )
         SM = EDM.SMap( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                        "1 99", "100 198", 3, 1, 0, -1, 2, 0,
-                       "x_t y_t z_t", "x_t", "", "", True, False, True, False )
+                       "x_t y_t z_t", "x_t", "", "",
+                       None, True, False, True, False )
 
         df = SM['predictions']
         
