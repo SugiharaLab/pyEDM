@@ -15,6 +15,10 @@
 
 #include "DataFrame.h" // has #include Common.h
 
+// forward dec for blas solver
+std::valarray < double > SVD( DataFrame    < double > A,
+                              std::valarray< double > B );
+
 // Enumerations
 enum class Method         { None, Embed, Simplex, SMap, CCM };
 enum class DistanceMetric { Euclidean, Manhattan };
@@ -132,6 +136,28 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
+SMapValues SMap( std::string pathIn          = "./data/",
+                 std::string dataFile        = "",
+                 std::string pathOut         = "./",
+                 std::string predictFile     = "",
+                 std::string lib             = "",
+                 std::string pred            = "",
+                 int         E               = 0,
+                 int         Tp              = 1,
+                 int         knn             = 0,
+                 int         tau             = 1,
+                 double      theta           = 0,
+                 int         exclusionRadius = 0,
+                 std::string columns         = "",
+                 std::string target          = "",
+                 std::string smapFile        = "",
+                 std::string derivatives     = "",
+                 std::valarray<double> (*solver) (DataFrame < double >,
+                     std::valarray < double > ) = &SVD,
+                 bool        embedded        = false,
+                 bool        const_predict   = false,
+                 bool        verbose         = true );
+
 SMapValues SMap( DataFrame< double > &dataFrameIn,
                  std::string pathOut         = "./",
                  std::string predictFile     = "",
@@ -150,6 +176,28 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  bool        embedded        = false,
                  bool        const_predict   = false,
                  bool        verbose         = true );
+
+SMapValues SMap( DataFrame< double > &dataFrameIn,
+                 std::string pathOut         = "./",
+                 std::string predictFile     = "",
+                 std::string lib             = "",
+                 std::string pred            = "",
+                 int         E               = 0,
+                 int         Tp              = 1,
+                 int         knn             = 0,
+                 int         tau             = 1,
+                 double      theta           = 0,
+                 int         exclusionRadius = 0,
+                 std::string columns         = "",
+                 std::string target          = "",
+                 std::string smapFile        = "",
+                 std::string derivatives     = "",
+                 std::valarray<double> (*solver) (DataFrame < double >,
+                     std::valarray < double > ) = &SVD,
+                 bool        embedded        = false,
+                 bool        const_predict   = false,
+                 bool        verbose         = true );
+
 
 DataFrame<double> CCM( std::string pathIn       = "./data/",
                        std::string dataFile     = "",

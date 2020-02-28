@@ -51,7 +51,45 @@ SMapValues SMap( std::string pathIn,
 }
 
 //----------------------------------------------------------------
-// Overload 2: DataFrame provided
+// Overload 2: Explicit data file path/name and solver
+//   Implemented as a wrapper to API Overload 2:
+//----------------------------------------------------------------
+SMapValues SMap( std::string pathIn,
+                 std::string dataFile,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::valarray<double> (*solver) (DataFrame < double >,
+                     std::valarray < double > ),
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > dataFrameIn( pathIn, dataFile );
+    
+    SMapValues SMapOutput = SMap( dataFrameIn, pathOut, predictFile,
+                                  lib, pred, E, Tp, knn, tau, theta,
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives, 
+                                  solver, embedded, const_predict, verbose );
+    return SMapOutput;
+}
+
+
+//----------------------------------------------------------------
+// Overload 3: DataFrame provided
 //----------------------------------------------------------------
 SMapValues SMap( DataFrame< double > &data,
                  std::string pathOut,
@@ -68,6 +106,35 @@ SMapValues SMap( DataFrame< double > &data,
                  std::string target,
                  std::string smapFile,
                  std::string derivatives,
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose ) {
+
+    return SMap( data, pathOut, predictFile, lib, pred, E, Tp, knn, tau, theta, 
+            exclusionRadius, columns, target, smapFile, derivatives, &SVD,
+            embedded, const_predict, verbose);
+
+}
+//----------------------------------------------------------------
+// Overload 4: Solver & DataFrame provided
+//----------------------------------------------------------------
+SMapValues SMap( DataFrame< double > &data,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::valarray<double> (*solver) (DataFrame < double >,
+                     std::valarray < double > ),
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose )
@@ -190,7 +257,7 @@ SMapValues SMap( DataFrame< double > &data,
         B = w * B; // Weighted target vector
 
         // Estimate linear mapping of predictions A onto target B
-        std::valarray < double > C = SVD( A, B );
+        std::valarray < double > C = solver( A, B );
 
         // Prediction is local linear projection
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term

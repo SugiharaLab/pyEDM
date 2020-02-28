@@ -153,7 +153,8 @@ def SMap( pathIn       = "./",
           embedded     = False,
           verbose      = False,
           const_pred   = False,
-          showPlot     = False ):
+          showPlot     = False,
+          elasticNet   = None ):
     '''S-Map prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
@@ -185,6 +186,7 @@ def SMap( pathIn       = "./",
                         target,
                         smapFile,
                         jacobians,
+                        elasticNet,
                         embedded,
                         const_pred,
                         verbose  )
