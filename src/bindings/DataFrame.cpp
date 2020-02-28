@@ -60,6 +60,15 @@ DF DataFrameToDF( DataFrame< double > dataFrame ) {
         df.dataList.push_back( std::make_pair( colName, colData ) );
     }
 
+    // if no col names go with num columns
+    if (!dataFrame.ColumnNames().size()){
+        for (int colidx = 0; colidx < dataFrame.NColumns(); colidx++) {
+        
+            std::valarray< double > colData = dataFrame.Column( colidx );
+            df.dataList.push_back( std::make_pair( std::to_string(colidx), colData ) );
+        }
+    }
+
     return df;
 }
 
