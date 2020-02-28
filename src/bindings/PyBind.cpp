@@ -102,7 +102,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("target")      = std::string(""),
                py::arg("smapFile")    = std::string(""),
                py::arg("derivatives") = std::string(""),
-               py::arg("ElasticNetModel") = false,
+               py::arg("solver")      = false,
                py::arg("embedded")    = false,
                py::arg("const_pred")  = false,
                py::arg("verbose")     = false );

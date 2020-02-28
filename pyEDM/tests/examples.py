@@ -58,7 +58,7 @@ def main():
     # S-map circle : specify multivariable columns embedded = True
     S = EDM.SMap( "", Files[ "circle.csv" ], None, "./", "", 
                   "1 100", "101 198", 2, 1, 0, -1, 4, 0,
-                  "x y", "x", "", "", True, False, True, True )
+                  "x y", "x", "", "", None, True, False, True, True )
     
     df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
                   3, 0, 0, -1, "anchovy", "np_sst",

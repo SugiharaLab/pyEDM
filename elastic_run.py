@@ -1,15 +1,23 @@
+from sklearn.linear_model import Ridge, Lasso, ElasticNet
 import pyEDM
-df = pyEDM.sampleData['TentMap']
 
-embedded = pyEDM.Embed( dataFrame=df, E=2, columns="TentMap" )
+circle = pyEDM.sampleData['circle']
 
-target   = 2*df.iloc[1:,1]
+lmSolvers = {
+    'SVD'          : None, 
+    'lmRidge'      : Ridge( alpha = 0.05 ),
+    'lmLasso'      : Lasso( alpha = 0.005 ),
+    'lmElasticNet' : ElasticNet( alpha = 0.001, l1_ratio = 0.001 )
+}
 
-sample = embedded[:10]
+smapResults = []
 
-from sklearn.linear_model import ElasticNet
+for solverName in lmSolvers.keys() :
+    print( solverName )
+    result = pyEDM.SMap( dataFrame = circle,
+                         lib = "1 100", pred = "101 198",
+                         embedded = True, E = 2, theta = 3.14,
+                         columns = "x y", target = "x", showPlot = True,
+                         solver = lmSolvers[ solverName ] )
+    smapResults.append( result )
 
-pyEDM.SMap(dataFrame=df, columns="TentMap", target="TentMap", E=4,
-            lib="1 200",pred="201 202",showPlot=True)
-pyEDM.SMap(dataFrame=df, columns="TentMap", target="TentMap", E=4,
-            lib="1 200",pred="201 202",showPlot=True,elasticNet=ElasticNet())

@@ -2,43 +2,47 @@
 #include "PyBind.h"
 #include <pybind11/numpy.h>
 
-// have to store the potential elastic net model since only interface with
-// smap is the function pointer
-
-py::object elasticModel = pybind11::cast<pybind11::none>(Py_None);
+// Instantiate a default object for the SMap solver
+// This will contain the python reference to the scikit solver object
+// if one was created by the user and passed in the solver parameter.
+py::object SmapSolverObject = pybind11::cast<pybind11::none>(Py_None);
 
 //----------------------------------------------------------
-// wrapper for the elastic net solver
+// Wrapper for the SMap solver from sklearn.linear_model
 //----------------------------------------------------------
-std::valarray<double> ElasticNetSolver (DataFrame<double> A,
-        std::valarray<double> B){
+std::valarray<double> SmapSolver( DataFrame< double >     A,
+                                  std::valarray< double > B ) {
 
-    // remove first col since first col bias term and model includes bias term 
+    // The construction of coefficient marix A in cppEDM::SMap inserts
+    // a unity vector in the first column to create a bias (intercept)
+    // term in the LAPACK solver.  sklearn.linear_model's include an
+    // intercept term by default.  Remove first column.
 
-    std::vector<size_t> non_bias_cols (A.NColumns()-1);
+    std::vector< size_t > non_bias_cols( A.NColumns() - 1 );
     std::iota( non_bias_cols.begin(), non_bias_cols.end(), 1 );
     A = A.DataFrameFromColumnIndex( non_bias_cols );
 
-    // convert DataFrame to pd df for sklearn 
+    // Convert DataFrame to pandas DataFrame / numpy array for sklearn 
+    py::dict A_pydict = DFtoDict( DataFrameToDF( A ) );
+    py::object A_df   = py::module::import("pandas").attr("DataFrame");
+    py::object A_     = A_df( A_pydict );
 
-    py::dict embeddingAsDict = DFtoDict(DataFrameToDF(A));
-    py::object pdDfCons      = py::module::import("pandas").attr("DataFrame");
-    py::object embeddingAsPd = pdDfCons( embeddingAsDict );
+    // Fit linear model
+    SmapSolverObject.attr( "fit" )( A_, B );
 
-    // fit elastic net model and then setup {intercept, coefs} solution
+    // Get solver results
+    std::vector<double> coeffs =
+        SmapSolverObject.attr( "coef_" ).cast< std::vector< double > >();
+    
+    double intercept = SmapSolverObject.attr( "intercept_" ).cast< float >();
 
-    elasticModel.attr("fit")( embeddingAsPd, B );
-
-    std::vector<double> coeffs = elasticModel.attr("coef_").cast<std::vector<double>>();
-    double intercept           = elasticModel.attr("intercept_").cast<float>();
-
+    // Insert intercept bias vector as leading coefficient as in cppEDM::SMap
     coeffs.insert( coeffs.begin(), intercept );
 
-    std::valarray<double> solutionValArr(coeffs.data(),coeffs.size());
+    std::valarray<double> solutionValArr( coeffs.data(), coeffs.size() );
 
     return solutionValArr;
 };
-
 
 //----------------------------------------------------------
 // 
@@ -60,18 +64,16 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                                                std::string target,
                                                std::string smapFile,
                                                std::string derivatives,
-                                               py::object  ElasticNetModel,
+                                               py::object  solver,
                                                bool        embedded,
                                                bool        const_predcit,
                                                bool        verbose ) {
-    elasticModel = ElasticNetModel;
+    SmapSolverObject = solver;
 
-
-    // set solver as SVD or elastic net based on whether elastic net null or not 
-
-
-    auto solver = elasticModel.is(pybind11::cast<pybind11::none>(Py_None)) ? 
-                    &SVD : &ElasticNetSolver;
+    // Select solver
+    auto solver_ =
+        SmapSolverObject.is( pybind11::cast<pybind11::none>(Py_None) ) ? 
+        &SVD : &SmapSolver;
 
     SMapValues SM;
     
@@ -94,7 +96,7 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    target,
                    smapFile,
                    derivatives,
-                   solver,
+                   solver_,
                    embedded,
                    const_predcit,
                    verbose);
@@ -117,7 +119,7 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    target,
                    smapFile,
                    derivatives,
-                   solver,
+                   solver_,
                    embedded,
                    const_predcit,
                    verbose);
@@ -134,9 +136,8 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
     SMap_["predictions" ] = DFtoDict( df_pred );
     SMap_["coefficients"] = DFtoDict( df_coef );
 
-    // release python object since done with it now
-    elasticModel.release();
-
+    // Release python object since done with it now
+    SmapSolverObject.release();
 
     return SMap_;
 }
