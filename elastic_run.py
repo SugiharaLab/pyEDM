@@ -10,7 +10,7 @@ lmSolvers = {
     'lmElasticNet' : ElasticNet( alpha = 0.001, l1_ratio = 0.001 )
 }
 
-smapResults = []
+smapResults = {}
 
 for solverName in lmSolvers.keys() :
     print( solverName )
@@ -19,5 +19,5 @@ for solverName in lmSolvers.keys() :
                          embedded = True, E = 2, theta = 3.14,
                          columns = "x y", target = "x", showPlot = True,
                          solver = lmSolvers[ solverName ] )
-    smapResults.append( result )
+    smapResults[ solverName ] =  result
 
