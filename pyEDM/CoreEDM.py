@@ -169,7 +169,9 @@ def SMap( pathIn       = "./",
 
     # Validate the solver if one was passed in
     if solver :
-        supportedSolvers = ['Ridge', 'Lasso', 'ElasticNet', 'LinearRegression']
+        supportedSolvers = [ 'LinearRegression',
+                             'Ridge',   'Lasso',   'ElasticNet',
+                             'RidgeCV', 'LassoCV', 'ElasticNetCV' ]
         if not solver.__class__.__name__ in supportedSolvers :
             raise Exception( "SMap(): Invalid solver." )
     
