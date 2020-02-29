@@ -166,6 +166,12 @@ def SMap( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "SMap(): Invalid data input." )
+
+    # Validate the solver if one was passed in
+    if solver :
+        supportedSolvers = ['Ridge', 'Lasso', 'ElasticNet', 'LinearRegression']
+        if not solver.__class__.__name__ in supportedSolvers :
+            raise Exception( "SMap(): Invalid solver." )
     
     # D is a Python dict from pybind11 < cppEDM SMap:
     #  { "predictions" : {}, "coefficients" : {} }
