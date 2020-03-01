@@ -127,8 +127,6 @@ class BuildExt( build_ext ):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
-            opts.append('-DMS_WIN64')     # mingw windows python 3.5
-            #opts.append('-D_hypot=hypot') # mingw windows python 3.5
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
@@ -154,7 +152,7 @@ Extension_modules = [
         
         language     = 'c++',
         library_dirs = [ EDM_Lib_Path, '/usr/lib/'],
-        extra_compile_args=['-std=c++11',"-D_hypot=hypot"],
+        extra_compile_args=['-std=c++11','-D_hypot=hypot','-DMS_WIN64'],
         libraries    = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                         if sys.platform.startswith('win') else ['EDM','lapack'],
         extra_link_args=["-static", "-static-libgfortran", "-static-libgcc"]\
