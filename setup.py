@@ -127,7 +127,8 @@ class BuildExt( build_ext ):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
-            opts.append('-D_hypot=hypot') # mingw windows python 3.5
+            opts.append('-DMS_WIN64')     # mingw windows python 3.5
+            #opts.append('-D_hypot=hypot') # mingw windows python 3.5
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
