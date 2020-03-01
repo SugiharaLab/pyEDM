@@ -4,10 +4,10 @@ variables:
 
 strategy:
   matrix:
-    Windows_3.5:
-      vmImage: 'vs2017-win2016'
-      build_name: 'Windows_3.5_EDM'
-      python.version: '3.5'
+#    Windows_3.5:
+#      vmImage: 'vs2017-win2016'
+#      build_name: 'Windows_3.5_EDM'
+#      python.version: '3.5'
     Windows_3.6:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.6_EDM'
@@ -28,10 +28,10 @@ strategy:
       vmImage: 'macos-10.13'
       build_name: 'MacOS_3.7_EDM'
       python.version: '3.7'
-    Linux:
-      vmImage: 'Ubuntu-16.04'
-      build_name: 'manylinux'
-      python.version: '3.7'
+#    Linux:
+#      vmImage: 'Ubuntu-16.04'
+#      build_name: 'manylinux'
+#      python.version: '3.7'
 
 pool:
 
