@@ -17,13 +17,9 @@ std::valarray<double> SmapSolver( DataFrame< double >     A,
     // a unity vector in the first column to create a bias (intercept)
     // term in the LAPACK solver.  sklearn.linear_model's include an
     // intercept term by default.  Remove first column.
-
-    // JP NOTE: vector coeff should be size_t  On MS/python 3.5 this
-    // causes a pybind11 type mismatch... When we remove MS/python 3.5
-    // from the build set, revert this to the proper size_t.
-    //std::vector< size_t > coeff( A.NColumns() - 1 );
-    //std::iota( coeff.begin(), coeff.end(), 1 );
-    //A = A.DataFrameFromColumnIndex( coeff );
+    std::vector< size_t > coeff( A.NColumns() - 1 );
+    std::iota( coeff.begin(), coeff.end(), 1 );
+    A = A.DataFrameFromColumnIndex( coeff );
 
     // Convert DataFrame to pandas DataFrame / numpy array for sklearn 
     py::dict A_pydict = DFtoDict( DataFrameToDF( A ) );
