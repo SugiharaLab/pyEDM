@@ -173,7 +173,10 @@ def read_version(*file_paths):
     
     version_match = re.search( version_re, version_file, re.MULTILINE )
     if version_match:
-        return version_match.group()
+        # version_match.group() is: '__version__ = "1.3.0.0"'
+        # isolate just the numeric part between " "
+        version = version_match.group().split('"')[1]
+        return version
     raise RuntimeError("find_version(): Unable to find version string.")
 
 #----------------------------------------------------------------------
