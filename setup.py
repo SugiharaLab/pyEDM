@@ -106,13 +106,19 @@ def cpp_flag( compiler ):
                            'is needed!')
 
 #----------------------------------------------------------------------
-#
+# Note:
+# >>> distutils.ccompiler.show_compilers()
+# List of available compilers:
+#   --compiler=mingw32  Mingw32 port of GNU C Compiler for Win32
+#   --compiler=msvc     Microsoft Visual C++
+#   --compiler=unix     standard UNIX-style compiler
 #----------------------------------------------------------------------
 class BuildExt( build_ext ):
     
     c_opts = {
-        'msvc': ['/EHsc'],
-        'unix': ['-llapack'],
+        'msvc'    : ['/EHsc'],
+        'unix'    : ['-llapack'],
+        'mingw32' : ['-DMS_WIN64','-D_hypot=hypot']
     }
 
     if sys.platform == 'darwin':
@@ -131,9 +137,6 @@ class BuildExt( build_ext ):
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
             # opts.append('/link /MACHINE:X86')
-
-        opts.append('-DMS_WIN64')      # Force these for testing win cp35
-        opts.append('-D_hypot=hypot')
 
         for ext in self.extensions:
             ext.extra_compile_args = opts
