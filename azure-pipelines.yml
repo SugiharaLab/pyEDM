@@ -4,10 +4,10 @@ variables:
 
 strategy:
   matrix:
-#    Windows_3.5:
-#      vmImage: 'vs2017-win2016'
-#      build_name: 'Windows_3.5_EDM'
-#      python.version: '3.5'
+    Windows_3.5:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.5_EDM'
+      python.version: '3.5'
     Windows_3.6:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.6_EDM'
