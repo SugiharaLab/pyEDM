@@ -118,7 +118,7 @@ class BuildExt( build_ext ):
     c_opts = {
         'msvc'    : ['/EHsc'],
         'unix'    : ['-llapack'],
-        'mingw32' : ['-DMS_WIN64','-D_hypot=hypot']
+        'mingw32' : ['-DMS_WIN64','-D_hypot=hypot'] # Only for win cp35!!!
     }
 
     if sys.platform == 'darwin':
