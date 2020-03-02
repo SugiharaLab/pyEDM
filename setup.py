@@ -1,7 +1,7 @@
 ##
 # Build the pyEDM Python binding to cppEDM.
 #
-# The core library is the C++ cppEDM libEDM.a
+# The core/extension library is the C++ cppEDM libEDM.a
 # NOTE: libEDM.a needs to be built with -fPIC. 
 #
 # Bindings to cppEDM are provided via pybind11 in src/bindings/PyBind.cpp
@@ -116,21 +116,25 @@ class BuildExt( build_ext ):
     }
 
     if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-llapack',
-                           '-mmacosx-version-min=10.7']
+        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
 
     def build_extensions(self):
-        ct = self.compiler.compiler_type
+        ct   = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
+
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-            opts.append(cpp_flag(self.compiler))
+            opts.append( cpp_flag(self.compiler) )
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
             # opts.append('/link /MACHINE:X86')
+
+        opts.append('-DMS_WIN64')      # Force these for testing win cp35
+        opts.append('-D_hypot=hypot')
+
         for ext in self.extensions:
             ext.extra_compile_args = opts
 
@@ -151,12 +155,10 @@ Extension_modules = [
             EDM_H_Path # Path to cppEDM headers
         ],
 
-        # Note python PEP 308: <expression1> if <condition> else <expression2>
-        language = 'c++',
-        extra_compile_args = ['-std=c++11'] \
-            if not sys.platform.startswith('win') \
-            else ['-std=c++11','-DMS_WIN64','-D_hypot=hypot'],
-        library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
+        language           = 'c++',
+        extra_compile_args = ['-std=c++11'],
+        library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
+        # Note PEP 308: <expression1> if <condition> else <expression2>
         libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
@@ -177,7 +179,7 @@ def read_version(*file_paths):
     
     version_match = re.search( version_re, version_file, re.MULTILINE )
     if version_match:
-        # version_match.group() is: '__version__ = "1.3.0.0"'
+        # version_match.group() is: '__version__ = "1.0.0.0"'
         # isolate just the numeric part between " "
         version = version_match.group().split('"')[1]
         return version
