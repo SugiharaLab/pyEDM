@@ -112,7 +112,7 @@ class BuildExt( build_ext ):
     
     c_opts = {
         'msvc': ['/EHsc'],
-        'unix': [ '-llapack' ],
+        'unix': ['-llapack'],
     }
 
     if sys.platform == 'darwin':
@@ -133,6 +133,7 @@ class BuildExt( build_ext ):
             # opts.append('/link /MACHINE:X86')
         for ext in self.extensions:
             ext.extra_compile_args = opts
+
         build_ext.build_extensions(self)
 
 #----------------------------------------------------------------------
@@ -149,14 +150,17 @@ Extension_modules = [
             get_pybind_include( user = True ),
             EDM_H_Path # Path to cppEDM headers
         ],
-        
-        language     = 'c++',
-        library_dirs = [ EDM_Lib_Path, '/usr/lib/'],
-        extra_compile_args=['-std=c++11'],
-        libraries    = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
-                        if sys.platform.startswith('win') else ['EDM','lapack'],
-        extra_link_args=["-static", "-static-libgfortran", "-static-libgcc"]\
-                        if sys.platform.startswith('win') else [],
+
+        # Note python PEP 308: <expression1> if <condition> else <expression2>
+        language = 'c++',
+        extra_compile_args = ['-std=c++11'] \
+            if not sys.platform.startswith('win') \
+            else ['-std=c++11','-DMS_WIN64','-D_hypot=hypot'],
+        library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
+        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+                    if sys.platform.startswith('win') else ['EDM','lapack'],
+        extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
+                          if sys.platform.startswith('win') else [],
     ),
 ]
 
