@@ -116,10 +116,10 @@ DataFrame<double> Simplex( DataFrame< double > &dataFrameIn,
                            bool        const_predict   = false,
                            bool        verbose         = true );
 
-// SMap is a special case since it can be calles with a function pointer
+// SMap is a special case since it can be called with a function pointer
 // to the SVD solver. This is done so that interfaces such as pybind11
 // can provide their own object for the solver.
-// Data path/file with internal SVD (LAPACK) assigned in 
+// 1) Data path/file with default SVD (LAPACK) assigned in Smap.cc 2)
 SMapValues SMap( std::string pathIn          = "./data/",
                  std::string dataFile        = "",
                  std::string pathOut         = "./",
@@ -140,7 +140,7 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
-// DataFrame with internal SVD (LAPACK)
+// 2) DataFrame with default SVD (LAPACK) assigned in Smap.cc 2)
 SMapValues SMap( DataFrame< double > &dataFrameIn,
                  std::string pathOut         = "./",
                  std::string predictFile     = "",
@@ -160,7 +160,7 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
-// Data path/file with external solver object
+// 3) Data path/file with external solver object, init to default SVD
 SMapValues SMap( std::string pathIn          = "./data/",
                  std::string dataFile        = "",
                  std::string pathOut         = "./",
@@ -183,7 +183,7 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
-// DataFrame with external solver object
+// 4) DataFrame with external solver object, init to default SVD
 SMapValues SMap( DataFrame< double > &dataFrameIn,
                  std::string pathOut         = "./",
                  std::string predictFile     = "",

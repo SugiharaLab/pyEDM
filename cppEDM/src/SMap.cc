@@ -50,7 +50,7 @@ SMapValues SMap( std::string pathIn,
 
 //----------------------------------------------------------------
 // Overload 2: DataFrame provided with internal SVD (LAPACK)
-//    Implememted as a wrapper to API overload 4
+//    Implemented as a wrapper to API overload 4
 //----------------------------------------------------------------
 SMapValues SMap( DataFrame< double > &data,
                  std::string pathOut,
@@ -71,7 +71,7 @@ SMapValues SMap( DataFrame< double > &data,
                  bool        const_predict,
                  bool        verbose ) {
 
-    // Call overload 4 with default SVD assigned in Common.h
+    // Call overload 4 with default SVD function (below)
     SMapValues SMapOutput = SMap( data, pathOut, predictFile,
                                   lib, pred, E, Tp, knn, tau, theta, 
                                   exclusionRadius,
@@ -499,9 +499,9 @@ std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
     // Copy solution vector in b to C
     std::valarray< double > C( b, N_SingularValues );
 
-    delete s;
-    delete work;
-    delete iwork;
+    delete[] s;
+    delete[] work;
+    delete[] iwork;
     
     return C;
 }
