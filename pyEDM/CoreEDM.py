@@ -6,7 +6,7 @@ from matplotlib.pyplot import show, axhline
 
 import pyBindEDM
 import pyEDM.AuxFunc
- 
+
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
@@ -58,6 +58,10 @@ def Embed( pathIn    = "./",
     else :
         raise Exception( "Embed(): Invalid data input." )
     
+    # If columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
     # D is a Python dict from pybind11 < cppEDM Embed
     D = pyBindEDM.Embed( pathIn,
                          dataFile,
@@ -103,6 +107,14 @@ def Simplex( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "Simplex(): Invalid data input." )
+
+    # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
     
     # D is a Python dict from pybind11 < cppEDM Simplex 
     D = pyBindEDM.Simplex( pathIn,
@@ -167,6 +179,14 @@ def SMap( pathIn       = "./",
     else :
         raise Exception( "SMap(): Invalid data input." )
 
+    # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
     # Validate the solver if one was passed in
     if solver :
         supportedSolvers = [ 'LinearRegression',
@@ -243,6 +263,14 @@ def Multiview( pathIn          = "./",
     else :
         raise Exception( "Multiview(): Invalid data input." )
     
+    # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "View" : < vector< string >, "Predictions" : {} }
     D = pyBindEDM.Multiview( pathIn,
@@ -306,6 +334,10 @@ def CCM( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "CCM(): Invalid data input." )
+    
+    # If columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
     
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
@@ -371,6 +403,14 @@ def EmbedDimension( pathIn       = "./",
     else :
         raise Exception( "EmbedDimension(): Invalid data input." )
     
+    # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.EmbedDimension( pathIn,
                                   dataFile,
@@ -431,7 +471,15 @@ def PredictInterval( pathIn       = "./",
     else :
         raise Exception( "PredictInterval(): Invalid data input." )
     
-    # D is a Python dict from pybind11 < cppEDM PredictInterval
+     # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
+   # D is a Python dict from pybind11 < cppEDM PredictInterval
     D = pyBindEDM.PredictInterval( pathIn,
                                    dataFile,
                                    DF,
@@ -493,6 +541,14 @@ def PredictNonlinear( pathIn       = "./",
     else :
         raise Exception( "PredictNonlinear(): Invalid data input." )
 
+    # If lib, pred, columns are not string, but iterable, convert to string
+    if pyEDM.AuxFunc.NotStringIterable( lib ) :
+        lib = ' '.join( map( str, lib ) )
+    if pyEDM.AuxFunc.NotStringIterable( pred ) :
+        pred = ' '.join( map( str, pred ) )
+    if pyEDM.AuxFunc.NotStringIterable( columns ) :
+        columns = ' '.join( map( str,columns   ) )
+    
     # D is a Python dict from pybind11 < cppEDM PredictNonlinear
     D = pyBindEDM.PredictNonlinear( pathIn,
                                     dataFile,
