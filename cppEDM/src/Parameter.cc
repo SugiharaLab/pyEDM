@@ -84,7 +84,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 3, 0, "2020-02-28" )
+    version          ( 1, 3, 1, "2020-03-22" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -131,54 +131,104 @@ void Parameters::Validate() {
     // Generate library indices: Apply zero-offset
     //--------------------------------------------------------------
     if ( lib_str.size() ) {
+        // Parse lib_str into vector of strings
         std::vector<std::string> lib_vec = SplitString( lib_str, " \t," );
-        if ( lib_vec.size() != 2 ) {
+        if ( lib_vec.size() % 2 != 0 ) {
             std::string errMsg( "Parameters::Validate(): "
-                                "library must be two integers.\n" );
+                                "library must be even number of integers.\n" );
             throw std::runtime_error( errMsg );
         }
-        int lib_start = std::stoi( lib_vec[0] );
-        int lib_end   = std::stoi( lib_vec[1] );
 
-        if ( method == Method::Simplex or method == Method::SMap ) {
-            // Don't check if None, Embed or CCM since default of "1 1" is used.
-            if ( lib_start >= lib_end ) {
-                std::stringstream errMsg;
-                errMsg << "Parameters::Validate(): library start "
-                       << lib_start << " exceeds end " << lib_end << ".\n";
-                throw std::runtime_error( errMsg.str() );
+        // Generate vector of start, stop index pairs
+        std::vector< std::pair< size_t, size_t > > libPairs;
+        for ( size_t i = 0; i < lib_vec.size(); i = i + 2 ) {
+            libPairs.emplace_back( std::make_pair( std::stoi( lib_vec[i] ),
+                                                   std::stoi( lib_vec[i+1] ) ) );
+        }
+
+        size_t nLib = 0; // Count of lib items
+
+        // Get number of lib indices, validate end > start
+        for ( auto thisPair : libPairs ) {
+            size_t lib_start = thisPair.first;
+            size_t lib_end   = thisPair.second;
+            
+            nLib += lib_end - lib_start + 1;
+            
+            // Validate end > stop indices
+            if ( method == Method::Simplex or method == Method::SMap ) {
+                // Don't check if method == None, Embed or CCM since default
+                // of "1 1" is used.
+                if ( lib_start >= lib_end ) {
+                    std::stringstream errMsg;
+                    errMsg << "Parameters::Validate(): library start "
+                           << lib_start << " exceeds end " << lib_end << ".\n";
+                    throw std::runtime_error( errMsg.str() );
+                }
             }
         }
-        
-        library = std::vector<size_t>( lib_end - lib_start + 1 );
-        std::iota ( library.begin(), library.end(), lib_start - 1 );
+
+        // Create library vector of indices
+        library = std::vector< size_t >( nLib );
+        size_t i = 0;
+        for ( auto thisPair : libPairs ) {
+            for ( size_t li = thisPair.first; li <= thisPair.second; li++ ) {
+                library[ i ] = li - 1; // apply zero-offset
+                i++;
+            }
+        }
     }
 
     //--------------------------------------------------------------
     // Generate prediction indices: Apply zero-offset
     //--------------------------------------------------------------
     if ( pred_str.size() ) {
+        // Parse pred_str into vector of strings
         std::vector<std::string> pred_vec = SplitString( pred_str, " \t," );
-        if ( pred_vec.size() != 2 ) {
+        if ( pred_vec.size() % 2 != 0 ) {
             std::string errMsg( "Parameters::Validate(): "
-                                "prediction must be two integers.\n");
+                                "prediction must be even number of integers.\n");
             throw std::runtime_error( errMsg );
         }
-        int pred_start = std::stoi( pred_vec[0] );
-        int pred_end   = std::stoi( pred_vec[1] );
-        
-        if ( method == Method::Simplex or method == Method::SMap ) {
-            // Don't check if None, Embed or CCM since default of "1 1" is used.
-            if ( pred_start >= pred_end ) {
-                std::stringstream errMsg;
-                errMsg << "Parameters::Validate(): prediction start "
-                       << pred_start << " exceeds end " << pred_end << ".\n";
-                throw std::runtime_error( errMsg.str() );
+
+        // Generate vector of start, stop index pairs
+        std::vector< std::pair< size_t, size_t > > predPairs;
+        for ( size_t i = 0; i < pred_vec.size(); i = i + 2 ) {
+            predPairs.emplace_back( std::make_pair( std::stoi( pred_vec[i] ),
+                                                    std::stoi( pred_vec[i+1])));
+        }
+
+        size_t nPred = 0; // Count of pred items
+
+        // Get number of pred indices, validate end > start
+        for ( auto thisPair : predPairs ) {
+            size_t pred_start = thisPair.first;
+            size_t pred_end   = thisPair.second;
+            
+            nPred += pred_end - pred_start + 1;
+            
+            // Validate end > stop indices
+            if ( method == Method::Simplex or method == Method::SMap ) {
+                // Don't check if method == None, Embed or CCM since default
+                // of "1 1" is used.
+                if ( pred_start >= pred_end ) {
+                    std::stringstream errMsg;
+                    errMsg << "Parameters::Validate(): prediction start "
+                           << pred_start << " exceeds end " << pred_end << ".\n";
+                    throw std::runtime_error( errMsg.str() );
+                }
             }
         }
-        
-        prediction = std::vector<size_t>( pred_end - pred_start + 1 );
-        std::iota ( prediction.begin(), prediction.end(), pred_start - 1 );
+
+        // Create prediction vector of indices
+        prediction = std::vector< size_t >( nPred );
+        size_t i = 0;
+        for ( auto thisPair : predPairs ) {
+            for ( size_t li = thisPair.first; li <= thisPair.second; li++ ) {
+                prediction[ i ] = li - 1; // apply zero-offset
+                i++;
+            }
+        }
     }
     
     if ( method == Method::Simplex or method == Method::SMap ) {

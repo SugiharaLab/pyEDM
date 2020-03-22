@@ -206,3 +206,24 @@ def ReadDataFrame( path, file, noTime = False ):
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     return df
+
+#------------------------------------------------------------------------
+# Is an object iterable?
+#------------------------------------------------------------------------
+def Iterable( obj ):
+    try:
+        it = iter( obj )
+    except TypeError: 
+        return False
+    return True
+
+#------------------------------------------------------------------------
+# Is an object iterable and not a string?
+#------------------------------------------------------------------------
+def NotStringIterable( obj ):
+    if Iterable( obj ) :
+        if isinstance( obj, str ) :
+            return False
+        else :
+            return True
+    return False
