@@ -6,6 +6,7 @@
 #include <vector>
 #include <valarray>
 #include <map>
+#include <forward_list>
 #include <cctype>
 #include <cmath>
 
@@ -35,6 +36,20 @@ struct VectorError {
 struct SMapValues {
     DataFrame< double > predictions;
     DataFrame< double > coefficients;
+};
+
+// Return object for CrossMap() worker function
+struct CrossMapValues {
+    DataFrame< double > LibStats;     // mean libsize, rho, RMSE, MAE
+    DataFrame< double > PredictStats; // each predict libsize, rho, RMSE, MAE
+    std::forward_list< DataFrame< double > > Predictions;
+};
+
+// Return object for CCM() with two CrossMapValues
+struct CCMValues {
+    DataFrame< double > AllLibStats;  // unified mean libsize, rho, RMSE, MAE
+    CrossMapValues CrossMap1;
+    CrossMapValues CrossMap2;
 };
 
 struct MultiviewValues {
@@ -205,38 +220,40 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  bool        const_predict   = false,
                  bool        verbose         = true );
 
-DataFrame<double> CCM( std::string pathIn       = "./data/",
-                       std::string dataFile     = "",
-                       std::string pathOut      = "./",
-                       std::string predictFile  = "",
-                       int         E            = 0,
-                       int         Tp           = 0,
-                       int         knn          = 0,
-                       int         tau          = -1,
-                       std::string colNames     = "",
-                       std::string targetName   = "",
-                       std::string libSizes_str = "",
-                       int         sample       = 0,
-                       bool        random       = true,
-                       bool        replacement  = false,
-                       unsigned    seed         = 0,     // seed=0: use RNG
-                       bool        verbose      = true );
+CCMValues CCM( std::string pathIn       = "./data/",
+               std::string dataFile     = "",
+               std::string pathOut      = "./",
+               std::string predictFile  = "",
+               int         E            = 0,
+               int         Tp           = 0,
+               int         knn          = 0,
+               int         tau          = -1,
+               std::string colNames     = "",
+               std::string targetName   = "",
+               std::string libSizes_str = "",
+               int         sample       = 0,
+               bool        random       = true,
+               bool        replacement  = false,
+               unsigned    seed         = 0,     // seed=0: use RNG
+               bool        includeData  = false,
+               bool        verbose      = true );
 
-DataFrame<double> CCM( DataFrame< double > dataFrameIn,
-                       std::string         pathOut      = "./",
-                       std::string         predictFile  = "",
-                       int                 E            = 0,
-                       int                 Tp           = 0,
-                       int                 knn          = 0,
-                       int                 tau          = -1,
-                       std::string         colNames     = "",
-                       std::string         targetName   = "",
-                       std::string         libSizes_str = "",
-                       int                 sample       = 0,
-                       bool                random       = true,
-                       bool                replacement  = false,
-                       unsigned            seed         = 0, // seed=0: use RNG
-                       bool                verbose      = true );
+CCMValues CCM( DataFrame< double > dataFrameIn,
+               std::string         pathOut      = "./",
+               std::string         predictFile  = "",
+               int                 E            = 0,
+               int                 Tp           = 0,
+               int                 knn          = 0,
+               int                 tau          = -1,
+               std::string         colNames     = "",
+               std::string         targetName   = "",
+               std::string         libSizes_str = "",
+               int                 sample       = 0,
+               bool                random       = true,
+               bool                replacement  = false,
+               unsigned            seed         = 0, // seed=0: use RNG
+               bool                includeData  = false,
+               bool                verbose      = true );
 
 MultiviewValues Multiview( std::string pathIn          = "./",
                            std::string dataFile        = "",

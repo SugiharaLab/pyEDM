@@ -192,6 +192,7 @@ SMapValues SMap( DataFrame< double > &data,
     }
     
     std::valarray< double > predictions = std::valarray< double >( N_row );
+    std::valarray< double > variance    = std::valarray< double >( N_row );
 
     // Init coefficients to NAN ?
     DataFrame< double > coefficients = DataFrame< double >( N_row,
@@ -275,6 +276,10 @@ SMapValues SMap( DataFrame< double > &data,
         predictions[ row ] = prediction;
         coefficients.WriteRow( row, C );
 
+        // "Variance" estimate assuming weights are probabilities
+        std::valarray< double > deltaSqr = std::pow(target_vec - predictions, 2);
+        variance[ row ] = ( w * deltaSqr ).sum() / w.sum();
+        
     } // for ( row = 0; row < predict_N_row; row++ )
 
     // non "predictions" X(t+1) = X(t) if const_predict specified
@@ -298,6 +303,7 @@ SMapValues SMap( DataFrame< double > &data,
     DataFrame<double> dataOut = FormatOutput( param,
                                               predictions,
                                               const_predictions,
+                                              variance,
                                               target_vec,
                                               dataIn.Time(),
                                               dataIn.TimeName() );

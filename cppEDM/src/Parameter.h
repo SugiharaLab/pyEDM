@@ -29,7 +29,7 @@ public:  // Not protected with accessors.
     int         Tp;                 // prediction interval
     int         knn;                // k nearest neighbors
     int         tau;                // block embedding delay
-    float       theta;              // S Map localization
+    double      theta;              // S Map localization
     int         exclusionRadius;    // temporal rows to ignore in predict
     
     std::string              columns_str;
@@ -37,8 +37,8 @@ public:  // Not protected with accessors.
     std::vector<std::string> columnNames; // column names 
     std::vector<size_t>      columnIndex; // column indices
 
-    std::string targetName;         // target column name
-    size_t      targetIndex;        // target column index
+    std::string targetName;       // target column name
+    size_t      targetIndex;      // target column index
 
     bool        embedded;         // true if data is already embedded/block
     bool        const_predict;    // true to compute non "predictor" stats
@@ -50,9 +50,9 @@ public:  // Not protected with accessors.
     std::string derivatives_str;
     std::vector<size_t> derivatives;// list of column indices for derivatives
     
-    float       SVDSignificance;    // SVD singular value cutoff
-    float       TikhonovAlpha;      // Initial alpha parameter
-    float       ElasticNetAlpha;    // Initial alpha parameter
+    double      SVDSignificance;    // SVD singular value cutoff
+    double      TikhonovAlpha;      // Initial alpha parameter
+    double      ElasticNetAlpha;    // Initial alpha parameter
 
     int         MultiviewEnsemble; // Number of ensembles in multiview
 
@@ -83,7 +83,7 @@ public:  // Not protected with accessors.
         int         Tp          = 0,
         int         knn         = 0,
         int         tau         = -1,
-        float       theta       = 0,
+        double      theta       = 0,
         int         exclusionRadius = 0,
 
         std::string columns_str = "",
@@ -97,9 +97,9 @@ public:  // Not protected with accessors.
         std::string blockFile       = "",        
         std::string derivatives_str = "",
         
-        float       svdSig       = 1E-5,
-        float       tikhonov     = 0,
-        float       elasticNet   = 0.1,
+        double      svdSig       = 1E-5,
+        double      tikhonov     = 0,
+        double      elasticNet   = 0.1,
         
         int         multi        = 0,
         std::string libSizes_str = "",

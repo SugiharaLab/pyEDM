@@ -321,7 +321,8 @@ def CCM( pathIn       = "./",
          replacement  = False,
          seed         = 0,
          verbose      = False,
-         showPlot     = False ):
+         showPlot     = False,
+         returnVerbose= False):
     '''Convergent Cross Mapping on path/file.'''
 
 
@@ -357,8 +358,10 @@ def CCM( pathIn       = "./",
                        replacement,
                        seed,
                        verbose )
+    df = DataFrame(D[0])
 
-    df = DataFrame( D ) # Convert to pandas DataFrame
+    crossMaps = [(DataFrame(predStats), list(map(DataFrame,predDicts)))
+                    for predStats, predDicts in D[1:]]
 
     if showPlot :
         title = dataFile + "\nE=" + str(E)
@@ -369,7 +372,7 @@ def CCM( pathIn       = "./",
         axhline( y = 0, linewidth = 1 )
         show()
     
-    return df
+    return [df,crossMaps[0],crossMaps[1]] if returnVerbose else df
 
 #------------------------------------------------------------------------
 #

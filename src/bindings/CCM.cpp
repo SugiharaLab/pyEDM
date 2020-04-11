@@ -4,7 +4,7 @@
 //-----------------------------------------------------------
 // 
 //-----------------------------------------------------------
-py::dict CCM_pybind( std::string pathIn, 
+py::list CCM_pybind( std::string pathIn, 
                      std::string dataFile,
                      DF          df,
                      std::string pathOut,
@@ -22,12 +22,12 @@ py::dict CCM_pybind( std::string pathIn,
                      unsigned    seed, 
                      bool        verbose ) {
     
-    DataFrame< double > ccmOutput;
+    CCMValues ccmVals;
 
     if ( dataFile.size() ) {
         // dataFile specified, dispatch overloaded CCM, ignore dataList
         
-        ccmOutput = CCM( pathIn,
+        ccmVals  = CCM( pathIn,
                          dataFile,
                          pathOut,
                          predictFile,
@@ -47,7 +47,7 @@ py::dict CCM_pybind( std::string pathIn,
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
         
-        ccmOutput = CCM( dataFrame,
+        ccmVals     = CCM( dataFrame,
                          pathOut,
                          predictFile,
                          E, 
@@ -67,8 +67,37 @@ py::dict CCM_pybind( std::string pathIn,
         throw std::runtime_error( "CCM_pybind(): Invalid input.\n" );
     }
 
-    DF       dfout = DataFrameToDF( ccmOutput );
-    py::dict D     = DFtoDict( dfout );
+    // Format CCMValues for output list
     
-    return D;
+    py::list ccmOutput;
+
+    // all lib stats first
+
+    DF allLibStatsDF     = DataFrameToDF( ccmVals.AllLibStats );
+    py::dict allLibStats = DFtoDict( allLibStatsDF );
+    ccmOutput.append( allLibStats );
+
+    // Now add each crossmap values' internal DF and [DF]
+    for (auto cmapVal : {ccmVals.CrossMap1, ccmVals.CrossMap2} ){
+
+        py::list cmapOut;
+        
+        // internal pred stats DF
+        DF predStatsDF      = DataFrameToDF( cmapVal.PredictStats );
+        py::dict statsOut   = DFtoDict( predStatsDF );
+        cmapOut.append( statsOut );
+
+        // list of prediction DFs
+        py::list preds;
+        for (auto predDataFrame : cmapVal.Predictions ) {
+            DF predDF           = DataFrameToDF( predDataFrame );
+            py::dict predOut    = DFtoDict( predDF );
+            preds.append( predOut );
+        }
+        cmapOut.append( preds );
+
+        ccmOutput.append( cmapOut );
+    }
+    
+    return ccmOutput;
 }
