@@ -17,7 +17,7 @@ Parameters::Parameters(
     int         Tp,
     int         knn,
     int         tau,
-    float       theta,
+    double      theta,
     int         exclusionRadius,
 
     std::string columns_str,
@@ -31,9 +31,9 @@ Parameters::Parameters(
     std::string blockFile,
     std::string derivatives_str,
     
-    float       svdSig,
-    float       tikhonov,
-    float       elasticNet,
+    double      svdSig,
+    double      tikhonov,
+    double      elasticNet,
     
     int         multi,
     std::string libSizes_str,
@@ -84,7 +84,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 3, 1, "2020-03-22" )
+    version          ( 1, 3, 3, "2020-04-09" )
 {
     // Constructor code
     if ( method != Method::None ) {

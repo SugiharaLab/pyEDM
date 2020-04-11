@@ -6,10 +6,8 @@
 #include <queue>
 
 #ifdef CCM_THREADED // Defined in makefile
-// Two explicit CrossMap() threads are invoked. One for forward mapping, 
-// one for inverse mapping.  The call signature of CrossMap() is
-// dependent on which path is used.  This should probably be unified 
-// to use the same signature.
+// Two explicit CrossMap() threads are invoked.
+// One for forward mapping, one for inverse mapping.
 #include <thread>
 #endif
 
@@ -23,6 +21,7 @@ namespace EDM_CCM {
     std::queue< std::exception_ptr > exceptionQ;
     // Define the initial maximum distance for neigbors to avoid sort()
     // DBL_MAX is a Macro equivalent to: std::numeric_limits<double>::max()
+    // The issue with std::sort is that it ignores ties...
     double DistanceMax   = std::numeric_limits<double>::max();
     double DistanceLimit = std::numeric_limits<double>::max() - 1;
 }
@@ -30,14 +29,10 @@ namespace EDM_CCM {
 //----------------------------------------------------------------
 // forward declarations
 //----------------------------------------------------------------
-#ifdef CCM_THREADED
 void CrossMap(       Parameters           param,
                      DataFrame< double >  dataFrameIn,
-               const DataFrame< double > &LibStats );
-#else
-DataFrame< double > CrossMap( Parameters          param,
-                              DataFrame< double > dataFrameIn );
-#endif
+                     bool                 includeData,
+               const CrossMapValues      &crossMapValues );
 
 DataFrame< double > CCMDistances( const DataFrame< double > &dataBlock,
                                         Parameters           param );
@@ -55,65 +50,68 @@ DataFrame<double> SimplexProjection( Parameters  param,
 //   Implemented as a wrapper to API Overload 2:
 //   which is a wrapper for CrossMap()
 //----------------------------------------------------------------
-DataFrame <double > CCM( std::string pathIn,
-                         std::string dataFile,
-                         std::string pathOut,
-                         std::string predictFile,
-                         int         E,
-                         int         Tp,
-                         int         knn,
-                         int         tau,
-                         std::string columns,
-                         std::string target,
-                         std::string libSizes_str,
-                         int         sample,
-                         bool        random,
-                         bool        replacement,
-                         unsigned    seed,
-                         bool        verbose )
+CCMValues CCM( std::string pathIn,
+               std::string dataFile,
+               std::string pathOut,
+               std::string predictFile,
+               int         E,
+               int         Tp,
+               int         knn,
+               int         tau,
+               std::string columns,
+               std::string target,
+               std::string libSizes_str,
+               int         sample,
+               bool        random,
+               bool        replacement,
+               unsigned    seed,
+               bool        includeData,
+               bool        verbose )
 {
     //----------------------------------------------------------
     // Load data to dataFrameIn
     //----------------------------------------------------------
     DataFrame< double > dataFrameIn( pathIn, dataFile );
 
-    DataFrame <double > PredictLibRho = CCM( dataFrameIn,
-                                             pathOut,
-                                             predictFile,
-                                             E,
-                                             Tp,
-                                             knn,
-                                             tau,
-                                             columns,
-                                             target,
-                                             libSizes_str,
-                                             sample,
-                                             random,
-                                             replacement,
-                                             seed,
-                                             verbose );
-    return PredictLibRho;
+    CCMValues ccmValues = CCM( dataFrameIn,
+                               pathOut,
+                               predictFile,
+                               E,
+                               Tp,
+                               knn,
+                               tau,
+                               columns,
+                               target,
+                               libSizes_str,
+                               sample,
+                               random,
+                               replacement,
+                               seed,
+                               includeData,
+                               verbose );
+    return ccmValues;
 }
 
 //----------------------------------------------------------------
 // API Overload 2: DataFrame passed in
 //   Implemented a wrapper for CrossMap()
 //----------------------------------------------------------------
-DataFrame <double > CCM( DataFrame< double > dataFrameIn,
-                         std::string         pathOut,
-                         std::string         predictFile,
-                         int                 E,
-                         int                 Tp,
-                         int                 knn,
-                         int                 tau,
-                         std::string         columns,
-                         std::string         target,
-                         std::string         libSizes_str,
-                         int                 sample,
-                         bool                random,
-                         bool                replacement,
-                         unsigned            seed,
-                         bool                verbose )
+CCMValues CCM( DataFrame< double > dataFrameIn,
+               std::string         pathOut,
+               std::string         predictFile,
+               int                 E,
+               int                 Tp,
+               int                 knn,
+               int                 tau,
+               std::string         columns,
+               std::string         target,
+               std::string         libSizes_str,
+               int                 sample,
+               bool                random,
+               bool                replacement,
+               unsigned            seed,
+               bool                includeData,
+               bool                verbose )
 {
     if ( not columns.size() ) {
         throw std::runtime_error("CCM() must specify the column to embed.");
@@ -177,19 +175,46 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
     std::cout << inverseParam;
 #endif
 
-#ifdef CCM_THREADED
-    DataFrame<double> col_to_target( param.librarySizes.size(), 4,
-                                     "LibSize rho RMSE MAE" );
+    //------------------------------------------------------------
+    // Setup DataFrames for output CrossMapValues structs
+    //------------------------------------------------------------
+    DataFrame<double> LibStats1( param.librarySizes.size(), 4,
+                                 "LibSize rho RMSE MAE" );
+    DataFrame<double> LibStats2( param.librarySizes.size(), 4,
+                                 "LibSize rho RMSE MAE" );
+    size_t maxSamples;
+    if ( param.randomLib ) {
+        // Random samples from library
+        maxSamples = param.librarySizes.size() * param.subSamples;
+    }
+    else {
+        // Contiguous samples up to the size of the library
+        maxSamples = param.librarySizes.size();
+    }
     
-    DataFrame<double> target_to_col( param.librarySizes.size(), 4,
-                                     "LibSize rho RMSE MAE" );
+    DataFrame<double> PredictionStats1( maxSamples, 8,
+                                        "N E nn tau LibSize rho RMSE MAE" );
+    DataFrame<double> PredictionStats2( maxSamples, 8,
+                                        "N E nn tau LibSize rho RMSE MAE" );
 
-    std::thread CrossMapColTarget( CrossMap, param, dataFrameIn,
+    // Instantiate CrossMapValues output structs and insert DataFrames
+    CrossMapValues col_to_target = CrossMapValues();
+    CrossMapValues target_to_col = CrossMapValues();
+
+    col_to_target.LibStats     = LibStats1;
+    target_to_col.LibStats     = LibStats2;
+
+    if ( includeData ) {
+        col_to_target.PredictStats = PredictionStats1;
+        target_to_col.PredictStats = PredictionStats2;
+    }
+
+#ifdef CCM_THREADED
+    std::thread CrossMapColTarget( CrossMap, param, dataFrameIn, includeData,
                                    std::ref( col_to_target ) );
     
     std::thread CrossMapTargetCol( CrossMap, inverseParam, dataFrameIn,
-                                   std::ref( target_to_col ) );
-
+                                   includeData, std::ref( target_to_col ) );
     CrossMapColTarget.join();
     CrossMapTargetCol.join();
 
@@ -207,36 +232,46 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
         }
         std::rethrow_exception( exceptionPtr );
     }
-    
 #else
-    DataFrame< double > col_to_target = CrossMap( param, dataFrameIn );
-
-    DataFrame< double > target_to_col = CrossMap( inverseParam, dataFrameIn );
+    CrossMap( param,        dataFrameIn, includeData, std::ref( col_to_target));
+    CrossMap( inverseParam, dataFrameIn, includeData, std::ref( target_to_col));
 #endif
     
     //-----------------------------------------------------------------
     // Output
     //-----------------------------------------------------------------
-    // Create column names of output DataFrame
+    // Create unified column names of output DataFrame
     std::stringstream libRhoNames;
     libRhoNames << "LibSize "
                 << param.columnNames[0] << ":" << param.targetName << " "
                 << param.targetName     << ":" << param.columnNames[0];
 
-    // Output DataFrame
+    // Unified LibStats output DataFrame
     DataFrame<double> PredictLibRho( param.librarySizes.size(), 3,
                                      libRhoNames.str() );
 
-    PredictLibRho.WriteColumn( 0, col_to_target.Column( 0 ) );
-    PredictLibRho.WriteColumn( 1, col_to_target.Column( 1 ) );
-    PredictLibRho.WriteColumn( 2, target_to_col.Column( 1 ) );
+    PredictLibRho.WriteColumn( 0, col_to_target.LibStats.Column( 0 ) );
+    PredictLibRho.WriteColumn( 1, col_to_target.LibStats.Column( 1 ) );
+    PredictLibRho.WriteColumn( 2, target_to_col.LibStats.Column( 1 ) );
 
     if ( param.predictOutputFile.size() ) {
         // Write to disk
         PredictLibRho.WriteData( param.pathOut, param.predictOutputFile );
     }
+
+    // Output struct
+    CCMValues ccmValues;
+    ccmValues.AllLibStats = PredictLibRho;
+
+    if ( includeData ) {
+        // Now handle data for each prediction instance
+        ccmValues.CrossMap1.PredictStats = col_to_target.PredictStats;
+        ccmValues.CrossMap2.PredictStats = target_to_col.PredictStats;
+        ccmValues.CrossMap1.Predictions  = col_to_target.Predictions;
+        ccmValues.CrossMap2.Predictions  = target_to_col.Predictions;
+    }
     
-    return PredictLibRho;
+    return ccmValues;
 }
 
 //----------------------------------------------------------------
@@ -255,20 +290,14 @@ DataFrame <double > CCM( DataFrame< double > dataFrameIn,
 //       and Embed() will then not be correct.  So at the moment
 //       we'll pass a copy of the dataFrameIn to each thread. 
 //----------------------------------------------------------------
-#ifdef CCM_THREADED
 void CrossMap(       Parameters           paramCCM,
                      DataFrame< double >  dataFrameIn,
-               const DataFrame< double > &LibStatsIn ) {
-    
-DataFrame< double > &LibStats =
-    const_cast< DataFrame< double > & >( LibStatsIn );
-#else
-DataFrame< double > CrossMap( Parameters          paramCCM,
-                              DataFrame< double > dataFrameIn ) {
-// Output DataFrame
-DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
-                            "LibSize rho RMSE MAE" );
-#endif
+                     bool                 includeData,
+               const CrossMapValues      &crossMapValuesIn ) {
+
+    // Get a local reference for CrossMapValues
+    CrossMapValues &crossMapValues =
+        const_cast< CrossMapValues & >( crossMapValuesIn );
     
     if ( paramCCM.verbose ) {
         std::lock_guard<std::mutex> lck( EDM_CCM::mtx );
@@ -387,10 +416,11 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
               << " x " << Distances.NColumns() << std::endl;
     }
 #endif
-    
+
     //----------------------------------------------------------
     // Predictions
     //----------------------------------------------------------
+    size_t predictionCount = 0;
     // Loop for library sizes
     for ( size_t lib_size_i = 0;
                  lib_size_i < paramCCM.librarySizes.size(); lib_size_i++ ) {
@@ -443,10 +473,12 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
                     std::unordered_set<size_t> samples;
                     
                     // Sample and insert values into samples
-                    for ( size_t r = N_row - lib_size; r < N_row; r++ ) {
+                    size_t r = 0;
+                    while( samples.size() < lib_size ) {
                         size_t v = distribution( DefaultRandomEngine );
                         if ( not samples.insert( v ).second ) {
                             samples.insert( r );
+                            r++;
                         }
                     }
                     
@@ -562,11 +594,30 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
                       << "  MAE " << ve.MAE << std::endl;
             }
 #endif
-            
+            // Record values for these samples
             rho [ n ] = ve.rho;
             RMSE[ n ] = ve.RMSE;
             MAE [ n ] = ve.MAE;
+
+            if ( includeData ) {
+                // Save stats for this prediction
+                std::valarray< double > predOutVec( 8 );
+                predOutVec[ 0 ] = predictionCount + 1; // N
+                predOutVec[ 1 ] = paramCCM.E;          // E
+                predOutVec[ 2 ] = paramCCM.knn;        // nn
+                predOutVec[ 3 ] = paramCCM.tau;        // tau
+                predOutVec[ 4 ] = lib_size;            // LibSize
+                predOutVec[ 5 ] = ve.rho;              // rho
+                predOutVec[ 6 ] = ve.RMSE;             // RMSE
+                predOutVec[ 7 ] = ve.MAE;              // MAE
+                
+                crossMapValues.PredictStats.WriteRow(predictionCount,predOutVec);
+                
+                // Save predictions
+                crossMapValues.Predictions.push_front( S );
+            }
             
+            predictionCount++; 
         } // for ( n = 0; n < maxSamples; n++ )
 
         std::valarray< double > statVec( 4 );
@@ -575,7 +626,7 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
         statVec[ 2 ] = RMSE.sum() / maxSamples;
         statVec[ 3 ] = MAE.sum()  / maxSamples;
 
-        LibStats.WriteRow( lib_size_i, statVec );
+        crossMapValues.LibStats.WriteRow( lib_size_i, statVec );
     } // for ( lib_size : param.librarySizes ) 
 
     } // try 
@@ -584,10 +635,6 @@ DataFrame<double> LibStats( paramCCM.librarySizes.size(), 4,
         std::lock_guard<std::mutex> lck( EDM_CCM::q_mtx );
         EDM_CCM::exceptionQ.push( std::current_exception() );
     }
-    
-#ifndef CCM_THREADED
-    return LibStats;
-#endif
 }
 
 //--------------------------------------------------------------------- 

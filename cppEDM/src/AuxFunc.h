@@ -37,6 +37,7 @@ DataEmbedNN EmbedNN( DataFrame<double> *dataIn,
 DataFrame<double> FormatOutput( Parameters               param,
                                 std::valarray<double>    predictions,
                                 std::valarray<double>    const_predictions,
+                                std::valarray<double>    variance,
                                 std::valarray<double>    target_vec,
                                 std::vector<std::string> time,
                                 std::string              timeName );
