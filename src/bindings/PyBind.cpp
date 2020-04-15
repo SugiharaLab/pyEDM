@@ -116,7 +116,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("lib")             = std::string(""),
                py::arg("pred")            = std::string(""),
                py::arg("D")               = 0,
-               py::arg("E")               = 0,
+               py::arg("E")               = 1,
                py::arg("Tp")              = 1,
                py::arg("knn")             = 0,
                py::arg("tau")             = 1,
@@ -144,6 +144,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("random")      = true,
                py::arg("replacement") = false,
                py::arg("seed")        = 0,
+               py::arg("includeData") = false,
                py::arg("verbose")     = false );
     
     pyMod.def( "EmbedDimension", &EmbedDimension_pybind,
