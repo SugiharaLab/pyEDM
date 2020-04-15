@@ -132,7 +132,7 @@ class test_EDM( unittest.TestCase ):
     def test_multiview( self ):
         print ( "--- Multiview ---" )
         M = EDM.Multiview( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
-                           "1 100", "101 198", 3, 1, 0, -1,
+                           "1 100", "101 198", 0, 3, 1, 0, -1,
                            "x_t y_t z_t", "x_t", 0, 0, False, 4 )
 
         df_pred  = M['Predictions']
@@ -160,7 +160,7 @@ class test_EDM( unittest.TestCase ):
         df = EDM.CCM( "", self.Files[ "sardine_anchovy_sst.csv" ],
                       None, "./", "", 
                       3, 0, 0, -1, "anchovy", "np_sst",
-                      "10 75 5", 1, False, False, 0, True )
+                      "10 75 5", 1, False, False, 0, False, True )
 
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "CCM_anch_sst_cppEDM_valid.csv" ],

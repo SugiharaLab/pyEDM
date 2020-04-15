@@ -52,7 +52,7 @@ def main():
                       "x_t", "x_t", False, False, True, True )
 
     M = EDM.Multiview( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                       "1 100", "101 198", 3, 1, 0, -1,
+                       "1 100", "101 198", 0, 3, 1, 0, -1,
                        "x_t y_t z_t", "x_t", 0, 0, False, 4, True )
 
     # S-map circle : specify multivariable columns embedded = True
@@ -62,7 +62,7 @@ def main():
     
     df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
                   3, 0, 0, -1, "anchovy", "np_sst",
-                  "10 70 10", 100, True, False, 0, True, True )
+                  "10 70 10", 100, True, False, 0, False, True, True )
 
 #------------------------------------------------------------
 #------------------------------------------------------------

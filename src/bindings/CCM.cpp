@@ -4,30 +4,31 @@
 //-----------------------------------------------------------
 // 
 //-----------------------------------------------------------
-py::list CCM_pybind( std::string pathIn, 
-                     std::string dataFile,
-                     DF          df,
-                     std::string pathOut,
-                     std::string predictFile,
-                     int         E,
-                     int         Tp,
-                     int         knn,
-                     int         tau, 
-                     std::string columns,
-                     std::string target,
-                     std::string libSizes,
-                     int         sample,
-                     bool        random,
-                     bool        replacement,
-                     unsigned    seed, 
-                     bool        verbose ) {
+std::map< std::string, py::dict > CCM_pybind( std::string pathIn, 
+                                              std::string dataFile,
+                                              DF          df,
+                                              std::string pathOut,
+                                              std::string predictFile,
+                                              int         E,
+                                              int         Tp,
+                                              int         knn,
+                                              int         tau, 
+                                              std::string columns,
+                                              std::string target,
+                                              std::string libSizes,
+                                              int         sample,
+                                              bool        random,
+                                              bool        replacement,
+                                              unsigned    seed,
+                                              bool        includeData,
+                                              bool        verbose ) {
     
-    CCMValues ccmVals;
+    CCMValues ccmValues;
 
     if ( dataFile.size() ) {
         // dataFile specified, dispatch overloaded CCM, ignore dataList
         
-        ccmVals  = CCM( pathIn,
+        ccmValues = CCM( pathIn,
                          dataFile,
                          pathOut,
                          predictFile,
@@ -42,12 +43,13 @@ py::list CCM_pybind( std::string pathIn,
                          random,
                          replacement,
                          seed,
+                         includeData,
                          verbose );
     }
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
         
-        ccmVals     = CCM( dataFrame,
+        ccmValues = CCM( dataFrame,
                          pathOut,
                          predictFile,
                          E, 
@@ -61,43 +63,28 @@ py::list CCM_pybind( std::string pathIn,
                          random,
                          replacement,
                          seed,
+                         includeData,
                          verbose );
     }
     else {
         throw std::runtime_error( "CCM_pybind(): Invalid input.\n" );
     }
-
-    // Format CCMValues for output list
     
-    py::list ccmOutput;
+    // Format CCMValues for output dict
+    std::map< std::string, py::dict > CCM_;
 
-    // all lib stats first
-
-    DF allLibStatsDF     = DataFrameToDF( ccmVals.AllLibStats );
-    py::dict allLibStats = DFtoDict( allLibStatsDF );
-    ccmOutput.append( allLibStats );
-
-    // Now add each crossmap values' internal DF and [DF]
-    for (auto cmapVal : {ccmVals.CrossMap1, ccmVals.CrossMap2} ){
-
-        py::list cmapOut;
+    // LibStats are always included
+    DF allLibStats     = DataFrameToDF( ccmValues.AllLibStats );
+    CCM_[ "LibMeans" ] = DFtoDict( allLibStats );
+    
+    // Now add each crossmap prediction stats if requested
+    if ( includeData ) {
+        DF predStats1 = DataFrameToDF( ccmValues.CrossMap1.PredictStats );
+        DF predStats2 = DataFrameToDF( ccmValues.CrossMap2.PredictStats );
         
-        // internal pred stats DF
-        DF predStatsDF      = DataFrameToDF( cmapVal.PredictStats );
-        py::dict statsOut   = DFtoDict( predStatsDF );
-        cmapOut.append( statsOut );
-
-        // list of prediction DFs
-        py::list preds;
-        for (auto predDataFrame : cmapVal.Predictions ) {
-            DF predDF           = DataFrameToDF( predDataFrame );
-            py::dict predOut    = DFtoDict( predDF );
-            preds.append( predOut );
-        }
-        cmapOut.append( preds );
-
-        ccmOutput.append( cmapOut );
+        CCM_[ "PredictStats1" ] = DFtoDict( predStats1 );
+        CCM_[ "PredictStats2" ] = DFtoDict( predStats2 );
     }
-    
-    return ccmOutput;
+
+    return CCM_;
 }
