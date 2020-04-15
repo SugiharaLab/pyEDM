@@ -115,6 +115,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("predictFile")     = std::string(""),
                py::arg("lib")             = std::string(""),
                py::arg("pred")            = std::string(""),
+               py::arg("D")               = 0,
                py::arg("E")               = 0,
                py::arg("Tp")              = 1,
                py::arg("knn")             = 0,
