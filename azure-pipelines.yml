@@ -4,10 +4,6 @@ variables:
 
 strategy:
   matrix:
-    Windows_3.5:
-      vmImage: 'vs2017-win2016'
-      build_name: 'Windows_3.5_EDM'
-      python.version: '3.5'
     Windows_3.6:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.6_EDM'
@@ -16,22 +12,38 @@ strategy:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.7_EDM'
       python.version: '3.7'
+    Windows_3.8:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.8_EDM'
+      python.version: '3.8'
     MacOS_3.5:
-      vmImage: 'macos-10.13'
+      vmImage: 'macos-latest'
       build_name: 'MacOS_3.5_EDM'
       python.version: '3.5'
     MacOS_3.6:
-      vmImage: 'macos-10.13'
+      vmImage: 'macos-latest'
       build_name: 'MacOS_3.6.9_EDM'
       python.version: '3.6'
     MacOS_3.7:
-      vmImage: 'macos-10.13'
+      vmImage: 'macos-latest'
       build_name: 'MacOS_3.7_EDM'
       python.version: '3.7'
-    Linux:
+    MacOS_3.8:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.8_EDM'
+      python.version: '3.8'
+    Linux_3.6:
       vmImage: 'Ubuntu-16.04'
-      build_name: 'manylinux'
+      build_name: 'manylinux36'
+      python.version: '3.6'
+    Linux_3.7:
+      vmImage: 'Ubuntu-16.04'
+      build_name: 'manylinux37'
       python.version: '3.7'
+    Linux_3.8:
+      vmImage: 'Ubuntu-16.04'
+      build_name: 'manylinux38'
+      python.version: '3.8'
 
 pool:
 
