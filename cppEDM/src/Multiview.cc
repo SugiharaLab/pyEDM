@@ -3,22 +3,31 @@
 // Data input requires columns to specify timeseries columns
 // that will be embedded by Embed(), and target for predictions.
 // 
-// E represents the number of variables to combine for each
-// assessment, as well as the number of time delays to create in 
-// Embed() for each variable.
+// D represents the number of variables to combine for each
+// assessment, if not specified, it is the number of columns.
+// E is the embedding dimension of each variable. 
+// If E = 1, no time delay embedding is done, but the variables
+// in the embedding are named X(t-0), Y(t-0)...
 // 
-// multiview is the number of top-ranked E-dimensional predictions
+// Parameters.Validate() with Method::Simplex sets knn equal to E+1
+// if knn not specified, so we need to explicitly set knn to D + 1.
+// 
+// multiview is the number of top-ranked D-dimensional predictions
 // to "average" for the final prediction. Corresponds to parameter
 // k in Ye & Sugihara with default k = sqrt(m) where m is the
-// number of combinations C(n,E) available from the n = nColumns * E
-// columns taken E at-a-time. 
+// number of combinations C(n,D) available from the n = nColumns * D
+// columns taken D at-a-time. 
 //
-// Parameters.Validate() with Method::Simplex sets knn equal to E+1
-// if knn not specified.
-// 
 // Ye H., and G. Sugihara, 2016. Information leverage in
 // interconnected ecosystems: Overcoming the curse of dimensionality.
 // Science 353:922–925.
+//--------------------------------------------------------------------
+//
+// NOTE: Multiview evaluates the top projections using in-sample
+//       library predictions.  It can be shown that highly accurate
+//       in-sample predictions can be made from arbitrary non-
+//       constant, non-oscillatory vectors. Therefore, some attention
+//       may be warranted to filter prospective embedding vectors.
 //--------------------------------------------------------------------
 
 #include <thread>
@@ -74,6 +83,7 @@ MultiviewValues Multiview( std::string pathIn,
                            std::string predictFile,
                            std::string lib,
                            std::string pred,
+                           int         D,
                            int         E,
                            int         Tp,
                            int         knn,
@@ -93,6 +103,7 @@ MultiviewValues Multiview( std::string pathIn,
                                         predictFile,
                                         lib,
                                         pred,
+                                        D,
                                         E,
                                         Tp,
                                         knn,
@@ -110,28 +121,37 @@ MultiviewValues Multiview( std::string pathIn,
 // Multiview()
 // API Overload 2: DataFrame provided
 //----------------------------------------------------------------
-MultiviewValues  Multiview( DataFrame< double > data,
-                            std::string         pathOut,
-                            std::string         predictFile,
-                            std::string         lib,
-                            std::string         pred,
-                            int                 E,
-                            int                 Tp,
-                            int                 knn,
-                            int                 tau,
-                            std::string         columns,
-                            std::string         target,
-                            int                 multiview,
-                            int                 exclusionRadius,
-                            bool                verbose,
-                            unsigned            nThreads ) {
+MultiviewValues Multiview( DataFrame< double > data,
+                           std::string         pathOut,
+                           std::string         predictFile,
+                           std::string         lib,
+                           std::string         pred,
+                           int                 D,
+                           int                 E,
+                           int                 Tp,
+                           int                 knn,
+                           int                 tau,
+                           std::string         columns,
+                           std::string         target,
+                           int                 multiview,
+                           int                 exclusionRadius,
+                           bool                verbose,
+                           unsigned            nThreads ) {
 
+    // Require at least E = 1
+    if ( E < 1 ) {
+        std::stringstream errMsg;
+        errMsg << " Multiview(): E = " << E << " is invalid.\n" ;
+        throw std::runtime_error( errMsg.str() );
+    }
+    
     // Create local Parameters struct. Note embedded = true
     Parameters param = Parameters( Method::Simplex, "", "",
                                    pathOut, predictFile,
                                    lib, pred, E, Tp, knn, tau, 0,
                                    exclusionRadius, columns, target,
-                                   true, false, verbose,
+                                   true, // embedded true
+                                   false, verbose,
                                    "", "", "", 0, 0, 0, multiview );
 
     if ( not param.columnNames.size() ) {
@@ -139,9 +159,6 @@ MultiviewValues  Multiview( DataFrame< double > data,
     }
     if ( not param.targetName.size() ) {
         throw std::runtime_error( "Multiview() requires target name." );
-    }
-    if ( param.E < 1 ) {
-        throw std::runtime_error( "Multiview() E is required." );
     }
     // Ensure that params are validated so columnNames are populated
     if ( not param.validated ) {
@@ -180,7 +197,9 @@ MultiviewValues  Multiview( DataFrame< double > data,
 
     //------------------------------------------------------------
     // Generate embedding on param.columns_str
-    // embedding will have tau * (E-1) fewer rows than data
+    // embedding will have tau * (E-1) fewer rows than data,
+    // the time column is not returned in embedding.
+    // Column names are changed from X to X(t-0), X(t-1),...
     //------------------------------------------------------------
     DataFrame< double > embedding = Embed( data,
                                            param.E,
@@ -188,11 +207,6 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                            param.columns_str,
                                            param.verbose );
 
-    if ( E < 1 ) {
-        std::stringstream errMsg;
-        errMsg << " Multiview(): E = " << param.E << " is invalid.\n" ;
-        throw std::runtime_error( errMsg.str() );
-    }
     size_t shift = abs( param.tau ) * ( param.E - 1 );
     
     // Delete data top rows of partial data
@@ -215,13 +229,28 @@ MultiviewValues  Multiview( DataFrame< double > data,
     std::string outputFile = param.predictOutputFile;
     param.predictOutputFile = "";
     
-    // Combinations of possible embedding variables (columns), E at-a-time
+    // Establish the state-space dimension D
+    // default to the number of input columns (not embedded columns)
+    if ( D == 0 ) {
+        D = param.columnNames.size();
+    }
+    if ( D > embedding.NColumns() ) {
+        std::stringstream msg;
+        msg << "WARNING: Multiview(): D = " << D
+            << " exceeds the number of columns in the embedding: "
+            << embedding.NColumns() << ".  D set to "
+            << embedding.NColumns() << std::endl;
+        std::cout << msg.str();
+        
+        D = param.columnNames.size();
+    }
+ 
+    // Combinations of possible embedding variables, D at-a-time
     // Note that these combinations are not zero-offset, i.e.
     // Combination( 3, 2 ) = [(1, 2), (1, 3), (2, 3)]
     // These correspond to column indices +1
-    size_t nVar = param.columnNames.size();
     std::vector< std::vector< size_t > > combos =
-        Combination( nVar * param.E, param.E );
+        Combination( embedding.NColumns(), D );
 
 #ifdef DEBUG_ALL
     std::cout << "Multiview(): " << combos.size() << " combos:\n";
@@ -246,6 +275,18 @@ MultiviewValues  Multiview( DataFrame< double > data,
         std::cout << msg.str();
     }
 
+    // validate number of combinations
+    if ( param.MultiviewEnsemble > combos.size() ) {
+        std::stringstream msg;
+        msg << "WARNING: Multiview(): multiview ensembles "
+            << param.MultiviewEnsemble
+            << " exceeds the number of available combinations: "
+            << combos.size() << ".   Set to " << combos.size() << std::endl;
+        std::cout << msg.str();
+        
+        param.MultiviewEnsemble = combos.size();
+    }
+
     //---------------------------------------------------------------
     // Evaluate variable combinations.
     // Note that this is done within the library itself (in-sample).
@@ -256,22 +297,26 @@ MultiviewValues  Multiview( DataFrame< double > data,
     // Override the param.prediction for in-sample forecast skill evaluation
     param.prediction = param.library;
 
+    // This is not a good implementation...
+    // Replace param.E with the number of dimensions, recall embbeded = true
+    param.E = D;
+
     // Create column names for the results DataFrame
-    // One row for each combo: E columns (a combo), rho, MAE, RMSE
+    // One row for each combo: D columns (a combo), rho, MAE, RMSE
     // JP: NOTE DataFrame is based on valarray, so we can't store non
     //     numeric values (column names) in the results DataFrame.
     std::stringstream header;
-    for ( auto i = 1; i <= param.E; i++ ) {
+    for ( auto i = 1; i <= D; i++ ) {
         header << "Col_" << i << " ";
     }
     header << "rho MAE RMSE";
 
-    // Results Data Frame: E columns (a combo), rho, mae, rmse
-    DataFrame<double> combos_rho( combos.size(), param.E + 3, header.str() );
-    
+    // Results Data Frame: D columns (a combo), rho, mae, rmse
+    DataFrame<double> combos_rho( combos.size(), D + 3, header.str() );
+
     // Results vector of DataFrame's with prediction results
     std::vector< DataFrame< double > > combos_prediction( combos.size() );
-        
+
     // Build work queue
     EDM_Multiview::WorkQueue workQ( combos.size() );
 
@@ -282,7 +327,7 @@ MultiviewValues  Multiview( DataFrame< double > data,
 
     unsigned maxThreads = std::thread::hardware_concurrency();
     if ( maxThreads < nThreads ) { nThreads = maxThreads; }
-    
+
     // thread container
     std::vector< std::thread > threads;
     for ( unsigned i = 0; i < nThreads; ++i ) {
@@ -295,7 +340,7 @@ MultiviewValues  Multiview( DataFrame< double > data,
                                         std::ref( combos_rho ),
                                         std::ref( combos_prediction ) ) );
     }
-    
+
     // join threads
     for ( auto &thrd : threads ) {
         thrd.join();
@@ -353,9 +398,10 @@ MultiviewValues  Multiview( DataFrame< double > data,
     param.prediction = prediction;
 
     // Get top param.MultiviewEnsemble combos
+    size_t nEnsemble = std::min( (int) combo_sort.size(),
+                                 param.MultiviewEnsemble );
     std::vector< std::pair< double, int > >
-        combo_best( combo_sort.begin(),
-                    combo_sort.begin() + param.MultiviewEnsemble );
+        combo_best( combo_sort.begin(), combo_sort.begin() + nEnsemble );
    
 #ifdef DEBUG_ALL
     std::cout << "Multiview(): Best combos:\n";
@@ -377,23 +423,23 @@ MultiviewValues  Multiview( DataFrame< double > data,
         combos_best[ i ] = this_combo;
     }
     
-    // Results Data Frame: E columns (a combo), and rho mae rmse
+    // Results Data Frame: D columns (a combo), and rho mae rmse
     DataFrame<double> combos_rho_pred( param.MultiviewEnsemble,
-                                       param.E + 3, header.str() );
+                                       D + 3, header.str() );
     
     // Results vector of DataFrame's with prediction results
     // Used to compute the multiview ensemble average prediction
     std::vector< DataFrame< double > >
         combos_rho_prediction( param.MultiviewEnsemble );
-
+    
     // Build work queue
     EDM_Multiview::WorkQueue workQ_pred( param.MultiviewEnsemble );
-
+    
     // Insert combos index into work queue
     for ( auto i = 0; i < param.MultiviewEnsemble; i++ ) {
         workQ_pred[ i ] = i;
     }
-
+    
     // thread container
     std::vector< std::thread > threads_pred;
     for ( unsigned i = 0; i < nThreads; ++i ) {
@@ -552,7 +598,7 @@ void EvalComboThread( Parameters                            param,
 
         // Select combo columns from the data
         DataFrame<double> comboData =
-            embedding.DataFrameFromColumnIndex(combo_cols);
+            embedding.DataFrameFromColumnIndex( combo_cols );
 
         // Compute neighbors on comboData
         Neighbors neighbors = FindNeighbors( comboData, param );
@@ -562,6 +608,7 @@ void EvalComboThread( Parameters                            param,
                                             targetVec, neighbors );
 
         // combo prediction
+        // This is an embedded = true, E = D columns prediction
         DataFrame<double> S = SimplexProjection( param, embedNN );
 
         // Write combo prediction DataFrame
@@ -583,7 +630,7 @@ void EvalComboThread( Parameters                            param,
 #endif
 
         // Write combo and rho to the Data Frame
-        // E columns (a combo), E column names, rho, MAE, RMSE
+        // D columns (a combo), rho, MAE, RMSE
         std::valarray< double > combo_row( combo.size() + 3 );
         for ( auto i = 0; i < combo.size(); i++ ) {
             combo_row[ i ] = combo[ i ];
