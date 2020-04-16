@@ -270,6 +270,7 @@ MultiviewValues Multiview( std::string pathIn          = "./",
                            std::string target          = "",
                            int         multiview       = 0,
                            int         exclusionRadius = 0,
+                           bool        trainLib        = true,
                            bool        verbose         = false,
                            unsigned    nThreads        = 4 );
 
@@ -287,6 +288,7 @@ MultiviewValues Multiview( DataFrame< double >,
                            std::string target          = "",
                            int         multiview       = 0,
                            int         exclusionRadius = 0,
+                           bool        trainLib        = true,
                            bool        verbose         = false,
                            unsigned    nThreads        = 4 );
 
