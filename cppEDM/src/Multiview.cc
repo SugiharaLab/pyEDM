@@ -15,7 +15,7 @@
 // multiview is the number of top-ranked D-dimensional predictions
 // to "average" for the final prediction. Corresponds to parameter
 // k in Ye & Sugihara with default k = sqrt(m) where m is the
-// number of combinations C(n,D) available from the n = nColumns * D
+// number of combinations C(n,D) available from the n = D * E
 // columns taken D at-a-time. 
 //
 // Ye H., and G. Sugihara, 2016. Information leverage in
@@ -92,6 +92,7 @@ MultiviewValues Multiview( std::string pathIn,
                            std::string target,
                            int         multiview,
                            int         exclusionRadius,
+                           bool        trainLib,
                            bool        verbose,
                            unsigned    nThreads ) {
 
@@ -112,6 +113,7 @@ MultiviewValues Multiview( std::string pathIn,
                                         target,
                                         multiview,
                                         exclusionRadius,
+                                        trainLib,
                                         verbose,
                                         nThreads );
     return result;
@@ -135,6 +137,7 @@ MultiviewValues Multiview( DataFrame< double > data,
                            std::string         target,
                            int                 multiview,
                            int                 exclusionRadius,
+                           bool                trainLib,
                            bool                verbose,
                            unsigned            nThreads ) {
 
@@ -293,9 +296,11 @@ MultiviewValues Multiview( DataFrame< double > data,
     //---------------------------------------------------------------
     // Save a copy of the specified prediction observation rows.
     std::vector<size_t> prediction = param.prediction;
-    
-    // Override the param.prediction for in-sample forecast skill evaluation
-    param.prediction = param.library;
+
+    if ( trainLib ) {
+        // Override param.prediction for in-sample forecast skill evaluation
+        param.prediction = param.library;
+    }
 
     // This is not a good implementation...
     // Replace param.E with the number of dimensions, recall embbeded = true
@@ -362,7 +367,7 @@ MultiviewValues Multiview( DataFrame< double > data,
     }
 
     //-----------------------------------------------------------------
-    // Rank in-sample (library) forecasts
+    // Rank forecasts. If trainLib true these are in-sample (library)
     //-----------------------------------------------------------------
     // Make pairs of row indices and rho
     std::valarray< double > rho = combos_rho.VectorColumnName( "rho" );
@@ -392,10 +397,12 @@ MultiviewValues Multiview( DataFrame< double > data,
 #endif
 
     // ---------------------------------------------------------------
-    // Perform predictions with the top library multiview embeddings
+    // Perform predictions with the top multiview embeddings
     // ---------------------------------------------------------------
-    // Reset the user specified prediction vector
-    param.prediction = prediction;
+    if ( trainLib ) {
+        // Reset the user specified prediction vector
+        param.prediction = prediction;
+    }
 
     // Get top param.MultiviewEnsemble combos
     size_t nEnsemble = std::min( (int) combo_sort.size(),
@@ -431,48 +438,52 @@ MultiviewValues Multiview( DataFrame< double > data,
     // Used to compute the multiview ensemble average prediction
     std::vector< DataFrame< double > >
         combos_rho_prediction( param.MultiviewEnsemble );
-    
-    // Build work queue
-    EDM_Multiview::WorkQueue workQ_pred( param.MultiviewEnsemble );
-    
-    // Insert combos index into work queue
-    for ( auto i = 0; i < param.MultiviewEnsemble; i++ ) {
-        workQ_pred[ i ] = i;
-    }
-    
-    // thread container
-    std::vector< std::thread > threads_pred;
-    for ( unsigned i = 0; i < nThreads; ++i ) {
-        threads_pred.push_back( std::thread( EvalComboThread,
-                                             param,
-                                             workQ_pred,
-                                             combos_best,
-                                             std::ref( embedding ),
-                                             std::ref( targetVec ),
-                                             std::ref( combos_rho_pred ),
-                                             std::ref( combos_rho_prediction)));
-    }
-    
-    // join threads
-    for ( auto &thrd : threads_pred ) {
-        thrd.join();
-    }
-    
-    // If thread threw exception, get from queue and rethrow
-    if ( not EDM_Multiview::exceptionQ.empty() ) {
-        std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
 
-        // Take the first exception in the queue
-        std::exception_ptr exceptionPtr = EDM_Multiview::exceptionQ.front();
-
-        // Unroll all other exception from the thread/loops
-        while( not EDM_Multiview::exceptionQ.empty() ) {
-            // JP When do these exception_ptr get deleted? Is it a leak?
-            EDM_Multiview::exceptionQ.pop();
+    //--------------------------------------------------------------------
+    // If trainLib false, no need to compute these projections
+    //--------------------------------------------------------------------
+    if ( trainLib ) {
+        // Build work queue
+        EDM_Multiview::WorkQueue workQ_pred( param.MultiviewEnsemble );
+    
+        // Insert combos index into work queue
+        for ( auto i = 0; i < param.MultiviewEnsemble; i++ ) {
+            workQ_pred[ i ] = i;
         }
-        std::rethrow_exception( exceptionPtr );
-    }
+        
+        // thread container
+        std::vector< std::thread > threads_pred;
+        for ( unsigned i = 0; i < nThreads; ++i ) {
+            threads_pred.push_back(
+                std::thread( EvalComboThread,
+                             param,
+                             workQ_pred,
+                             combos_best,
+                             std::ref( embedding ),
+                             std::ref( targetVec ),
+                             std::ref( combos_rho_pred ),
+                             std::ref( combos_rho_prediction) ) );
+        }
+        
+        // join threads
+        for ( auto &thrd : threads_pred ) {
+            thrd.join();
+        }
     
+        // If thread threw exception, get from queue and rethrow
+        if ( not EDM_Multiview::exceptionQ.empty() ) {
+            std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
+            
+            // Take the first exception in the queue
+            std::exception_ptr exceptionPtr = EDM_Multiview::exceptionQ.front();
+            
+            // Unroll all other exception from the thread/loops
+            while( not EDM_Multiview::exceptionQ.empty() ) {
+                // JP When do these exception_ptr get deleted? Is it a leak?
+                EDM_Multiview::exceptionQ.pop();
+            }
+            std::rethrow_exception( exceptionPtr );
+        }
 #ifdef DEBUG_ALL
     for ( auto cpi =  combos_rho_prediction.begin();
                cpi != combos_rho_prediction.end(); ++cpi ) {
@@ -480,6 +491,21 @@ MultiviewValues Multiview( DataFrame< double > data,
     }
     std::cout << combos_rho_pred;
 #endif
+    } // if ( trainLib )
+    //-------------------------------------------------------------------
+    // else: trainLib = false
+    //   Projections were initally made with lib != pred
+    //-------------------------------------------------------------------
+    else {
+        // Insert top prediction results into combos_rho_pred
+        // Insert top predictions into combos_rho_prediction
+        int row;
+        for ( size_t row_i = 0; row_i < param.MultiviewEnsemble; row_i++ ) {
+            row = combo_sort[ row_i ].second; // row index of best rho
+            combos_rho_pred.WriteRow( row_i, combos_rho.Row( row ) );
+            combos_rho_prediction[ row_i ] = combos_prediction[ row ];
+        }
+    }
     
     //----------------------------------------------------------
     // Compute Multiview averaged prediction

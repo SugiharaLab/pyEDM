@@ -21,6 +21,7 @@ std::map< std::string, py::dict > Multiview_pybind (
     std::string  target,
     int          multiview,
     int          exclusionRadius,
+    bool         trainLib,
     bool         verbose,
     unsigned int numThreads ) {
 
@@ -44,6 +45,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         target,
                         multiview,
                         exclusionRadius,
+                        trainLib,
                         verbose,
                         numThreads );
     }
@@ -64,6 +66,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         target,
                         multiview,
                         exclusionRadius,
+                        trainLib,
                         verbose,
                         numThreads );
     }

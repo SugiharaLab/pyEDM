@@ -249,6 +249,7 @@ def Multiview( pathIn          = "./",
                target          = "",
                multiview       = 0,
                exclusionRadius = 0,
+               trainLib        = True,
                verbose         = False,
                numThreads      = 4,
                showPlot        = False ):
@@ -290,6 +291,7 @@ def Multiview( pathIn          = "./",
                              target,
                              multiview,
                              exclusionRadius,
+                             trainLib,
                              verbose,
                              numThreads )
     
