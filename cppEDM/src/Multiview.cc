@@ -222,7 +222,7 @@ MultiviewValues Multiview( DataFrame< double > data,
         
     // Adjust param.library and param.prediction vectors of indices
     if ( shift > 0 ) {
-        param.DeleteLibPred( shift );
+        param.DeleteLibPred();
     }
 
     // Get target

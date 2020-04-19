@@ -114,7 +114,7 @@ public:  // Not protected with accessors.
 
     void Validate(); // Parameter validation and index offsets
     void Load();     // Populate the parameters from arguments
-    void DeleteLibPred( size_t shift ); // Adjust for embedding
+    void DeleteLibPred(); // Adjust for embedding
     void PrintIndices( std::vector<size_t> library,
                        std::vector<size_t> prediction );
 };

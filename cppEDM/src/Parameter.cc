@@ -84,7 +84,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 3, 5, "2020-04-16" )
+    version          ( 1, 3, 6, "2020-04-19" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -501,8 +501,9 @@ void Parameters::Validate() {
 // Adjust lib/pred concordant with Embed() removal of tau(E-1)
 // rows, and DeletePartialDataRow()
 //------------------------------------------------------------
-void Parameters::DeleteLibPred( size_t shift ) {
-    
+void Parameters::DeleteLibPred() {
+
+    size_t shift          = abs( tau ) * ( E - 1 );
     size_t library_len    = library.size();
     size_t prediction_len = prediction.size();
 
@@ -524,27 +525,69 @@ void Parameters::DeleteLibPred( size_t shift ) {
                    deleted_lib_elements.end(), library_len - shift );
     }
 
-    // Erase elements of row indices that were deleted
+    // Now that we have the indices that could have been deleted,
+    // check to see if any are in lib and pred
+    bool deleteLibIndex = false;
+    std::vector< size_t >::iterator it;
     for ( auto element  = deleted_lib_elements.begin();
                element != deleted_lib_elements.end(); element++ ) {
-
-        std::vector< size_t >::iterator it;
         it = std::find( library.begin(), library.end(), *element );
-
         if ( it != library.end() ) {
-            library.erase( it );
+            deleteLibIndex = true;
+            break;
         }
     }
-                
+    
+    bool deletePredIndex = false;
     for ( auto element  = deleted_pred_elements.begin();
                element != deleted_pred_elements.end(); element++ ) {
-
-        std::vector< size_t >::iterator it;
-        it = std::find( prediction.begin(),
-                        prediction.end(), *element );
-
+        it = std::find( prediction.begin(), prediction.end(), *element );
         if ( it != prediction.end() ) {
-            prediction.erase( it );
+            deletePredIndex = true;
+            break;
+        }
+    }
+    
+#ifdef DEBUG_ALL
+    std::cout << "DeleteLibPred(): Nrows: " << NRows
+              << " deleteLibIndex: " << deleteLibIndex
+              << " deletePredIndex: " << deletePredIndex << std::endl;
+    std::cout << " deleted_lib_elements: ";
+    for ( auto element  = deleted_lib_elements.begin();
+               element != deleted_lib_elements.end(); element++ ) {
+        std::cout << *element << ", ";
+    } std::cout << std::endl << " deleted_pred_elements: ";
+    for ( auto element  = deleted_pred_elements.begin();
+               element != deleted_pred_elements.end(); element++ ) {
+        std::cout << *element << ", ";
+    } std::cout << std::endl;
+#endif
+        
+    // Erase elements of row indices that were deleted
+    if ( deleteLibIndex ) {
+        for ( auto element  = deleted_lib_elements.begin();
+              element != deleted_lib_elements.end(); element++ ) {
+            
+            std::vector< size_t >::iterator it;
+            it = std::find( library.begin(), library.end(), *element );
+            
+            if ( it != library.end() ) {
+                library.erase( it );
+            }
+        }
+    }
+
+    if ( deletePredIndex ) {
+        for ( auto element  = deleted_pred_elements.begin();
+              element != deleted_pred_elements.end(); element++ ) {
+            
+            std::vector< size_t >::iterator it;
+            it = std::find( prediction.begin(),
+                            prediction.end(), *element );
+            
+            if ( it != prediction.end() ) {
+                prediction.erase( it );
+            }
         }
     }
             
@@ -560,6 +603,8 @@ void Parameters::DeleteLibPred( size_t shift ) {
         }
     }
     // tau > 0  : Forward shifting: no adjustment needed from origin
+
+    return;
 }
 
 //------------------------------------------------------------------
