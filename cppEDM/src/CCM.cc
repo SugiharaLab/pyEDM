@@ -328,8 +328,8 @@ void CrossMap(       Parameters           paramCCM,
     size_t N_row = dataBlock.NRows();
 
     // NOTE: No need to adjust param.library and param.prediction indices
-    //       [param.DeleteLibPred( shift );] since pred will be created
-    //       below based on N_row of dataBlock.
+    //       with call to param.DeleteLibPred(); since pred will
+    //       be created below based on N_row of dataBlock.
     
     //--------------------------------------------------------------
     // Remove dataFrameIn rows to match embedded dataBlock with

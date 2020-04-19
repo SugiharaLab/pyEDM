@@ -123,7 +123,7 @@ DataEmbedNN EmbedNN( DataFrame<double> *data,
 
         // Adjust param.library and param.prediction vectors of indices
         if ( shift > 0 ) {
-            param.DeleteLibPred( shift );
+            param.DeleteLibPred();
         }
 
         // Check boundaries again since rows were removed

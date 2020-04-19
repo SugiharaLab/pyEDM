@@ -9,7 +9,7 @@ namespace EDM_Neighbors {
     // Define the initial maximum distance for neigbors to avoid sort()
     // DBL_MAX is a Macro equivalent to: std::numeric_limits<double>::max()
     double DistanceMax   = std::numeric_limits<double>::max();
-    double DistanceLimit = std::numeric_limits<double>::max() - 1;
+    double DistanceLimit = std::numeric_limits<double>::max() / ( 1 + 1E-9 );
 }
 
 //----------------------------------------------------------------
@@ -163,7 +163,9 @@ Neighbors FindNeighbors(
             throw std::runtime_error( errMsg.str() );
         }
 
-        // Check for ties.  JP: Need to address this, not just warning
+        // Check for ties.
+        // Since we use a direct comparison above: d_i < *max_it, not sort()
+        // ties are handled automatically.  Leave this check in anyway...
         // First sort a copy of k_NN_neighbors so unique() will work
         std::valarray<size_t> k_NN_neighborCopy( k_NN_neighbors );
         std::sort( begin( k_NN_neighborCopy ), end( k_NN_neighborCopy ) );
@@ -174,7 +176,10 @@ Neighbors FindNeighbors(
         
         if ( std::distance( begin( k_NN_neighborCopy ), ui ) !=
              k_NN_neighborCopy.size() ) {
-            std::cout << "WARNING: FindNeighbors(): Degenerate neighbors./n";
+            std::stringstream msg;
+            msg << "WARNING: FindNeighbors(): Degenerate neighbors at "
+                << "prediction row " << pred_row << std::endl;
+            std::cout << msg.str();
         }
 
         // Write the neighbor indices and distance values
@@ -263,8 +268,7 @@ void PrintDataFrameIn( const DataFrame<double> &dataFrame,
 void PrintNeighborsOut( const Neighbors &neighbors )
 {
     std::cout << "FindNeighbors(): neighbors:distances" << std::endl;
-    //for ( size_t i = 0; i < neighbors.neighbors.NRows(); i++ ) {
-    for ( size_t i = 0; i < 5; i++ ) {
+    for ( size_t i = 0; i < neighbors.neighbors.NRows(); i++ ) {
         std::cout << "Row " << i << " | ";
         for ( size_t j = 0; j < neighbors.neighbors.NColumns(); j++ ) {
             std::cout << neighbors.neighbors( i, j ) << " ";
