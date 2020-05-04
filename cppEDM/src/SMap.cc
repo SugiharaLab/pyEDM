@@ -240,6 +240,9 @@ SMapValues SMap( DataFrame< double > &data,
                 // Use the neighbor at the 'base' of the trajectory
                 B[ k ] = target_vec[ lib_row_base ];
             }
+            else if ( lib_row < 0 ) {
+                B[ k ] = target_vec[ 0 ];
+            }
             else {
                 B[ k ] = target_vec[ lib_row ];
             }
@@ -330,11 +333,17 @@ SMapValues SMap( DataFrame< double > &data,
 
     // coefficients have N_row's; coefOut has N_row + Tp
     // Create coefficient column vector with Tp nan rows at the
-    // beginning of coefOut as in FormatOutput()
+    // beginning/end of coefOut as in FormatOutput()
     std::valarray<double> coefColumnVec( NAN, dataOut.NRows() );
     
     // Copy coefficients vectors into coefOut
-    std::slice coef_i = std::slice( param.Tp, N_row, 1 );
+    std::slice coef_i;
+    if ( param.Tp > -1 ) {
+        coef_i = std::slice( param.Tp, N_row, 1 );
+    }
+    else {
+        coef_i = std::slice( 0, N_row + param.Tp, 1 );
+    }
     for ( size_t col = 0; col < coefOut.NColumns(); col++ ) {
         coefColumnVec[ coef_i ] = coefficients.Column( col );
         coefOut.WriteColumn( col, coefColumnVec );

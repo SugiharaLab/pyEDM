@@ -134,6 +134,9 @@ Neighbors FindNeighbors(
                 if ( lib_row + parameters.Tp > max_lib_index ) {
                     continue;
                 }
+                if ( lib_row + parameters.Tp < 0 ) {
+                    continue;
+                }
             }
             
             // Find distance between the prediction vector

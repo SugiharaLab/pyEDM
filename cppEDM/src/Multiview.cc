@@ -543,7 +543,8 @@ MultiviewValues Multiview( DataFrame< double > data,
     DataFrame< double > Prediction( Predictions.size(), 2,
                                     "Observations  Predictions" );
     // Output time vector
-    std::vector< std::string > predTime( param.prediction.size() + param.Tp );
+    std::vector< std::string > predTime( param.prediction.size() +
+                                         abs( param.Tp ) );
     
     FillTimes( param, data.Time(), std::ref( predTime ) );
     
@@ -643,7 +644,7 @@ void EvalComboThread( Parameters                            param,
         // Evaluate combo prediction
         VectorError ve = ComputeError( S.VectorColumnName( "Observations" ),
                                        S.VectorColumnName( "Predictions"  ) );
-
+        
 #ifdef DEBUG_ALL
         {
             std::lock_guard<std::mutex> lck( EDM_Multiview::mtx );

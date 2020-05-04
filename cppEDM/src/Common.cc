@@ -125,38 +125,79 @@ std::vector<std::string> SplitString( std::string inString,
 //----------------------------------------------------------------
 VectorError ComputeError( std::valarray< double > obsIn,
                           std::valarray< double > predIn ) {
+    
+    // JP does find work on nan?  Since nan != nan, probably not...
+    // Use a slice to extract the overlapping subset of obsIn, PredIn
+    // We need to find the appropriate slice parameters
 
-    // Check for nan in vectors
-    size_t nanObs  = 0;
-    size_t nanPred = 0;
-    for ( auto o : obsIn )  { if ( std::isnan( o ) ) { nanObs++;  } }
-    for ( auto p : predIn ) { if ( std::isnan( p ) ) { nanPred++; } }
+    // To try and be efficient, we first scan for nans, if none: stats
+    // If there are nans, then assess the overlapping subset and slice
+    bool nanObs  = false;
+    bool nanPred = false;
 
-    if ( nanObs != nanPred ) {
-        std::stringstream errMsg;
-        errMsg << "ComputeError(): obs has " << nanObs << " nan, pred has "
-               << nanPred << " nan.  ComputeError result invalid.\n";
-        std::cout << errMsg.str() << std::flush;
-    }
+    for ( auto o : obsIn  ) { if ( std::isnan( o ) ) { nanObs = true; break; } }
+    for ( auto p : predIn ) { if ( std::isnan( p ) ) { nanPred= true; break; } }
 
-    // JP: Assume that nan are at the beginning of predictions and
-    //     at the end of observations... probably not a robust assumption
-    //     but this is the case if the data were prepared from Embed()
-    //     and there were initially no nans
-    std::valarray<double> pred( predIn.size() - 2 * nanPred );
-    std::valarray<double> obs ( predIn.size() - 2 * nanPred );
-    if ( nanPred > 0 ) {
-        // ignore nanPred initial pred, and nanObs end obs
-        pred = predIn[ std::slice( nanPred, pred.size(), 1 ) ];
-        obs  = obsIn [ std::slice( nanPred, pred.size(), 1 ) ];
+    // vectors to hold data with no nans: reassigned below
+    std::valarray<double> obs;
+    std::valarray<double> pred;
+    size_t                Nin = obsIn.size();
+    
+    if ( not nanObs and not nanPred ) {
+        obs  = std::valarray< double >( obsIn  );
+        pred = std::valarray< double >( predIn );
     }
     else {
-        pred = std::valarray<double>( predIn );
-        obs  = std::valarray<double>( obsIn );
+        // Handle nans...
+        // Build concurrent vector of bool pairs : isnan on obsIn, predIn
+        std::vector< std::pair< bool, bool > > nanIndexPairs( Nin );
+        for ( size_t i = 0; i < Nin; i++ ) {
+            nanIndexPairs[ i ] = std::make_pair( std::isnan( obsIn[i]  ),
+                                                 std::isnan( predIn[i] ) );
+        }
+        // Find overlapping subset indices
+        // Condense pairs into one boolean value in nonNanOverlap
+        std::vector< bool > nonNanOverlap( Nin );
+        for ( size_t i = 0; i < Nin; i++ ) {
+            if ( not nanIndexPairs[ i ].first and
+                 not nanIndexPairs[ i ].second ) {
+                nonNanOverlap[ i ] = true; // Both are not nan, valid index
+            }
+            else {
+                nonNanOverlap[ i ] = false;
+            }
+        }
+        // Get the slice parameters
+        auto firstValid = std::find( nonNanOverlap.begin(),
+                                     nonNanOverlap.end(), true );
+        auto lastValid  = std::find( nonNanOverlap.rbegin(),
+                                     nonNanOverlap.rend(), true );
+        size_t firstValidIndex = std::distance( nonNanOverlap.begin(),
+                                                firstValid );
+        size_t lastValidIndex = std::distance( nonNanOverlap.rbegin(),
+                                               lastValid );
+
+        lastValidIndex = Nin - lastValidIndex; // reverse iterator used...
+        
+        if ( lastValidIndex < firstValidIndex ) {
+            std::stringstream errMsg;
+            errMsg << "ComputeError(): Invalid lastIndex in nan detection "
+                   << "lastValidIndex = "   << lastValidIndex
+                   << " firstValidIndex = " << firstValidIndex;
+            throw std::runtime_error( errMsg.str() );
+        }
+
+        // Allocate the output arrays and fill with slices
+        size_t Nout = lastValidIndex - firstValidIndex;
+        obs  = std::valarray< double >( Nout );
+        pred = std::valarray< double >( Nout );
+
+        std::slice nonNan = std::slice( firstValidIndex, Nout, 1 );
+        obs [ std::slice( 0, Nout, 1 ) ] = obsIn [ nonNan ];
+        pred[ std::slice( 0, Nout, 1 ) ] = predIn[ nonNan ];
     }
-
+    
     size_t N = pred.size();
-
     std::valarray< double > two( 2, N ); // Vector of 2's for squaring
 
     double sumPred    = pred.sum();

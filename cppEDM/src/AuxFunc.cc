@@ -154,63 +154,109 @@ DataFrame<double> FormatOutput( Parameters               param,
                                 std::vector<std::string> time,
                                 std::string              timeName )
 {
-
     //----------------------------------------------------
-    // Time vector with additional Tp points
+    // TimeOut vector with additional Tp points
     //----------------------------------------------------
-    size_t N_time = time.size();
-    size_t N_row  = predictions.size();
+    size_t N_time       = time.size();
+    size_t N_row        = predictions.size();
+    size_t Tp_magnitude = abs( param.Tp );
 
-    // Populate vector of time strings for output
-    std::vector<std::string> timeOut( N_row + param.Tp );
+    std::vector<std::string> timeOut( N_row + Tp_magnitude );
 
+    // Populate timeOut vector with strings for output
     if ( N_time ) {
         FillTimes( param, time, std::ref( timeOut ) );
     }
     
     //----------------------------------------------------
-    // Observations: add Tp nan at end
+    // Observations: Insert data; add Tp nan at end/start
     //----------------------------------------------------
-    std::valarray<double> observations( N_row + param.Tp );
-    std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
+    std::valarray<double> observations( N_row + Tp_magnitude );
     
-    observations[ std::slice( 0, N_row, 1 ) ] =
-        ( std::valarray<double> ) target_vec[ pred_i ];
+    if ( param.Tp > -1 ) {  // Positive Tp ---------------------------
+        std::slice pred_i = std::slice( param.prediction[0], N_row, 1 );
     
-    for ( size_t i = N_row; i < N_row + param.Tp; i++ ) {
-        observations[ i ] = NAN;
-    }
-
-    //----------------------------------------------------
-    // Predictions & variance: insert Tp nan at start
-    //----------------------------------------------------
-    std::valarray<double> predictionsOut( N_row + param.Tp );
-    for ( size_t i = 0; i < param.Tp; i++ ) {
-        predictionsOut[ i ] = NAN;
-    }
-    predictionsOut[ std::slice(param.Tp, N_row, 1) ] = predictions;
-
-    std::valarray<double> constPredictionsOut( N_row + param.Tp );
-    if ( param.const_predict ) {
-        for ( size_t i = 0; i < param.Tp; i++ ) {
-            constPredictionsOut[ i ] = NAN;
+        observations[ std::slice( 0, N_row, 1 ) ] =
+            ( std::valarray<double> ) target_vec[ pred_i ];
+    
+        for ( size_t i = N_row; i < N_row + param.Tp; i++ ) {
+            observations[ i ] = NAN;  // assign nan at end
         }
-        constPredictionsOut[ std::slice(param.Tp, N_row, 1) ] =
-            const_predictions;
     }
+    else {  // Negative Tp -------------------------------------------
+        std::slice pred_i;
+
+        if ( param.prediction[0] >= Tp_magnitude ) {
+            pred_i = std::slice( param.prediction[ 0 ] - Tp_magnitude,
+                                 N_row + Tp_magnitude, 1 );
     
-    std::valarray<double> varianceOut( N_row + param.Tp );
-    for ( size_t i = 0; i < param.Tp; i++ ) {
-        varianceOut[ i ] = NAN;
+            observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
+                ( std::valarray<double> ) target_vec[ pred_i ];
+        }
+        else {
+            // Edge case where -Tp preceeds available record pred
+            pred_i = std::slice( 0, N_row + Tp_magnitude, 1 );
+            
+            observations[std::slice( Tp_magnitude, N_row + Tp_magnitude, 1 )] =
+                ( std::valarray<double> ) target_vec[ pred_i ];
+
+            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
+                observations[ i ] = NAN;  // assign nan at start
+            }
+       }
     }
-    varianceOut[ std::slice(param.Tp, N_row, 1) ] = variance;
+
+    //------------------------------------------------------------------
+    // Predictions & variance: Assign values; insert Tp nan at start/end
+    //------------------------------------------------------------------
+    std::valarray<double> predictionsOut     ( N_row + Tp_magnitude );
+    std::valarray<double> constPredictionsOut( N_row + Tp_magnitude );
+    std::valarray<double> varianceOut        ( N_row + Tp_magnitude );
+    
+    if ( param.Tp > -1 ) {  // Positive Tp ---------------------------
+        std::slice predOut_i = std::slice( param.Tp, N_row, 1 );
+        
+        for ( size_t i = 0; i < param.Tp; i++ ) {
+            predictionsOut[ i ] = NAN;  // assign nan at start
+            varianceOut   [ i ] = NAN;  // assign nan at start
+        } 
+        predictionsOut[ predOut_i ] = predictions;
+        varianceOut   [ predOut_i ] = variance;
+        
+        if ( param.const_predict ) {
+            for ( size_t i = 0; i < param.Tp; i++ ) {
+                constPredictionsOut[ i ] = NAN;  // assign nan at start
+            }
+            constPredictionsOut[ predOut_i  ] = const_predictions;
+        }
+    }
+    else {  // Negative Tp --------------------------------------------
+        std::slice predOut_i = std::slice( 0, N_row - Tp_magnitude, 1 );
+        std::slice predIn_i  = std::slice( 0, N_row, 1 );
+        
+        predictionsOut[ predOut_i ] = predictions[ predIn_i ];
+        varianceOut   [ predOut_i ] = variance   [ predIn_i ];
+        
+        for ( size_t i = N_row; i < N_row + Tp_magnitude; i++ ) {
+            predictionsOut[ i ] = NAN;  // assign nan at end
+            varianceOut   [ i ] = NAN;  // assign nan at end
+        } 
+        
+        if ( param.const_predict ) {
+            constPredictionsOut[ predOut_i ] = const_predictions[ predIn_i ];
+
+            for ( size_t i = N_row; i < N_row + Tp_magnitude; i++ ) {
+                constPredictionsOut[ i ] = NAN;  // assign nan at end
+            }
+        }
+    }
 
     //----------------------------------------------------
     // Create output DataFrame
     //----------------------------------------------------
     size_t dataFrameColumms = param.const_predict ? 4 : 3;
     
-    DataFrame<double> dataFrame( N_row + param.Tp, dataFrameColumms );
+    DataFrame<double> dataFrame( N_row + Tp_magnitude, dataFrameColumms );
     
     if ( param.const_predict ) {
         dataFrame.ColumnNames() = { "Observations", "Predictions", 
@@ -224,7 +270,7 @@ DataFrame<double> FormatOutput( Parameters               param,
         dataFrame.TimeName() = timeName;
         dataFrame.Time()     = timeOut;
     }
-    
+
     dataFrame.WriteColumn( 0, observations   );
     dataFrame.WriteColumn( 1, predictionsOut );
     dataFrame.WriteColumn( 2, varianceOut    );
@@ -253,81 +299,152 @@ void FillTimes( Parameters                param,
                 std::vector<std::string>  time,
                 std::vector<std::string> &timeOut )
 {
-    size_t N_time     = time.size();
-    size_t N_row      = param.prediction.size();
-    size_t max_pred_i = param.prediction[ N_row - 1 ];
+    size_t N_time       = time.size();
+    size_t N_row        = param.prediction.size();
+    size_t max_pred_i   = param.prediction[ N_row - 1 ];
+    size_t min_pred_i   = param.prediction[ 0 ];
+    size_t Tp_magnitude = abs( param.Tp );
 
     if ( max_pred_i >= N_time ) {
         // If tau > 0 end rows were deleted. max_pred_i might exceed time bounds
         max_pred_i = N_time - 1;
     }
-        
-    if ( timeOut.size() != N_row + param.Tp ) {
+
+    if ( timeOut.size() != N_row + Tp_magnitude ) {
         std::stringstream errMsg;
         errMsg << "FillTimes(): timeOut vector length " << timeOut.size()
                << " is not equal to the number of predictions + Tp "
-               << N_row + param.Tp << std::endl;
+               << N_row + Tp_magnitude << std::endl;
         throw std::runtime_error( errMsg.str() );
     }
-    
-    // Fill in times guaranteed to be in param.prediction indices
-    for ( auto i = 0; i < N_row; i++ ) {
-        size_t pred_i = param.prediction[ i ];
-        if ( pred_i < N_time ) {
-            timeOut[ i ] = time[ pred_i ];
-        }
-    }
 
-    // Now fill in times beyond param.prediction indices
-    if ( max_pred_i + param.Tp < N_time ) {
-        // All prediction times are available in time, get the rest
-        for ( auto i = 0; i < param.Tp; i++ ) {
-            timeOut[ N_row + i ] = time[ max_pred_i + i + 1 ];
-        }
-    }
-    else {
-        // Tp introduces time values beyond the range of time
-        bool time_format_warning_printed = false;
-
-        // Try to parse the last time vector string as a date or datetime
-        // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
-        datetime_info dtinfo = parse_datetime( time[ max_pred_i ] );
-
-        for ( auto i = 0; i < param.Tp; i++ ) {
-            std::stringstream tss;
-            
-            if ( dtinfo.unrecognized_fmt ) {
-                // Numeric so add Tp
-                tss << std::stod( time[ max_pred_i ] ) + i + 1;
+    // Positive Tp -----------------------------------------------------
+    if ( param.Tp > -1 ) {
+        // Fill in times guaranteed to be in param.prediction indices
+        for ( size_t i = 0; i < N_row; i++ ) {
+            size_t pred_i = param.prediction[ i ];
+            if ( pred_i < N_time ) {
+                timeOut[ i ] = time[ pred_i ];
             }
-            else {
-                int time_delta = i + 1;
-                // Get last two datetimes to compute time diff to add time delta
-                std::string time_new( time[ max_pred_i     ] );
-                std::string time_old( time[ max_pred_i - 1 ] );
-                std::string new_time =
-                    increment_datetime_str( time_old, time_new, time_delta );
-                
-                // Add +ti if not a recognized format (datetime util returns "")
-                if ( new_time.size() ) {
-                    tss << new_time;
+        }
+
+        // Now fill in times beyond param.prediction indices
+        if ( max_pred_i + param.Tp < N_time ) {
+            // All prediction times are available in time, get the rest
+            for ( size_t i = 0; i < param.Tp; i++ ) {
+                timeOut[ N_row + i ] = time[ max_pred_i + i + 1 ];
+            }
+        }
+        else {
+            // Tp introduces time values beyond the range of time
+            bool time_format_warning_printed = false;
+
+            // Try to parse the last time vector string as a date or datetime
+            // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
+            datetime_info dtinfo = parse_datetime( time[ max_pred_i ] );
+
+            for ( size_t i = 0; i < param.Tp; i++ ) {
+                std::stringstream tss;
+            
+                if ( dtinfo.unrecognized_fmt ) {
+                    // Numeric so add Tp
+                    tss << std::stod( time[ max_pred_i ] ) + i + 1;
                 }
                 else {
-                    tss << time[ max_pred_i ] << " +" << i + 1;
+                    int time_delta = i + 1;
+                    // Last two datetimes to compute time diff to add time delta
+                    std::string time_new( time[ max_pred_i     ] );
+                    std::string time_old( time[ max_pred_i - 1 ] );
+                    std::string new_time =
+                        increment_datetime_str( time_old, time_new, time_delta );
+                
+                    // Add +ti if not recognized format(datetime util returns "")
+                    if ( new_time.size() ) {
+                        tss << new_time;
+                    }
+                    else {
+                        tss << time[ max_pred_i ] << " +" << i + 1;
 
-                    if ( not time_format_warning_printed ) {
-                        std::cout << "FillTimes(): "
-                                  << "time column is unrecognized time format."
-                                  << "\n\tManually adding + tp to the last"
-                                  << " time column available." << std::endl;
-                        time_format_warning_printed = true;
+                        if ( not time_format_warning_printed ) {
+                            std::cout << "FillTimes(): "
+                                      << "time column unrecognized time format."
+                                      << "\n\tManually adding + tp to the last"
+                                      << " time column available." << std::endl;
+                            time_format_warning_printed = true;
+                        }
                     }
                 }
-            }
             
-            timeOut[ N_row + i ] = tss.str();
+                timeOut[ N_row + i ] = tss.str();
+            }
         }
     }
+    // Negative Tp -----------------------------------------------------
+    else {
+        // Fill in times guaranteed to be in param.prediction indices
+        for ( size_t i = 0; i < N_row; i++ ) {
+            size_t pred_i = param.prediction[ i ];
+            if ( pred_i < N_time ) {
+                // param.Tp is negative, start at timeOut[ 0 - param.Tp ]
+                // timeOut is shifted forward to accomodate the preceeding Tp
+                timeOut[ i + Tp_magnitude ] = time[ pred_i ];
+            }
+        }
+
+        // Now fill in times before param.prediction indices
+        if ( (int) min_pred_i + param.Tp >= 0 ) {
+            // All prediction times are available in time, get the rest
+            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
+                timeOut[ i ] = time[ param.prediction[ i ] - Tp_magnitude ];
+            }
+        }
+        else {
+            // Tp introduces time values before the range of time
+            bool time_format_warning_printed = false;
+            
+            // Try to parse the first time vector string as a date or datetime
+            // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
+            datetime_info dtinfo = parse_datetime( time[ 0 ] );
+
+            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
+                std::stringstream tss;
+            
+                if ( dtinfo.unrecognized_fmt ) {
+                    // Numeric so subtract i Tp
+                    tss << std::stod( time[ Tp_magnitude - 1 ] ) - (i + 1);
+                }
+                else {
+                    int time_delta = i - 1;
+                    // Get first two datetimes to compute time diff
+                    // to add time delta
+                    std::string time_new( time[ 1 ] );
+                    std::string time_old( time[ 0 ] );
+                    std::string new_time =
+                        increment_datetime_str( time_old, time_new, time_delta );
+                
+                    // Subtract +ti if not a recognized format
+                    // (datetime util returns "")
+                    if ( new_time.size() ) {
+                        tss << new_time;
+                    }
+                    else {
+                        tss << time[ max_pred_i ] << " -" << i + 1;
+
+                        if ( not time_format_warning_printed ) {
+                            std::cout << "FillTimes(): "
+                                      << "time column unrecognized time format."
+                                      << "\n\tManually adding - tp to the first"
+                                      << " time column available." << std::endl;
+                            time_format_warning_printed = true;
+                        }
+                    }
+                } // else not dtinfo.unrecognized_fmt
+                
+                timeOut[ i ] = tss.str();
+                
+            } // for ( size_t i = 0; i < Tp_magnitude; i++ ) 
+        } // else Tp introduces time values before the range of time
+    } // else Negative Tp ------------------------------------------------
 }
 
 //----------------------------------------------------------
