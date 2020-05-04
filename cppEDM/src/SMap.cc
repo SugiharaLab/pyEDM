@@ -221,7 +221,7 @@ SMapValues SMap( DataFrame< double > &data,
 
         // Populate matrix A (exp weighted future prediction), and
         // vector B (target BC's) for this row (observation).
-        size_t lib_row;
+        int    lib_row;
         size_t lib_row_base;
         
         for ( size_t k = 0; k < param.knn; k++ ) {

@@ -109,7 +109,7 @@ DataFrame<double> SimplexProjection( Parameters  param,
 
     auto max_lib_it = std::max_element( param.library.begin(),
                                         param.library.end() );
-    size_t max_lib_index = *max_lib_it;
+    int max_lib_index = *max_lib_it; // int for compare to libRow int
 
 #ifdef DEBUG_ALL
     std::cout << "SimplexProjection -------------------------\n";
@@ -175,7 +175,7 @@ DataFrame<double> SimplexProjection( Parameters  param,
         std::valarray<double> libTarget( param.knn );
 
         for ( size_t k = 0; k < param.knn; k++ ) {
-            size_t libRow = (size_t) neighbors.neighbors( row, k ) + param.Tp;
+            int libRow = neighbors.neighbors( row, k ) + param.Tp;
 
             if ( libRow > max_lib_index ) {
                 // The k_NN index + Tp is outside the library domain

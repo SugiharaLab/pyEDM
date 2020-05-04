@@ -197,7 +197,7 @@ DataFrame<double> FormatOutput( Parameters               param,
             // Edge case where -Tp preceeds available record pred
             pred_i = std::slice( 0, N_row + Tp_magnitude, 1 );
             
-            observations[std::slice( Tp_magnitude, N_row + Tp_magnitude, 1 )] =
+            observations[std::slice( Tp_magnitude, N_row, 1 )] =
                 ( std::valarray<double> ) target_vec[ pred_i ];
 
             for ( size_t i = 0; i < Tp_magnitude; i++ ) {
