@@ -84,7 +84,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 3, 6, "2020-04-19" )
+    version          ( 1, 3, 7, "2020-05-05" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -118,12 +118,6 @@ void Parameters::Validate() {
     if ( not embedded and tau == 0 ) {
         std::string errMsg( "Parameters::Validate(): "
                             "tau must be non-zero.\n" );
-        throw std::runtime_error( errMsg );
-    }
-
-    if ( Tp < 0 ) {
-        std::string errMsg( "Parameters::Validate(): "
-                            "Tp must be positive.\n" );
         throw std::runtime_error( errMsg );
     }
 
@@ -435,7 +429,7 @@ void Parameters::Validate() {
         }
         else {
             // default knn = 0, set knn value
-            knn = library.size() - Tp * (E + 1);
+            knn = library.size() - abs( Tp ) * (E + 1);
             if ( verbose ) {
                 std::stringstream msg;
                 msg << "Parameters::Validate(): Set knn = " << knn

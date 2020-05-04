@@ -186,9 +186,18 @@ DataFrame<double> SimplexProjection( Parameters  param,
                         << " exceeds library domain.\n";
                     std::cout << msg.str();
                 }
-
                 // Use the neighbor at the 'base' of the trajectory
-                libTarget[ k ] = target_vec[ libRow - param.Tp ];
+                libTarget[ k ] = target_vec[ libRow - abs( param.Tp ) ];
+            }
+            else if ( libRow < 0 ) {
+                if ( param.verbose ) {
+                    std::stringstream msg;
+                    msg << "Simplex() in row " << row << " libRow " << libRow
+                        << " precedes library domain.\n";
+                    std::cout << msg.str();
+                }
+                // Use the neighbor at the 'base' of the trajectory
+                libTarget[ k ] = target_vec[ 0 ];
             }
             else {
                 libTarget[ k ] = target_vec[ libRow ];
