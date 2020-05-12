@@ -280,7 +280,8 @@ SMapValues SMap( DataFrame< double > &data,
         coefficients.WriteRow( row, C );
 
         // "Variance" estimate assuming weights are probabilities
-        std::valarray< double > deltaSqr = std::pow(target_vec - predictions, 2);
+        std::valarray< double > deltaSqr =
+            std::pow( B - predictions[ row ], 2);
         variance[ row ] = ( w * deltaSqr ).sum() / w.sum();
         
     } // for ( row = 0; row < predict_N_row; row++ )

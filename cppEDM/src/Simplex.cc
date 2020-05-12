@@ -208,7 +208,8 @@ DataFrame<double> SimplexProjection( Parameters  param,
         predictions[ row ] = ( weights * libTarget ).sum() / weights.sum();
 
         // "Variance" estimate assuming weights are probabilities
-        std::valarray< double > deltaSqr = std::pow(libTarget - predictions, 2);
+        std::valarray< double > deltaSqr =
+            std::pow(libTarget - predictions[ row ], 2);
         variance[ row ] = ( weights * deltaSqr ).sum() / weights.sum();
 
     } // for ( row = 0; row < N_row; row++ )
