@@ -96,6 +96,9 @@ std::string increment_datetime_str( std::string datetime1,
                                     std::string datetime2,
                                     int         tp );
 
+bool DistanceCompare( const std::pair<double, size_t> &x,
+                      const std::pair<double, size_t> &y );
+
 // API functions Embed() and MakeBlock() are in Embed.h Embed.cc
 
 DataFrame<double> Simplex( std::string pathIn          = "./data/",

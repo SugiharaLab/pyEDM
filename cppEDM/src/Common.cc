@@ -4,6 +4,14 @@
 
 #include "Common.h"
 
+//---------------------------------------------------------------
+// Binary sort function for FindNeighbors() & CCMNeighbors()
+//---------------------------------------------------------------
+bool DistanceCompare( const std::pair<double, size_t> &x,
+                      const std::pair<double, size_t> &y ) {
+    return x.first < y.first;
+}
+
 //----------------------------------------------------------------
 // 
 //----------------------------------------------------------------

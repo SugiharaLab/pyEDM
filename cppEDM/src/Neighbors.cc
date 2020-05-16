@@ -2,7 +2,7 @@
 #include "Neighbors.h"
 
 //----------------------------------------------------------------
-Neighbors:: Neighbors() {}
+Neighbors:: Neighbors(): anyTies(false) {}
 Neighbors::~Neighbors() {}
 
 namespace EDM_Neighbors {
@@ -73,130 +73,203 @@ Neighbors FindNeighbors(
         }
     }
 
+    // Compute distances of all pred : lib vectors
+    // DistLib.distances is DataFrame of pred rows x lib columns with
+    // distances for each pred row to all lib rows
+    Neighbors DistLib = Distances( std::ref(dataFrame), parameters );
+
+    // DistLib.neighbors are the lib row indices, 1 row x lib columns
+    std::valarray< size_t > rowLib = DistLib.neighbors.Row( 0 );
+
+    // Pair the distances and library row indices for sort on distance
+    // Each predPairs element correponds to a prediction row and
+    // holds a vector of < distance, lib_row > pairs for each lib_row
+    std::vector< std::vector< std::pair< double, size_t > > >
+        predPairs( N_prediction_rows );
+    
+    for ( size_t pred_row = 0; pred_row < N_prediction_rows; pred_row++ ) {
+        std::valarray< double > rowDist = DistLib.distances.Row( pred_row );
+
+        std::vector< std::pair<double, size_t> > rowPairs( rowDist.size() );
+        for ( size_t i = 0; i < rowDist.size(); i++ ) {
+            rowPairs[ i ] = std::make_pair( rowDist[i], rowLib[i] );
+        }
+        // insert into predPairs
+        predPairs[ pred_row ] = rowPairs;
+    }
+    
+#ifdef DEBUG_ALL
+    std::cout << DistLib.neighbors;
+    std::cout << DistLib.distances;
+    for ( size_t pred_row = 0; pred_row < predPairs.size(); pred_row++ ) {
+        std::vector< std::pair<double, size_t> > rowPair = predPairs[ pred_row ];
+        for ( size_t i = 0; i < rowPair.size(); i++ ) {
+            std::pair<double, size_t> thisPair = rowPair[ i ];
+            std::cout << "[" << thisPair.first << ", "
+                      << thisPair.second << "] ";
+        } std::cout << std::endl;
+    } std::cout << std::endl;
+#endif
+    
     // Neighbors: struct on local stack to be returned by copy
     Neighbors neighbors = Neighbors();
     neighbors.neighbors = DataFrame<size_t>(N_prediction_rows, parameters.knn);
     neighbors.distances = DataFrame<double>(N_prediction_rows, parameters.knn);
 
-    // Vectors to hold indices and values from each comparison
-    std::valarray<size_t> k_NN_neighbors( parameters.knn );
-    std::valarray<double> k_NN_distances( parameters.knn );
-
+    // To be inserted in neighbors struct below
+    std::vector< bool > ties( N_prediction_rows, false );
+    std::vector< std::vector< std::pair< double, size_t > > >
+        tiePairs( N_prediction_rows );
+    
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find the
     // list of library indices that are within k_NN points
     //-------------------------------------------------------------------
-    for ( size_t row_i = 0; row_i < parameters.prediction.size(); row_i++ ) {
-        // Get the prediction vector for this pred_row index
-        size_t pred_row = parameters.prediction[ row_i ];
-        std::valarray<double> pred_vec = dataFrame.Row( pred_row );
-        
-        // Reset the neighbor and distance vectors for this pred row
-        for ( size_t i = 0; i < parameters.knn; i++ ) {
-            k_NN_neighbors[ i ] = 0;
-            // JP: Used to avoid sort()
-            k_NN_distances[ i ] = EDM_Neighbors::DistanceMax;
-        }
+    for ( size_t pred_row = 0; pred_row < predPairs.size(); pred_row++ ) {
 
-        //--------------------------------------------------------------
-        // Library Rows
-        //--------------------------------------------------------------
-        for ( size_t row_j = 0; row_j < parameters.library.size(); row_j++ ) {
-            // Get the library vector for this lib_row index
-            size_t lib_row = parameters.library[ row_j ];
-            std::valarray<double> lib_vec = dataFrame.Row( lib_row );
-            
-            // If the library point is degenerate with the prediction,
-            // ignore it.
-            if ( lib_row == pred_row ) {
-#ifdef DEBUG_ALL
-                if ( parameters.verbose ) {
-                    std::stringstream msg;
-                    msg << "FindNeighbors(): Ignoring degenerate lib_row "
-                        << lib_row << " and pred_row " << pred_row << std::endl;
-                    std::cout << msg.str();
-                }
-#endif
-                continue;
-            }
+        // rowPair is a vector of pairs of length library rows
+        // Get the rowPair for this prediction row
+        std::vector< std::pair<double, size_t> > rowPair = predPairs[ pred_row ];
 
-            // Apply temporal exclusion radius: units are data rows, not time
-            if ( parameters.exclusionRadius ) {
-                int xrad = (int) lib_row - pred_row;
-                if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
-                    continue;
-                }
-            }
-                
-            // If this lib_row + args.Tp >= max_lib_index, then this neighbor
-            // would be outside the library, keep looking if noNeighborLimit
+        // sort < distance, lib_row > pairs for this pred_row
+        // distance must be .first
+        std::sort( rowPair.begin(), rowPair.end(), DistanceCompare );
+
+        // Insert knn distance / library row index into knn vectors
+        std::valarray< double > knnDistances( parameters.knn );
+        std::valarray< size_t > knnLibRows  ( parameters.knn );
+
+        size_t lib_row_i = 0;
+        size_t k         = 0;
+        while ( k < parameters.knn ) {
+            double distance = rowPair[ lib_row_i ].first;
+            size_t lib_row  = rowPair[ lib_row_i ].second;
+
             if ( not parameters.noNeighborLimit ) {
-                if ( lib_row + parameters.Tp > max_lib_index ) {
-                    continue;
-                }
-                if ( lib_row + parameters.Tp < 0 ) {
-                    continue;
+                // Reach exceeding grasp : forecast point is outside library
+                if ( lib_row + parameters.Tp > max_lib_index or
+                     lib_row + parameters.Tp < 0 ) {
+                    lib_row_i++;
+                    continue; // keep looking 
                 }
             }
-            
-            // Find distance between the prediction vector
-            // and each of the library vectors
-            // The 1st column (j=0) of Time has been excluded above
-            double d_i = Distance( lib_vec, pred_vec,
-                                   DistanceMetric::Euclidean );
 
-            // If d_i is less than values in k_NN_distances, add to list
-            auto max_it = std::max_element( begin( k_NN_distances ),
-                                            end( k_NN_distances ) );
-            if ( d_i < *max_it ) {
-                size_t max_i = std::distance( begin(k_NN_distances), max_it );
-                k_NN_neighbors[ max_i ] = lib_row;  // Save the index
-                k_NN_distances[ max_i ] = d_i;      // Save the value
+            // Exclusion radius: units are data rows, not time
+            if ( parameters.exclusionRadius ) {
+                int xrad = (int) lib_row - (int) pred_row;
+                if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
+                    lib_row_i++;
+                    continue; // skip this neighbor
+                }
             }
-        } // for ( row_j = 0; row_j < library.size(); row_j++ )
-        
-        if ( *std::max_element( begin( k_NN_distances ),
-                                end  ( k_NN_distances ) ) >
-             EDM_Neighbors::DistanceLimit ) {
-            
-            std::stringstream errMsg;
-            errMsg << "FindNeighbors(): Failed to find "
-                   << parameters.knn << " knn neighbors. The library "
-                   << "may be too small." << std::endl;
-            throw std::runtime_error( errMsg.str() );
+
+            knnDistances[ k ] = distance;
+            knnLibRows  [ k ] = lib_row;
+            lib_row_i++;
+            k++;
         }
 
-        // Check for ties.
-        // Since we use a direct comparison above: d_i < *max_it, not sort()
-        // ties are handled automatically.  Leave this check in anyway...
-        // First sort a copy of k_NN_neighbors so unique() will work
-        std::valarray<size_t> k_NN_neighborCopy( k_NN_neighbors );
-        std::sort( begin( k_NN_neighborCopy ), end( k_NN_neighborCopy ) );
-        
-        // ui is iterator to first non unique element
-        auto ui = std::unique( begin( k_NN_neighborCopy ),
-                               end  ( k_NN_neighborCopy ) );
-        
-        if ( std::distance( begin( k_NN_neighborCopy ), ui ) !=
-             k_NN_neighborCopy.size() ) {
-            std::stringstream msg;
-            msg << "WARNING: FindNeighbors(): Degenerate neighbors at "
-                << "prediction row " << pred_row << std::endl;
-            std::cout << msg.str();
-        }
+        neighbors.distances.WriteRow( pred_row, knnDistances );
+        neighbors.neighbors.WriteRow( pred_row, knnLibRows   );
 
-        // Write the neighbor indices and distance values
-        neighbors.neighbors.WriteRow( row_i, k_NN_neighbors );
-        neighbors.distances.WriteRow( row_i, k_NN_distances );
-        
-    } // for ( row_i = 0; row_i < predictionRows->size(); row_i++ )
+        // Check for ties 1.18e−38 is float 32-bit min
+        if ( k < rowPair.size() ) {
+            if ( rowPair[ k ].first <= rowPair[ k-1 ].first ) {
+                // At least one tie...
+                std::vector< std::pair< double, size_t > > rowTiePairs;
+
+                while( k < rowPair.size() and rowPair[ k ].first > 0 and
+                       rowPair[ k ].first <= rowPair[ k-1 ].first ) {
+                    
+                    // Set flag in ties and store tie pairs in tiePairs
+                    ties[ pred_row ] = true;
+                    
+                    rowTiePairs.push_back(std::make_pair( rowPair[ k ].first,
+                                                          rowPair[ k ].second ));
+                    k++;
+                }
+
+                if ( find( ties.begin(), ties.end(), true ) != ties.end() ) {
+                    neighbors.anyTies = true;
+                    tiePairs[ pred_row ] = rowTiePairs;
+                }
+            }
+        }
+    } // for ( pred_row = 0; pred_row < predPairs.size(); pred_row++ )
+
+    neighbors.ties     = ties;
+    neighbors.tiePairs = tiePairs;
 
 #ifdef DEBUG_ALL
+    for ( size_t i = 0; i < neighbors.ties.size(); i++ ) {
+        if ( neighbors.ties[ i ] ) {
+            std::vector< std::pair< double, size_t > > rowTiePairs =
+                neighbors.tiePairs[ i ];
+            std::cout << "Ties at pred_i " << i << ": ";
+            for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
+                double dist = rowTiePairs[ j ].first;
+                size_t prow = rowTiePairs[ j ].second;
+                std::cout << "[ " << dist << ", " << prow << "] ";
+            } std::cout << std::endl;
+        }
+    }
+    
     const Neighbors &neigh = neighbors;
     PrintNeighborsOut( neigh );
 #endif
     
     return neighbors;
+}
+
+//--------------------------------------------------------------------- 
+// Compute all prediction row : library row distances.
+// Note that dataBlock does NOT have the time in column 0.
+//
+// Hijack a Neighbors struct to return two DataFrames:
+// distances: pred rows x lib columns matrix with distances.
+//            distance(i,j) hold distance between the E-dimensional
+//            phase space point prediction row i and library row j.
+// neighbors: 1 row x lib cols matrix with lib rows
+//---------------------------------------------------------------------
+Neighbors Distances( const DataFrame< double > &dataBlock,
+                           Parameters           param ) {
+    
+    size_t N_pred = param.prediction.size();
+    size_t N_lib  = param.library.size();
+
+    // Output distance matrix
+    DataFrame< double > D = DataFrame< double >( N_pred, N_lib );
+    DataFrame< size_t > N = DataFrame< size_t >( 1,     N_lib );
+
+    // Initialise D to DistanceMax
+    std::valarray< double > row_init( EDM_Neighbors::DistanceMax, N_lib );
+    for ( size_t row = 0; row < N_pred; row++ ) {
+        D.WriteRow( row, row_init );
+    }
+
+    // Set lib indices into neighbors
+    for ( size_t col = 0; col < N_lib; col++ ) {
+        N( 0, col ) = param.library[ col ];
+    }
+
+    // Compute all prediction row : library row distances
+    for ( size_t row = 0; row < N_pred; row++ ) {
+        // Get E-dimensional vector from this prediction row
+        std::valarray< double > v1 = dataBlock.Row( param.prediction[ row ] );
+
+        for ( size_t col = 0; col < N_lib; col++ ) {
+            // Find distance between vector (v1) and library vector v2
+            std::valarray< double > v2 = dataBlock.Row( param.library[ col ] );
+            
+            D( row, col ) = Distance( v1, v2, DistanceMetric::Euclidean );
+        }
+    }
+
+    Neighbors DistLib = Neighbors();
+    DistLib.distances = D;
+    DistLib.neighbors = N;
+    
+    return DistLib;
 }
 
 //----------------------------------------------------------------
