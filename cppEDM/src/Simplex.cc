@@ -204,6 +204,91 @@ DataFrame<double> SimplexProjection( Parameters  param,
             }
         }
 
+        //------------------------------------------------------------------
+        // If ties, expand & adjust libTarget & weights
+        //------------------------------------------------------------------
+        if ( neighbors.anyTies ) {
+            if ( neighbors.ties[ row ] ) {
+                std::vector< std::pair< double, size_t > > rowTiePairs =
+                    neighbors.tiePairs[ row ];
+                
+                double tieDistance = rowTiePairs[ 0 ].first; // all dist same...
+                size_t numTies     = rowTiePairs.size();
+                double tieFactor   = double( param.knn ) / double( numTies );
+
+                // resize libTarget
+                std::valarray< double > libTargetCopy( libTarget );
+                libTarget.resize( param.knn + numTies ); // destroys contents
+
+                // Copy original libTarget knn values
+                libTarget[ std::slice( 0, param.knn, 1 ) ] = libTargetCopy;
+
+                // Add numTies values
+                for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
+                    int libRow = rowTiePairs[ k2 ].second + param.Tp;
+                    if ( libRow > max_lib_index ) {
+                        libTarget[ k2 + param.knn ] =
+                            target_vec[ libRow - abs( param.Tp ) ];
+                    }
+                    else if ( libRow < 0 ) {
+                        libTarget[ k2 + param.knn ] = target_vec[ 0 ];
+                    }
+                    else {
+                        libTarget[ k2 + param.knn ] = target_vec[ libRow ];
+                    }
+                }
+
+                // Weights
+                // Resize distanceRow 
+                std::valarray<double> distanceRowCopy( distanceRow );
+                distanceRow.resize( param.knn + numTies ); // destroys contents
+                // Copy original distanceRow knn values
+                distanceRow[ std::slice( 0, param.knn, 1 ) ] = distanceRowCopy;
+                // Add numTies values
+                for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
+                    double dist = rowTiePairs[ k2 ].first;
+                }                
+                minDistance = distanceRow.min();
+
+                // Resize weightedDistances
+                std::valarray<double> weightedDistancesCopy( weightedDistances );
+                weightedDistances.resize( param.knn + numTies ); // destroys
+                
+                if ( minDistance == 0 ) {
+                    // Handle cases of distanceRow = 0
+                    for ( size_t i = 0; i < param.knn + numTies; i++ ) {
+                        if ( distanceRow[i] > 0 ) {
+                            weightedDistances[i] = exp( -distanceRow[i] /
+                                                        minDistance );
+                        }
+                        else {
+                            weightedDistances[i] = 1;
+                        }
+                    }
+                }
+                else {
+                    weightedDistances = exp( -distanceRow / minDistance );
+                }
+            }
+
+#ifdef DEBUG_ALL
+            for ( size_t i = 0; i < neighbors.ties.size(); i++ ) {
+                if ( neighbors.ties[ i ] ) {
+                    std::vector< std::pair< double, size_t > > rowTiePairs =
+                        neighbors.tiePairs[ i ];
+                    std::cout << "Ties at pred_i " << i << ": ";
+                    for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
+                        double dist = rowTiePairs[ j ].first;
+                        size_t prow = rowTiePairs[ j ].second;
+                        std::cout << "[ " << dist << ", " << prow << "] ";
+                    } std::cout << std::endl;
+                }
+            }
+#endif
+        }
+        //------------------------------------------------------------------
+        //------------------------------------------------------------------
+
         // Prediction is average of weighted library projections
         predictions[ row ] = ( weights * libTarget ).sum() / weights.sum();
 

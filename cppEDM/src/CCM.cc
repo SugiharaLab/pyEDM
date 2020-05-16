@@ -23,7 +23,7 @@ namespace EDM_CCM {
     // DBL_MAX is a Macro equivalent to: std::numeric_limits<double>::max()
     // The issue with std::sort is that it ignores ties...
     double DistanceMax   = std::numeric_limits<double>::max();
-    double DistanceLimit = std::numeric_limits<double>::max() - 1;
+    double DistanceLimit = std::numeric_limits<double>::max() / ( 1 + 1E-9 );
 }
 
 //----------------------------------------------------------------
