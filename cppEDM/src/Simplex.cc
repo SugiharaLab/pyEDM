@@ -242,8 +242,10 @@ DataFrame<double> SimplexProjection( Parameters  param,
                 // Resize distanceRow 
                 std::valarray<double> distanceRowCopy( distanceRow );
                 distanceRow.resize( param.knn + numTies ); // destroys contents
+                
                 // Copy original distanceRow knn values
                 distanceRow[ std::slice( 0, param.knn, 1 ) ] = distanceRowCopy;
+                
                 // Add numTies values
                 for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
                     double dist = rowTiePairs[ k2 ].first;
@@ -269,6 +271,17 @@ DataFrame<double> SimplexProjection( Parameters  param,
                 else {
                     weightedDistances = exp( -distanceRow / minDistance );
                 }
+
+                // Resize weights
+                std::valarray<double> weightsCopy( weights );
+                weights.resize( param.knn + numTies ); // destroys
+                
+                // Copy original knn weight values
+                weights[ std::slice( 0, param.knn, 1 ) ] = weightsCopy;
+                
+                for ( size_t k2 = param.knn; k2 < weights.size(); k2++ ) {
+                    weights[k2] = std::max( weightedDistances[k2], minWeight );
+                }                
             }
 
 #ifdef DEBUG_ALL
