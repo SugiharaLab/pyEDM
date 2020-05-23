@@ -214,7 +214,10 @@ DataFrame<double> SimplexProjection( Parameters  param,
                 
                 double tieDistance = rowTiePairs[ 0 ].first; // all dist same...
                 size_t numTies     = rowTiePairs.size();
-                double tieFactor   = double( param.knn ) / double( numTies );
+                double tieFactor   = 1;
+                if ( numTies ) {
+                    tieFactor = 1 / double( numTies );
+                }
 
                 // resize libTarget
                 std::valarray< double > libTargetCopy( libTarget );
@@ -248,8 +251,8 @@ DataFrame<double> SimplexProjection( Parameters  param,
                 
                 // Add numTies values
                 for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
-                    double dist = rowTiePairs[ k2 ].first;
-                }                
+                    distanceRow[ k2 + param.knn ] = rowTiePairs[ k2 ].first;
+                }
                 minDistance = distanceRow.min();
 
                 // Resize weightedDistances
@@ -278,10 +281,12 @@ DataFrame<double> SimplexProjection( Parameters  param,
                 
                 // Copy original knn weight values
                 weights[ std::slice( 0, param.knn, 1 ) ] = weightsCopy;
-                
+
+                // Apply weight adjusment for ties
                 for ( size_t k2 = param.knn; k2 < weights.size(); k2++ ) {
-                    weights[k2] = std::max( weightedDistances[k2], minWeight );
-                }                
+                    weights[k2] = tieFactor *
+                        std::max( weightedDistances[k2], minWeight );
+                }
             }
 
 #ifdef DEBUG_ALL
