@@ -1,154 +1,66 @@
 
-#include "Common.h"
-#include "Parameter.h"
-#include "Neighbors.h"
-#include "Embed.h"
-#include "AuxFunc.h"
-
-// Forward declaration
-DataFrame<double> SimplexProjection( Parameters  param,
-                                     DataEmbedNN embedNN,
-                                     bool        checkDataRows = true );
+#include "Simplex.h"
 
 //----------------------------------------------------------------
-// API Overload 1: Explicit data file path/name
-//   Implemented as a wrapper to API Overload 2:
+// Constructor
 //----------------------------------------------------------------
-DataFrame<double> Simplex( std::string pathIn,
-                           std::string dataFile,
-                           std::string pathOut,
-                           std::string predictFile,
-                           std::string lib,
-                           std::string pred,
-                           int         E,
-                           int         Tp,
-                           int         knn,
-                           int         tau,
-                           int         exclusionRadius,
-                           std::string columns,
-                           std::string target,
-                           bool        embedded,
-                           bool        const_predict,
-                           bool        verbose ) {
-    
-    // DataFrame constructor loads data
-    DataFrame< double > *dataFrameIn =
-        new DataFrame< double > ( pathIn, dataFile );
-
-    // Pass data frame to Simplex 
-    DataFrame< double > S = Simplex( std::ref( *dataFrameIn ),
-                                     pathOut,
-                                     predictFile,
-                                     lib,
-                                     pred,
-                                     E,
-                                     Tp,
-                                     knn,
-                                     tau,
-                                     exclusionRadius,
-                                     columns,
-                                     target,
-                                     embedded,
-                                     const_predict,
-                                     verbose );
-    delete dataFrameIn;
-    
-    return S;
+SimplexClass::SimplexClass (
+    DataFrame< double > & data, 
+    Parameters          & parameters ):
+    EDM{ data, parameters } {
 }
 
 //----------------------------------------------------------------
-// API Overload 2: DataFrame provided
+// Project : Polymorphic implementation
 //----------------------------------------------------------------
-DataFrame<double> Simplex( DataFrame< double > &data,
-                           std::string pathOut,
-                           std::string predictFile,
-                           std::string lib,
-                           std::string pred,
-                           int         E,
-                           int         Tp,
-                           int         knn,
-                           int         tau,
-                           int         exclusionRadius,
-                           std::string columns,
-                           std::string target,
-                           bool        embedded,
-                           bool        const_predict,
-                           bool        verbose ) {
+void SimplexClass::Project () {
+    
+    PrepareEmbedding();
+    
+    Distances(); // all pred : lib vector distances into allDistances
+    
+    FindNeighbors();
 
-    Parameters param = Parameters( Method::Simplex, "", "",
-                                   pathOut, predictFile,
-                                   lib, pred, E, Tp, knn, tau, 0,
-                                   exclusionRadius,
-                                   columns, target, embedded,
-                                   const_predict, verbose );
+    Simplex();
 
-    //----------------------------------------------------------
-    // Embed, compute Neighbors
-    //----------------------------------------------------------
-    DataEmbedNN embedNN = EmbedNN( &data, std::ref( param ) );
+    FormatOutput();
 
-    DataFrame<double> S = SimplexProjection( param, embedNN );
-
-    return S;
+    WriteOutput();
 }
 
 //----------------------------------------------------------------
-// Simplex Projection
+// Simplex algorithm
 //----------------------------------------------------------------
-DataFrame<double> SimplexProjection( Parameters  param,
-                                     DataEmbedNN embedNN,
-                                     bool        checkDataRows ) {
+void SimplexClass::Simplex () {
 
-    // Unpack the data, (embedding dataBlock not used), target & neighbors
-    DataFrame<double>    *dataIn     = embedNN.dataIn;  // used for output
-    std::valarray<double> target_vec = embedNN.targetVec;
-    Neighbors             neighbors  = embedNN.neighbors;
-
-    size_t library_N_row = param.library.size();
-    size_t N_row         = neighbors.neighbors.NRows();
-
-    auto max_lib_it = std::max_element( param.library.begin(),
-                                        param.library.end() );
-    int max_lib_index = *max_lib_it; // int for compare to libRow int
-
-#ifdef DEBUG_ALL
-    std::cout << "SimplexProjection -------------------------\n";
-    std::cout << "Neighbors: (" << neighbors.neighbors.NRows() << "x"
-              << neighbors.neighbors.NColumns() << ")\n";
-    std::cout << neighbors.neighbors;
-    std::cout << "Target: (" << target_vec.size() << ")\n";
-    for ( size_t row = 0; row < 10; row++ ) {
-        std::cout << target_vec[ row ] << " ";
-    } std::cout << std::endl;
-    std::cout << "-------------------------------------------\n\n";
-#endif
+    // Allocate output vectors to populate EDM class projections DataFrame.
+    // Must be after FindNeighbors()
+    size_t Npred = knn_neighbors.NRows();
     
-    if ( N_row != neighbors.distances.NRows() ) {
-        std::stringstream errMsg;
-        errMsg << "Simplex(): Number of neighbor rows " << N_row
-               << " doesn't match the number of distances rows "
-               << neighbors.distances.NRows() << std::endl;
-        throw std::runtime_error( errMsg.str() );
-    }
-
+    predictions       = std::valarray< double > ( 0., Npred );
+    const_predictions = std::valarray< double > ( 0., Npred );
+    variance          = std::valarray< double > ( 0., Npred );
+    
+    auto maxLibit = std::max_element( parameters.library.begin(),
+                                      parameters.library.end() );
+    int maxLibIndex = *maxLibit; // int for compare to libRow int
+    
     double minWeight = 1.E-6;
-    std::valarray<double> predictions( 0., N_row );
-    std::valarray<double> variance   ( 0., N_row );
 
-    // Process each prediction row in neighbors
-    for ( size_t row = 0; row < N_row; row++ ) {
+    // Process each prediction row in neighbors : distances
+    for ( size_t row = 0; row < Npred; row++ ) {
 
-        std::valarray<double> distanceRow = neighbors.distances.Row( row );
+        std::valarray< double > distanceRow = knn_distances.Row( row );
         
         // Establish exponential weight reference, the 'distance scale'
         double minDistance = distanceRow.min();
 
-        // Compute weight (vector) for each k_NN
-        std::valarray<double> weightedDistances( minWeight, param.knn );
-        
+        // Compute weight vector for each k_NN
+        std::valarray< double > weightedDistances( minWeight, parameters.knn );
+
         if ( minDistance == 0 ) {
             // Handle cases of distanceRow = 0 : can't divide by minDistance
-            for ( size_t i = 0; i < param.knn; i++ ) {
+            for ( int i = 0; i < parameters.knn; i++ ) {
                 if ( distanceRow[i] > 0 ) {
                     weightedDistances[i] = exp( -distanceRow[i] / minDistance );
                 }
@@ -156,7 +68,7 @@ DataFrame<double> SimplexProjection( Parameters  param,
                     // Setting weight = 1 implies that the corresponding
                     // library target vector is the same as the observation
                     // so it will be given full-weight in the prediction.
-                    weightedDistances[i] = 1;
+                    weightedDistances[ i ] = 1;
                 }
             }
         }
@@ -166,102 +78,102 @@ DataFrame<double> SimplexProjection( Parameters  param,
         }
 
         // weight vector
-        std::valarray<double> weights( param.knn );
-        for  ( size_t i = 0; i < param.knn; i++ ) {
+        std::valarray< double > weights( parameters.knn );
+        for  ( int i = 0; i < parameters.knn; i++ ) {
             weights[i] = std::max( weightedDistances[i], minWeight );
         }
 
         // target library vector, one element for each knn
-        std::valarray<double> libTarget( param.knn );
+        std::valarray< double > libTarget( parameters.knn );
 
-        for ( size_t k = 0; k < param.knn; k++ ) {
-            int libRow = neighbors.neighbors( row, k ) + param.Tp;
+        for ( int k = 0; k < parameters.knn; k++ ) {
+            int libRow = knn_neighbors( row, k ) + parameters.Tp;
 
-            if ( libRow > max_lib_index ) {
+            if ( libRow > maxLibIndex ) {
                 // The k_NN index + Tp is outside the library domain
                 // Can only happen if noNeighborLimit = true is used.
-                if ( param.verbose ) {
+                if ( parameters.verbose ) {
                     std::stringstream msg;
                     msg << "Simplex() in row " << row << " libRow " << libRow
                         << " exceeds library domain.\n";
                     std::cout << msg.str();
                 }
                 // Use the neighbor at the 'base' of the trajectory
-                libTarget[ k ] = target_vec[ libRow - abs( param.Tp ) ];
+                libTarget[ k ] = target[ libRow - abs( parameters.Tp ) ];
             }
             else if ( libRow < 0 ) {
-                if ( param.verbose ) {
+                if ( parameters.verbose ) {
                     std::stringstream msg;
                     msg << "Simplex() in row " << row << " libRow " << libRow
                         << " precedes library domain.\n";
                     std::cout << msg.str();
                 }
                 // Use the neighbor at the 'base' of the trajectory
-                libTarget[ k ] = target_vec[ 0 ];
+                libTarget[ k ] = target[ 0 ];
             }
             else {
-                libTarget[ k ] = target_vec[ libRow ];
+                libTarget[ k ] = target[ libRow ];
             }
         }
 
         //------------------------------------------------------------------
         // If ties, expand & adjust libTarget & weights
         //------------------------------------------------------------------
-        if ( neighbors.anyTies ) {
-            if ( neighbors.ties[ row ] ) {
+        if ( anyTies ) {
+            if ( ties[ row ] ) {
                 std::vector< std::pair< double, size_t > > rowTiePairs =
-                    neighbors.tiePairs[ row ];
+                    tiePairs[ row ];
                 
-                double tieDistance = rowTiePairs[ 0 ].first; // all dist same...
-                size_t numTies     = rowTiePairs.size();
-                double tieFactor   = 1;
+                size_t numTies   = rowTiePairs.size();
+                double tieFactor = 1;
                 if ( numTies ) {
                     tieFactor = 1 / double( numTies );
                 }
 
                 // resize libTarget
                 std::valarray< double > libTargetCopy( libTarget );
-                libTarget.resize( param.knn + numTies ); // destroys contents
+                libTarget.resize( parameters.knn + numTies );// destroys contents
 
                 // Copy original libTarget knn values
-                libTarget[ std::slice( 0, param.knn, 1 ) ] = libTargetCopy;
+                libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
 
                 // Add numTies values
                 for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
-                    int libRow = rowTiePairs[ k2 ].second + param.Tp;
-                    if ( libRow > max_lib_index ) {
-                        libTarget[ k2 + param.knn ] =
-                            target_vec[ libRow - abs( param.Tp ) ];
+                    int libRow = rowTiePairs[ k2 ].second + parameters.Tp;
+                    if ( libRow > maxLibIndex ) {
+                        libTarget[ k2 + parameters.knn ] =
+                            target[ libRow - abs( parameters.Tp ) ];
                     }
                     else if ( libRow < 0 ) {
-                        libTarget[ k2 + param.knn ] = target_vec[ 0 ];
+                        libTarget[ k2 + parameters.knn ] = target[ 0 ];
                     }
                     else {
-                        libTarget[ k2 + param.knn ] = target_vec[ libRow ];
+                        libTarget[ k2 + parameters.knn ] = target[ libRow ];
                     }
                 }
 
                 // Weights
                 // Resize distanceRow 
                 std::valarray<double> distanceRowCopy( distanceRow );
-                distanceRow.resize( param.knn + numTies ); // destroys contents
+                distanceRow.resize(parameters.knn + numTies);// destroys contents
                 
                 // Copy original distanceRow knn values
-                distanceRow[ std::slice( 0, param.knn, 1 ) ] = distanceRowCopy;
+                distanceRow[ std::slice( 0, parameters.knn, 1 ) ] =
+                    distanceRowCopy;
                 
                 // Add numTies values
-                for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
-                    distanceRow[ k2 + param.knn ] = rowTiePairs[ k2 ].first;
+                for (size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
+                    distanceRow[ k2 + parameters.knn ] = rowTiePairs[ k2 ].first;
                 }
                 minDistance = distanceRow.min();
 
                 // Resize weightedDistances
                 std::valarray<double> weightedDistancesCopy( weightedDistances );
-                weightedDistances.resize( param.knn + numTies ); // destroys
+                weightedDistances.resize( parameters.knn + numTies ); // destroys
                 
                 if ( minDistance == 0 ) {
                     // Handle cases of distanceRow = 0
-                    for ( size_t i = 0; i < param.knn + numTies; i++ ) {
+                    for ( int i = 0; i < parameters.knn + (int) numTies; i++ ) {
                         if ( distanceRow[i] > 0 ) {
                             weightedDistances[i] = exp( -distanceRow[i] /
                                                         minDistance );
@@ -277,33 +189,18 @@ DataFrame<double> SimplexProjection( Parameters  param,
 
                 // Resize weights
                 std::valarray<double> weightsCopy( weights );
-                weights.resize( param.knn + numTies ); // destroys
+                weights.resize( parameters.knn + numTies ); // destroys
                 
                 // Copy original knn weight values
-                weights[ std::slice( 0, param.knn, 1 ) ] = weightsCopy;
-
+                weights[ std::slice( 0, parameters.knn, 1 ) ] = weightsCopy;
+                
                 // Apply weight adjusment for ties
-                for ( size_t k2 = param.knn; k2 < weights.size(); k2++ ) {
+                for ( size_t k2 = parameters.knn; k2 < weights.size(); k2++ ) {
                     weights[k2] = tieFactor *
                         std::max( weightedDistances[k2], minWeight );
                 }
-            }
-
-#ifdef DEBUG_ALL
-            for ( size_t i = 0; i < neighbors.ties.size(); i++ ) {
-                if ( neighbors.ties[ i ] ) {
-                    std::vector< std::pair< double, size_t > > rowTiePairs =
-                        neighbors.tiePairs[ i ];
-                    std::cout << "Ties at pred_i " << i << ": ";
-                    for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
-                        double dist = rowTiePairs[ j ].first;
-                        size_t prow = rowTiePairs[ j ].second;
-                        std::cout << "[ " << dist << ", " << prow << "] ";
-                    } std::cout << std::endl;
-                }
-            }
-#endif
-        }
+            } // if ( ties[ row ] )
+        } // if ( anyTies )
         //------------------------------------------------------------------
         //------------------------------------------------------------------
 
@@ -315,43 +212,25 @@ DataFrame<double> SimplexProjection( Parameters  param,
             std::pow(libTarget - predictions[ row ], 2);
         variance[ row ] = ( weights * deltaSqr ).sum() / weights.sum();
 
-    } // for ( row = 0; row < N_row; row++ )
+    } // for ( row = 0; row < Npred; row++ )
 
     // non "predictions" X(t+1) = X(t) if const_predict specified
-    std::valarray< double > const_predictions( 0., N_row );
-    if ( param.const_predict ) {
+    const_predictions = std::valarray< double > ( 0., Npred );
+    if ( parameters.const_predict ) {
         std::slice pred_slice =
-            std::slice( param.prediction[ 0 ], param.prediction.size(), 1 );
+            std::slice( parameters.prediction[ 0 ],
+                        parameters.prediction.size(), 1 );
         
-        const_predictions = target_vec[ pred_slice ];
+        const_predictions = target[ pred_slice ];
     }
+}
 
-    //----------------------------------------------------
-    // Ouput
-    //----------------------------------------------------
-    DataFrame<double> dataFrame = FormatOutput( param,
-                                                predictions,
-                                                const_predictions,
-                                                variance,
-                                                target_vec,
-                                                dataIn->Time(),
-                                                dataIn->TimeName() );
-
-    if ( param.predictOutputFile.size() ) {
-        // Write to disk
-        dataFrame.WriteData( param.pathOut, param.predictOutputFile );
+//----------------------------------------------------------------
+// 
+//----------------------------------------------------------------
+void SimplexClass::WriteOutput () {
+    if ( parameters.predictOutputFile.size() ) {
+        projection.WriteData( parameters.pathOut,
+                              parameters.predictOutputFile );
     }
-
-#ifdef DEBUG_ALL
-    std::cout << dataFrame;
-    VectorError ve = ComputeError(
-        dataFrame.VectorColumnName( "Observations" ),
-        dataFrame.VectorColumnName( "Predictions"  ) );
-    std::cout << "-------------------------------------------\n";
-    std::cout << "rho " << ve.rho << "  RMSE " << ve.RMSE
-              << "  MAE " << ve.MAE << std::endl;
-    std::cout << "-------------------------------------------\n";
-#endif
-
-    return dataFrame;
 }

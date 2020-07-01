@@ -75,7 +75,7 @@ std::map< std::string, py::dict > Multiview_pybind (
     }
 
     DF predictions = DataFrameToDF( MV.Predictions );
-    DF combo_rho   = DataFrameToDF( MV.Combo_rho   );
+    DF combo_rho   = DataFrameToDF( MV.ComboRho    );
 
     std::map< std::string, py::dict > MV_;
 

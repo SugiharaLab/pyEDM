@@ -1,250 +1,102 @@
 
-#include "Common.h"
-#include "Parameter.h"
-#include "Embed.h"
-#include "Neighbors.h"
-#include "AuxFunc.h"
+#include "SMap.h"
 
-// forward declarations
-std::valarray< double >  Lapack_SVD( int     m,
-                                     int     n,
-                                     double *a,
-                                     double *b,
-                                     double  rcond );
+// NOTE: Contains SMapClass method implementations, AND:
+//       General SVD functions: SVD, Lapack_SVD, dgelss_
 
-//---------------------------------------------------------------------
-// Overload 1: Explicit data file path/name with internal SVD (LAPACK)
-//   Implemented as a wrapper to API overload 2 -> 4
-//---------------------------------------------------------------------
-SMapValues SMap( std::string pathIn,
-                 std::string dataFile,
-                 std::string pathOut,
-                 std::string predictFile,
-                 std::string lib,
-                 std::string pred,
-                 int         E,
-                 int         Tp,
-                 int         knn,
-                 int         tau,
-                 double      theta,
-                 int         exclusionRadius,
-                 std::string columns,
-                 std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 bool        embedded,
-                 bool        const_predict,
-                 bool        verbose )
-{
-    // DataFrame constructor loads data
-    DataFrame< double > dataFrameIn( pathIn, dataFile );
-
-    // Call overload 2 with the dataFrameIn
-    SMapValues SMapOutput = SMap( dataFrameIn, pathOut, predictFile,
-                                  lib, pred, E, Tp, knn, tau, theta,
-                                  exclusionRadius,
-                                  columns, target, smapFile, derivatives, 
-                                  embedded, const_predict, verbose );
-    return SMapOutput;
+//----------------------------------------------------------------
+// Constructor
+//----------------------------------------------------------------
+SMapClass::SMapClass (
+    DataFrame< double > & data, 
+    Parameters          & parameters ):
+    EDM{ data, parameters } {
 }
 
 //----------------------------------------------------------------
-// Overload 2: DataFrame provided with internal SVD (LAPACK)
-//    Implemented as a wrapper to API overload 4
+// Project : Polymorphic implementation
 //----------------------------------------------------------------
-SMapValues SMap( DataFrame< double > &data,
-                 std::string pathOut,
-                 std::string predictFile,
-                 std::string lib,
-                 std::string pred,
-                 int         E,
-                 int         Tp,
-                 int         knn,
-                 int         tau,
-                 double      theta,
-                 int         exclusionRadius,
-                 std::string columns,
-                 std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 bool        embedded,
-                 bool        const_predict,
-                 bool        verbose ) {
+void SMapClass::Project ( Solver solver ) {
+    
+    PrepareEmbedding();
+    
+    Distances(); // all pred : lib vector distances into allDistances
+    
+    FindNeighbors();
 
-    // Call overload 4 with default SVD function (below)
-    SMapValues SMapOutput = SMap( data, pathOut, predictFile,
-                                  lib, pred, E, Tp, knn, tau, theta, 
-                                  exclusionRadius,
-                                  columns, target, smapFile, derivatives,
-                                  &SVD,
-                                  embedded, const_predict, verbose);
+    SMap( solver );
 
-    return SMapOutput;
+    FormatOutput();  // Common formatting
+
+    WriteOutput();   // SMap specific formatting & output
 }
 
 //----------------------------------------------------------------
-// Overload 3: Explicit data file path/name and solver
-//   Implemented as a wrapper to API overload 4
+// SMap algorithm
 //----------------------------------------------------------------
-SMapValues SMap( std::string pathIn,
-                 std::string dataFile,
-                 std::string pathOut,
-                 std::string predictFile,
-                 std::string lib,
-                 std::string pred,
-                 int         E,
-                 int         Tp,
-                 int         knn,
-                 int         tau,
-                 double      theta,
-                 int         exclusionRadius,
-                 std::string columns,
-                 std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 std::valarray<double> (*solver) (DataFrame < double >,
-                                                  std::valarray < double > ),
-                 bool        embedded,
-                 bool        const_predict,
-                 bool        verbose )
-{
-    // DataFrame constructor loads data
-    DataFrame< double > dataFrameIn( pathIn, dataFile );
+void SMapClass::SMap ( Solver solver ) {
+
+    // Allocate output vectors to populate EDM class projections DataFrame.
+    // Must be after FindNeighbors()
+    size_t Npred = knn_neighbors.NRows();
     
-    // Call overload 4 with dataFrameIn and solver object
-    SMapValues SMapOutput = SMap( dataFrameIn, pathOut, predictFile,
-                                  lib, pred, E, Tp, knn, tau, theta,
-                                  exclusionRadius,
-                                  columns, target, smapFile, derivatives, 
-                                  solver, embedded, const_predict, verbose );
-    return SMapOutput;
-}
-
-//----------------------------------------------------------------
-// Overload 4: Solver & DataFrame provided
-//----------------------------------------------------------------
-SMapValues SMap( DataFrame< double > &data,
-                 std::string pathOut,
-                 std::string predictFile,
-                 std::string lib,
-                 std::string pred,
-                 int         E,
-                 int         Tp,
-                 int         knn,
-                 int         tau,
-                 double      theta,
-                 int         exclusionRadius,
-                 std::string columns,
-                 std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 std::valarray<double> (*solver) (DataFrame < double >,
-                                                  std::valarray < double > ),
-                 bool        embedded,
-                 bool        const_predict,
-                 bool        verbose )
-{
-
-    Parameters param = Parameters( Method::SMap, "", "",
-                                   pathOut, predictFile,
-                                   lib, pred, E, Tp, knn, tau, theta,
-                                   exclusionRadius, columns, target,
-                                   embedded, const_predict, verbose,
-                                   smapFile, "", derivatives );
-
-    //----------------------------------------------------------
-    // Load data, Embed, compute Neighbors
-    //----------------------------------------------------------
-    DataEmbedNN dataEmbedNN = EmbedNN( &data, std::ref( param ) );
-
-    // Unpack the dataEmbedNN for convenience
-    DataFrame<double>    *dataInRef  = dataEmbedNN.dataIn;
-    DataFrame<double>     dataBlock  = dataEmbedNN.dataFrame;
-    std::valarray<double> target_vec = dataEmbedNN.targetVec;
-    Neighbors             neighbors  = dataEmbedNN.neighbors;
+    predictions       = std::valarray< double > ( 0., Npred );
+    const_predictions = std::valarray< double > ( 0., Npred );
+    variance          = std::valarray< double > ( 0., Npred );
     
-    DataFrame<double> &dataIn = std::ref( *dataInRef );
-
-    //----------------------------------------------------------
-    // SMap projection
-    //----------------------------------------------------------
-    size_t library_N_row = param.library.size();
-    size_t predict_N_row = param.prediction.size();
-    size_t N_row         = neighbors.neighbors.NRows();
-
-    auto max_lib_it = std::max_element( param.library.begin(),
-                                        param.library.end() );
-    size_t max_lib_index = *max_lib_it;
-    
-    if ( predict_N_row != N_row ) {
-        std::stringstream errMsg;
-        errMsg << "SMap(): Number of prediction rows (" << predict_N_row
-               << ") does not match the number of neighbor rows ("
-               << N_row << ").\n";
-        throw std::runtime_error( errMsg.str() );
-    }
-    if ( neighbors.distances.NColumns() != param.knn ) {
-        std::stringstream errMsg;
-        errMsg << "SMap(): Number of neighbor columns ("
-               << neighbors.distances.NColumns()
-               << ") does not match knn (" << param.knn << ").\n";
-        throw std::runtime_error( errMsg.str() );        
-    }
-    
-    std::valarray< double > predictions = std::valarray< double >( N_row );
-    std::valarray< double > variance    = std::valarray< double >( N_row );
-
     // Init coefficients to NAN ?
-    DataFrame< double > coefficients = DataFrame< double >( N_row,
-                                                            param.E + 1 );
-    DataFrame< double > derivative;
-    DataFrame< double > tangents;
-
-    //------------------------------------------------------------
-    // Process each prediction row
-    //------------------------------------------------------------
-    for ( size_t row = 0; row < N_row; row++ ) {
+    // Allocate +Tp rows.  Coefficients/nan will be shifted in Project()
+    coefficients = DataFrame< double >( Npred + abs( parameters.Tp ),
+                                        parameters.E + 1 );
+    
+    auto maxLibit = std::max_element( parameters.library.begin(),
+                                      parameters.library.end() );
+    int maxLibIndex = *maxLibit; // int for compare to libRow int
+    
+    // Process each prediction row in neighbors : distances
+    for ( size_t row = 0; row < Npred; row++ ) {
         
-        double D_avg = neighbors.distances.Row( row ).sum() / param.knn;
+        double D_avg = knn_distances.Row( row ).sum() / parameters.knn;
 
         // Compute weight vector 
-        std::valarray< double > w = std::valarray< double >( param.knn );
-        if ( param.theta > 0 ) {
-            w = std::exp( (-param.theta/D_avg) * neighbors.distances.Row(row) );
+        std::valarray< double > w = std::valarray< double >( parameters.knn );
+        if ( parameters.theta > 0 ) {
+            w = std::exp( (-parameters.theta / D_avg) * knn_distances.Row(row) );
         }
         else {
-            w = std::valarray< double >( 1, param.knn );
+            w = std::valarray< double >( 1, parameters.knn );
         }
 
-        DataFrame< double >     A = DataFrame< double >(param.knn, param.E + 1);
-        std::valarray< double > B = std::valarray< double >( param.knn );
+        DataFrame< double > A = DataFrame< double >( parameters.knn,
+                                                     parameters.E + 1 );
+        std::valarray< double > B = std::valarray< double >( parameters.knn );
 
         // Populate matrix A (exp weighted future prediction), and
         // vector B (target BC's) for this row (observation).
-        int    lib_row;
-        size_t lib_row_base;
+        int    libRow;
+        size_t libRowBase;
         
-        for ( size_t k = 0; k < param.knn; k++ ) {
-            lib_row_base = neighbors.neighbors( row, k );
-            lib_row      = lib_row_base + param.Tp;
+        for ( int k = 0; k < parameters.knn; k++ ) {
+            libRowBase = knn_neighbors( row, k );
+            libRow     = libRowBase + parameters.Tp;
             
-            if ( lib_row > max_lib_index ) {
+            if ( libRow > maxLibIndex ) {
                 // The knn index + Tp is outside the library domain
                 // Can only happen if noNeighborLimit = true is used.
-                if ( param.verbose ) {
+                if ( parameters.verbose ) {
                     std::stringstream msg;
-                    msg << "SMap() in row " << row << " libRow " << lib_row
+                    msg << "SMap() in row " << row << " libRow " << libRow
                         << " exceeds library domain.\n";
                     std::cout << msg.str();
                 }                
                 // Use the neighbor at the 'base' of the trajectory
-                B[ k ] = target_vec[ lib_row_base ];
+                B[ k ] = target[ libRowBase ];
             }
-            else if ( lib_row < 0 ) {
-                B[ k ] = target_vec[ 0 ];
+            else if ( libRow < 0 ) {
+                B[ k ] = target[ 0 ];
             }
             else {
-                B[ k ] = target_vec[ lib_row ];
+                B[ k ] = target[ libRow ];
             }
 
             //---------------------------------------------------------------
@@ -252,14 +104,14 @@ SMapValues SMap( DataFrame< double > &data,
             //---------------------------------------------------------------
             // NOTE: The matrix A has a (weighted) constant (1) first column
             //       to enable a linear intercept/bias term.
-            // NOTE: The dataBlock does not have a time vector, and only
+            // NOTE: The embedding does not have a time vector, and only
             //       has columns from the embedding.  So the coefficient
-            //       matrix A has E+1 columns, while the dataBlock has E.
+            //       matrix A has E+1 columns, while the embedding has E.
             //---------------------------------------------------------------
             A( k, 0 ) = w[ k ]; // Intercept bias terms in column 0 (weighted)
             
-            for ( size_t j = 1; j < param.E + 1; j++ ) {
-                A( k, j ) = w[k] * dataBlock( lib_row_base, j-1 );
+            for ( int j = 1; j < parameters.E + 1; j++ ) {
+                A( k, j ) = w[ k ] * embedding( libRowBase, j - 1 );
             }
         }
 
@@ -271,9 +123,9 @@ SMapValues SMap( DataFrame< double > &data,
         // Prediction is local linear projection
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term
         
-        for ( size_t e = 1; e < param.E + 1; e++ ) {
+        for ( int e = 1; e < parameters.E + 1; e++ ) {
             prediction = prediction +
-                         C[ e ] * dataBlock( param.prediction[ row ], e-1 );
+                         C[ e ] * embedding( parameters.prediction[ row ], e-1 );
         }
 
         predictions[ row ] = prediction;
@@ -284,90 +136,71 @@ SMapValues SMap( DataFrame< double > &data,
             std::pow( B - predictions[ row ], 2);
         variance[ row ] = ( w * deltaSqr ).sum() / w.sum();
         
-    } // for ( row = 0; row < predict_N_row; row++ )
-
+    } // for ( row = 0; row < Npred; row++ )
+    
     // non "predictions" X(t+1) = X(t) if const_predict specified
-    std::valarray< double > const_predictions( 0., N_row );
-    if ( param.const_predict ) {
+    const_predictions = std::valarray< double >( 0., Npred );
+    if ( parameters.const_predict ) {
         std::slice pred_slice =
-            std::slice( param.prediction[ 0 ], param.prediction.size(), 1 );
+            std::slice( parameters.prediction[ 0 ],
+                        parameters.prediction.size(), 1 );
         
-        const_predictions = target_vec[ pred_slice ];
+        const_predictions = target[ pred_slice ];
     }
-    
-    //-----------------------------------------------------
-    // Derivatives
-    //-----------------------------------------------------
+}
 
+//----------------------------------------------------------------
+// 
+//----------------------------------------------------------------
+void SMapClass::WriteOutput () {
 
-    //----------------------------------------------------
-    // Ouput
-    //----------------------------------------------------
-    // Observations & predictions: Adjust rows/nan for Tp
-    DataFrame<double> dataOut = FormatOutput( param,
-                                              predictions,
-                                              const_predictions,
-                                              variance,
-                                              target_vec,
-                                              dataIn.Time(),
-                                              dataIn.TimeName() );
-    
-    // Coefficient output DataFrame: N_row + Tp rows
-    DataFrame< double > coefOut = DataFrame< double >( dataOut.NRows(),
-                                                       param.E + 1 );
-    
-    // Set time from: dataIn -> FormatOutput() -> FillTimes() -> dataOut
-    if ( dataOut.Time().size() ) {
-        coefOut.Time()     = dataOut.Time();
-        coefOut.TimeName() = dataOut.TimeName();
+    // Process SMap coefficients output
+    // Set time from: data -> FormatOutput() -> FillTimes() -> projection
+    if ( projection.Time().size() ) {
+        coefficients.Time()     = projection.Time();
+        coefficients.TimeName() = projection.TimeName();
     }
     // else { throw ? }  JP
     
-    // Populate coefOut column names: C0, C1, C2, ...
+    // coefficients column names: C0, C1, C2, ...
     std::vector<std::string> coefNames;
     for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
         std::stringstream coefName;
         coefName << "C" << col;
         coefNames.push_back( coefName.str() );
     }
-    coefOut.ColumnNames() = coefNames;
+    coefficients.ColumnNames() = coefNames;
 
-    // coefficients have N_row's; coefOut has N_row + Tp
+    // coefficients has Npred + Tp rows, but coef were written in first Npred
     // Create coefficient column vector with Tp nan rows at the
-    // beginning/end of coefOut as in FormatOutput()
-    std::valarray<double> coefColumnVec( NAN, dataOut.NRows() );
+    // beginning/end of coefficients as in FormatOutput()
+    std::valarray< double > coefColumnVec( NAN, coefficients.NRows() );
     
-    // Copy coefficients vectors into coefOut
-    std::slice coef_i;
-    if ( param.Tp > -1 ) {
-        coef_i = std::slice( param.Tp, N_row, 1 );
+    // Copy/shift coefficients vectors
+    std::slice slice_in = std::slice( 0, knn_neighbors.NRows(), 1 );
+    std::slice slice_out;
+    if ( parameters.Tp > -1 ) {
+        slice_out = std::slice( parameters.Tp, knn_neighbors.NRows(), 1 );
     }
     else {
-        coef_i = std::slice( 0, N_row + param.Tp, 1 );
+        slice_out = std::slice( 0, knn_neighbors.NRows() + parameters.Tp, 1 );
     }
-    for ( size_t col = 0; col < coefOut.NColumns(); col++ ) {
-        coefColumnVec[ coef_i ] = coefficients.Column( col );
-        coefOut.WriteColumn( col, coefColumnVec );
-    }
-    
-    if ( param.predictOutputFile.size() ) {
-        // Write predictions to disk
-        dataOut.WriteData( param.pathOut, param.predictOutputFile );
-    }
-    if ( param.SmapOutputFile.size() ) {
-        // Write Smap coefficients to disk
-        coefOut.WriteData( param.pathOut, param.SmapOutputFile );
+    for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
+        coefColumnVec[ slice_out ] = coefficients.Column( col )[ slice_in ];
+        coefficients.WriteColumn( col, coefColumnVec );
     }
     
-    SMapValues values = SMapValues();
-    values.predictions  = dataOut;
-    values.coefficients = coefOut;
-
-    return values;
+    if ( parameters.predictOutputFile.size() ) {
+        projection.WriteData( parameters.pathOut,
+                              parameters.predictOutputFile );
+    }
+    if ( parameters.SmapOutputFile.size() ) {
+        coefficients.WriteData( parameters.pathOut, parameters.SmapOutputFile );
+    }
 }
 
 //----------------------------------------------------------------
-// Singular Value Decomposition
+// Singular Value Decomposition : wrapper for Lapack_SVD()
 //----------------------------------------------------------------
 std::valarray < double > SVD( DataFrame    < double > A,
                               std::valarray< double > B ) {
@@ -397,7 +230,7 @@ std::valarray < double > SVD( DataFrame    < double > A,
 }
 
 //-------------------------------------------------------------------------
-// subroutine dgelss()
+// subroutine dgelss() : LAPACK function call in Lapack_SVD()
 //-----------------------------------------------------------------------
 // DGELSS computes the minimum norm solution to a real linear least
 // squares problem:
@@ -443,11 +276,11 @@ extern "C" {
 }
 
 //-----------------------------------------------------------------------
-//
+// Wrapper for LAPACK dgelss_()
 //-----------------------------------------------------------------------
-std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
-                                    int     n, // number of columns in matrix
-                                    double *a, // pointer to top-left corner
+std::valarray< double > Lapack_SVD( int     m, // rows in matrix
+                                    int     n, // columns in matrix
+                                    double *a, // ptr to top-left
                                     double *b,
                                     double  rcond )
 {
@@ -474,7 +307,7 @@ std::valarray< double > Lapack_SVD( int     m, // number of rows in matrix
     std::cout << "m.row=" << m << " n.col=" << n << " lda=" << lda
               << " s.n=" << N_SingularValues << std::endl;
 
-    for ( size_t i = 0; i < m*n; i++ ) {
+    for ( int i = 0; i < m*n; i++ ) {
         std::cout << a[i] << " ";
     } std::cout << std::endl;
 #endif

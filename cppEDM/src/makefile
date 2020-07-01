@@ -1,15 +1,24 @@
 
-CC  = g++
-OBJ = Common.o AuxFunc.o DateTimeUtil.o Parameter.o Embed.o Interface.o\
-	Neighbors.o Simplex.o Eval.o CCM.o Multiview.o SMap.o 
+.PHONY: all clean distclean depend 
+
+CXX = g++
+
+HEADERS = API.h CCM.h Common.h DataFrame.h DateTime.h EDM.h EDM_Neighbors.h\
+          Multiview.h Parameter.h Simplex.h SMap.h Version.h
+
+SRCS = API.cc CCM.cc Common.cc DateTime.cc EDM.cc EDM_Formatting.cc\
+       EDM_Neighbors.cc Eval.cc Multiview.cc Parameter.cc Simplex.cc SMap.cc
+
+OBJ = $(SRCS:%.cc=%.o)
 
 LIB = libEDM.a
 
-CFLAGS = -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -O3 -Wreorder -fPIC 
-LFLAGS = -L./ -lstdc++ -lEDM -lpthread # -llapacke -llapack -lblas 
+CFLAGS += -std=c++11 -Wpedantic -Wall -Wextra -Wreorder -O3
+CFLAGS += -DCCM_THREADED -fPIC
+# CFLAGS += -g # -DDEBUG_ALL
+# LFLAGS = -L./ -lstdc++ -lEDM -lpthread -llapacke -llapack -lblas 
 
 all:	$(LIB)
-	ar -rcs $(LIB) $(OBJ)
 	cp $(LIB) ../lib/
 
 clean:
@@ -19,61 +28,29 @@ distclean:
 	rm -f $(OBJ) $(LIB) ../lib/$(LIB) *~ *.bak *.csv
 
 $(LIB): $(OBJ)
+	ar -rcs $(LIB) $(OBJ)
 
-AuxFunc.o: AuxFunc.cc
-	$(CC) -c AuxFunc.cc $(CFLAGS)
+%.o : %.cc 
+	$(CXX) $(CFLAGS) -c $<
 
-DateTimeUtil.o: DateTimeUtil.cc
-	$(CC) -c DateTimeUtil.cc $(CFLAGS)
-
-Common.o: Common.cc
-	$(CC) -c Common.cc $(CFLAGS)
-
-Parameter.o: Parameter.cc
-	$(CC) -c Parameter.cc $(CFLAGS)
-
-Embed.o: Embed.cc
-	$(CC) -c Embed.cc $(CFLAGS)
-
-Interface.o: Interface.cc
-	$(CC) -c Interface.cc $(CFLAGS)
-
-Neighbors.o: Neighbors.cc
-	$(CC) -c Neighbors.cc $(CFLAGS)
-
-Simplex.o: Simplex.cc
-	$(CC) -c Simplex.cc $(CFLAGS)
-
-Eval.o: Eval.cc
-	$(CC) -c Eval.cc $(CFLAGS)
-
-CCM.o: CCM.cc
-	$(CC) -c CCM.cc $(CFLAGS)
-
-Multiview.o: Multiview.cc
-	$(CC) -c Multiview.cc $(CFLAGS)
-
-SMap.o: SMap.cc
-	$(CC) -c SMap.cc $(CFLAGS)
-
-SRCS = `echo ${OBJ} | sed -e 's/.o /.cc /g'`
 depend:
 	@echo ${SRCS}
 	makedepend -Y $(SRCS)
 # DO NOT DELETE
 
+API.o: API.h Common.h DataFrame.h Parameter.h Version.h Simplex.h EDM.h
+API.o: SMap.h CCM.h Multiview.h
+CCM.o: CCM.h EDM.h Common.h DataFrame.h Parameter.h Version.h Simplex.h
 Common.o: Common.h DataFrame.h
-AuxFunc.o: AuxFunc.h Common.h DataFrame.h Neighbors.h Parameter.h Version.h
-AuxFunc.o: Embed.h DateTime.h
-DateTimeUtil.o: DateTime.h
+DateTime.o: DateTime.h
+EDM.o: EDM.h Common.h DataFrame.h Parameter.h Version.h
+EDM_Formatting.o: EDM.h Common.h DataFrame.h Parameter.h Version.h DateTime.h
+EDM_Neighbors.o: EDM_Neighbors.h EDM.h Common.h DataFrame.h Parameter.h
+EDM_Neighbors.o: Version.h
+Eval.o: API.h Common.h DataFrame.h Parameter.h Version.h Simplex.h EDM.h
+Eval.o: SMap.h CCM.h Multiview.h
+Multiview.o: Multiview.h EDM.h Common.h DataFrame.h Parameter.h Version.h
+Multiview.o: Simplex.h
 Parameter.o: Parameter.h Common.h DataFrame.h Version.h
-Embed.o: Embed.h Common.h DataFrame.h Parameter.h Version.h
-Interface.o: Common.h DataFrame.h
-Neighbors.o: Neighbors.h Common.h DataFrame.h Parameter.h Version.h
-Simplex.o: Common.h DataFrame.h Parameter.h Version.h Neighbors.h Embed.h
-Simplex.o: AuxFunc.h
-Eval.o: Common.h DataFrame.h
-CCM.o: Common.h DataFrame.h Embed.h Parameter.h Version.h AuxFunc.h
-CCM.o: Neighbors.h
-Multiview.o: Common.h DataFrame.h AuxFunc.h Neighbors.h Parameter.h Version.h
-Multiview.o: Embed.h
+Simplex.o: Simplex.h EDM.h Common.h DataFrame.h Parameter.h Version.h
+SMap.o: SMap.h EDM.h Common.h DataFrame.h Parameter.h Version.h
