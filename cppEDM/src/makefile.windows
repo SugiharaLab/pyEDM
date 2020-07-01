@@ -1,12 +1,12 @@
 
 CC  = cl
-OBJ = Common.obj AuxFunc.obj DateTimeUtil.obj Parameter.obj Embed.obj\
-	Interface.obj Neighbors.obj Simplex.obj Eval.obj CCM.obj\
-	Multiview.obj SMap.obj 
+OBJ = API.obj CCM.obj Common.obj DateTime.obj EDM.obj EDM_Formatting.obj\
+	EDM_Neighbors.obj Eval.obj Multiview.obj Parameter.obj Simplex.obj\
+	SMap.obj
 
 LIB = EDM.lib
 
-CFLAGS = -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
+CFLAGS = -DCCM_THREADED /EHsc /MD # /MT -DDEBUG -DDEBUG_ALL
 
 all:	$(LIB)
 	lib /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:library /OUT:$(LIB)  $(OBJ)
@@ -20,55 +20,56 @@ distclean:
 
 $(LIB): $(OBJ)
 
-AuxFunc.obj: AuxFunc.cc
-	$(CC) /c AuxFunc.cc $(CFLAGS)
-
-DateTimeUtil.obj: DateTimeUtil.cc
-	$(CC) /c DateTimeUtil.cc $(CFLAGS)
-
-Common.obj: Common.cc
-	$(CC) /c Common.cc $(CFLAGS)
-
-Parameter.obj: Parameter.cc
-	$(CC) /c Parameter.cc $(CFLAGS)
-
-Embed.obj: Embed.cc
-	$(CC) /c Embed.cc $(CFLAGS)
-
-Interface.obj: Interface.cc
-	$(CC) /c Interface.cc $(CFLAGS)
-
-Neighbors.obj: Neighbors.cc
-	$(CC) /c Neighbors.cc $(CFLAGS)
-
-Simplex.obj: Simplex.cc
-	$(CC) /c Simplex.cc $(CFLAGS)
-
-Eval.obj: Eval.cc
-	$(CC) /c Eval.cc $(CFLAGS)
+API.obj: API.cc
+	$(CC) /c API.cc $(CFLAGS)
 
 CCM.obj: CCM.cc
 	$(CC) /c CCM.cc $(CFLAGS)
 
+Common.obj: Common.cc
+	$(CC) /c Common.cc $(CFLAGS)
+
+DateTime.obj: DateTime.cc
+	$(CC) /c DateTime.cc $(CFLAGS)
+
+EDM.obj: EDM.cc
+	$(CC) /c EDM.cc $(CFLAGS)
+
+EDM_Formatting.obj: EDM_Formatting.cc
+	$(CC) /c EDM_Formatting.cc $(CFLAGS)
+
+EDM_Neighbors.obj: EDM_Neighbors.cc
+	$(CC) /c EDM_Neighbors.cc $(CFLAGS)
+
+Eval.obj: Eval.cc
+	$(CC) /c Eval.cc $(CFLAGS)
+
 Multiview.obj: Multiview.cc
 	$(CC) /c Multiview.cc $(CFLAGS)
+
+Parameter.obj: Parameter.cc
+	$(CC) /c Parameter.cc $(CFLAGS)
+
+Simplex.obj: Simplex.cc
+	$(CC) /c Simplex.cc $(CFLAGS)
 
 SMap.obj: SMap.cc
 	$(CC) /c SMap.cc $(CFLAGS)
 
 # Depedencies from makedepend on Linux
+API.obj: API.h Common.h DataFrame.h Parameter.h Version.h Simplex.h EDM.h
+API.obj: SMap.h CCM.h Multiview.h
+CCM.obj: CCM.h EDM.h Common.h DataFrame.h Parameter.h Version.h Simplex.h
 Common.obj: Common.h DataFrame.h
-AuxFunc.obj: AuxFunc.h Common.h DataFrame.h Neighbors.h Parameter.h Version.h
-AuxFunc.obj: Embed.h DateTime.h
-DateTimeUtil.obj: DateTime.h
+DateTime.obj: DateTime.h
+EDM.obj: EDM.h Common.h DataFrame.h Parameter.h Version.h
+EDM_Formatting.obj: EDM.h Common.h DataFrame.h Parameter.h Version.h DateTime.h
+EDM_Neighbors.obj: EDM_Neighbors.h EDM.h Common.h DataFrame.h Parameter.h
+EDM_Neighbors.obj: Version.h
+Eval.obj: API.h Common.h DataFrame.h Parameter.h Version.h Simplex.h EDM.h
+Eval.obj: SMap.h CCM.h Multiview.h
+Multiview.obj: Multiview.h EDM.h Common.h DataFrame.h Parameter.h Version.h
+Multiview.obj: Simplex.h
 Parameter.obj: Parameter.h Common.h DataFrame.h Version.h
-Embed.obj: Embed.h Common.h DataFrame.h Parameter.h Version.h
-Interface.obj: Common.h DataFrame.h
-Neighbors.obj: Neighbors.h Common.h DataFrame.h Parameter.h Version.h
-Simplex.obj: Common.h DataFrame.h Parameter.h Version.h Neighbors.h Embed.h
-Simplex.obj: AuxFunc.h
-Eval.obj: Common.h DataFrame.h
-CCM.obj: Common.h DataFrame.h Embed.h Parameter.h Version.h AuxFunc.h
-CCM.obj: Neighbors.h
-Multiview.obj: Common.h DataFrame.h AuxFunc.h Neighbors.h Parameter.h Version.h
-Multiview.obj: Embed.h
+Simplex.obj: Simplex.h EDM.h Common.h DataFrame.h Parameter.h Version.h
+SMap.obj: SMap.h EDM.h Common.h DataFrame.h Parameter.h Version.h

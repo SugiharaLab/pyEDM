@@ -1,6 +1,6 @@
 
 #include "PyBind.h"
-#include "Embed.h"
+#include "API.h"
 
 //---------------------------------------------------------------
 // 
@@ -57,8 +57,7 @@ py::dict MakeBlock_pybind( DF                       dfin,
     DataFrame< double > block = MakeBlock( dataFrame,
                                            E,
                                            tau,
-                                           columnNames,
-                                           verbose );
+                                           columnNames );
 
     DF       df = DataFrameToDF( block );
     py::dict D  = DFtoDict( df );

@@ -1,6 +1,9 @@
 #ifndef VERSION_H
 #define VERSION_H
 
+#include <string>
+#include <iostream>
+
 //------------------------------------------------------------
 // Instantiated in Parameters() constructor
 //------------------------------------------------------------

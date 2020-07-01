@@ -4,7 +4,7 @@
 #include <mutex>
 #include <queue>
 
-#include "Common.h"
+#include "API.h"
 
 namespace EDM_Eval {
     // Thread Work Queue : Vector of int
@@ -80,26 +80,25 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2:
 //----------------------------------------------------------------
-DataFrame<double> EmbedDimension( std::string pathIn,
-                                  std::string dataFile,
-                                  std::string pathOut,
-                                  std::string predictFile,
-                                  std::string lib,
-                                  std::string pred,
-                                  int         maxE,
-                                  int         Tp,
-                                  int         tau,
-                                  std::string colNames,
-                                  std::string targetName,
-                                  bool        embedded,
-                                  bool        verbose,
-                                  unsigned    nThreads ) {
+DataFrame< double > EmbedDimension( std::string pathIn,
+                                    std::string dataFile,
+                                    std::string pathOut,
+                                    std::string predictFile,
+                                    std::string lib,
+                                    std::string pred,
+                                    int         maxE,
+                                    int         Tp,
+                                    int         tau,
+                                    std::string colNames,
+                                    std::string targetName,
+                                    bool        embedded,
+                                    bool        verbose,
+                                    unsigned    nThreads ) {
 
     // Create DataFrame (constructor loads data)
-    DataFrame< double > *dataFrameIn =
-        new DataFrame< double > ( pathIn, dataFile );
-    
-    DataFrame<double> E_rho = EmbedDimension( std::ref( *dataFrameIn ),
+    DataFrame< double > dataFrameIn ( pathIn, dataFile );
+
+    DataFrame<double> E_rho = EmbedDimension( std::ref( dataFrameIn ),
                                               pathOut,
                                               predictFile,
                                               lib,
@@ -112,9 +111,6 @@ DataFrame<double> EmbedDimension( std::string pathIn,
                                               embedded,
                                               verbose,
                                               nThreads );
-
-    delete dataFrameIn;
-    
     return E_rho;
 }
 
@@ -122,22 +118,22 @@ DataFrame<double> EmbedDimension( std::string pathIn,
 // EmbedDimension() : Evaluate Simplex rho vs. dimension E
 // API Overload 2: DataFrame provided
 //----------------------------------------------------------------
-DataFrame<double> EmbedDimension( DataFrame< double > &data,
-                                  std::string          pathOut,
-                                  std::string          predictFile,
-                                  std::string          lib,
-                                  std::string          pred,
-                                  int                  maxE,
-                                  int                  Tp,
-                                  int                  tau,
-                                  std::string          colNames,
-                                  std::string          targetName,
-                                  bool                 embedded,
-                                  bool                 verbose,
-                                  unsigned             nThreads ) {
-    
+DataFrame< double > EmbedDimension( DataFrame< double > & data,
+                                    std::string           pathOut,
+                                    std::string           predictFile,
+                                    std::string           lib,
+                                    std::string           pred,
+                                    int                   maxE,
+                                    int                   Tp,
+                                    int                   tau,
+                                    std::string           colNames,
+                                    std::string           targetName,
+                                    bool                  embedded,
+                                    bool                  verbose,
+                                    unsigned              nThreads ) {
+
     // Container for results
-    DataFrame<double> E_rho( maxE, 2, "E rho" );
+    DataFrame< double > E_rho( maxE, 2, "E rho" );
 
     // Build work queue
     EDM_Eval::WorkQueue workQ( maxE );
@@ -149,12 +145,12 @@ DataFrame<double> EmbedDimension( DataFrame< double > &data,
 
     unsigned maxThreads = std::thread::hardware_concurrency();
     if ( maxThreads < nThreads ) { nThreads = maxThreads; }
-    if ( nThreads > maxE       ) { nThreads = maxE;       }
-    
+    if ( (int) nThreads > maxE ) { nThreads = maxE;       }
+
     // thread container
     std::vector< std::thread > threads;
     for ( unsigned i = 0; i < nThreads; i++ ) {
-    
+
         threads.push_back( std::thread( EmbedThread,
                                         std::ref( workQ ),
                                         std::ref( data ),
@@ -168,12 +164,12 @@ DataFrame<double> EmbedDimension( DataFrame< double > &data,
                                         embedded,
                                         verbose ) );
     }
-    
+
     // join threads
     for ( auto &thrd : threads ) {
         thrd.join();
     }
-    
+
     // If thread threw exception, get from queue and rethrow
     if ( not EDM_Eval::embedDimExceptQ.empty() ) {
         std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
@@ -183,44 +179,42 @@ DataFrame<double> EmbedDimension( DataFrame< double > &data,
 
         // Unroll all other exception from the thread/loops
         while( not EDM_Eval::embedDimExceptQ.empty() ) {
-            // JP When do these exception_ptr get deleted? Is it a leak?
             EDM_Eval::embedDimExceptQ.pop();
         }
         std::rethrow_exception( exceptionPtr );
     }
-    
+
     if ( predictFile.size() ) {
         E_rho.WriteData( pathOut, predictFile );
     }
-    
+
     return E_rho;
 }
 
 //----------------------------------------------------------------
 // Worker thread for EmbedDimension()
 //----------------------------------------------------------------
-void EmbedThread( EDM_Eval::WorkQueue &workQ,
-                  DataFrame< double > &data,
-                  DataFrame< double > &E_rho,
-                  std::string          lib,
-                  std::string          pred,
-                  int                  Tp,
-                  int                  tau,
-                  std::string          colNames,
-                  std::string          targetName,
-                  bool                 embedded,
-                  bool                 verbose )
+void EmbedThread( EDM_Eval::WorkQueue & workQ,
+                  DataFrame< double > & data,
+                  DataFrame< double > & E_rho,
+                  std::string           lib,
+                  std::string           pred,
+                  int                   Tp,
+                  int                   tau,
+                  std::string           colNames,
+                  std::string           targetName,
+                  bool                  embedded,
+                  bool                  verbose )
 {
-    
     std::size_t i = std::atomic_fetch_add( &EDM_Eval::embed_count_i,
                                            std::size_t(1) );
-    
+
     while( i < workQ.size() ) {
-        
+
         // WorkQueue stores E
         int E = workQ[ i ];
 
-        // Simplex() -> EmbedNN() -> Embed() -> DeletePartialDataRows()
+        // Simplex() -> Embed() -> DeletePartialDataRows()
         // In a multthreaded application we need to pass a unique copy of
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
@@ -242,12 +236,12 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
                                            embedded,
                                            false,       // const_predict
                                            verbose );
-            
+
             VectorError ve = ComputeError( S.VectorColumnName("Observations"),
                                            S.VectorColumnName("Predictions"));
 
             E_rho.WriteRow( i, std::valarray<double>({ (double) E, ve.rho }));
-        
+
             if ( verbose ) {
                 std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
                 std::cout << "EmbedThread() workQ[" << workQ[i] << "]  E " << E 
@@ -260,10 +254,10 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
             std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
             EDM_Eval::embedDimExceptQ.push( std::current_exception() );
         }
-        
+
         i = std::atomic_fetch_add(&EDM_Eval::embed_count_i, std::size_t(1));
     }
-    
+
     // Reset counter
     std::atomic_store( &EDM_Eval::embed_count_i, std::size_t(0) );
 }
@@ -273,39 +267,37 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2: 
 //-----------------------------------------------------------------
-DataFrame<double> PredictInterval( std::string pathIn,
-                                   std::string dataFile,
-                                   std::string pathOut,
-                                   std::string predictFile,
-                                   std::string lib,
-                                   std::string pred,
-                                   int         maxTp,
-                                   int         E,
-                                   int         tau,
-                                   std::string colNames,
-                                   std::string targetName,
-                                   bool        embedded,
-                                   bool        verbose,
-                                   unsigned    nThreads ) {
-    
+DataFrame< double > PredictInterval( std::string pathIn,
+                                     std::string dataFile,
+                                     std::string pathOut,
+                                     std::string predictFile,
+                                     std::string lib,
+                                     std::string pred,
+                                     int         maxTp,
+                                     int         E,
+                                     int         tau,
+                                     std::string colNames,
+                                     std::string targetName,
+                                     bool        embedded,
+                                     bool        verbose,
+                                     unsigned    nThreads ) {
+
     // Create DataFrame (constructor loads data)
-    DataFrame< double > *dataFrameIn =
-        new DataFrame< double > ( pathIn, dataFile );
-    
-    DataFrame<double> Tp_rho = PredictInterval( std::ref( *dataFrameIn ),
-                                                pathOut,
-                                                predictFile,
-                                                lib,
-                                                pred,
-                                                maxTp,
-                                                E,
-                                                tau,
-                                                colNames,
-                                                targetName,
-                                                embedded,
-                                                verbose );
-    delete dataFrameIn;
-    
+    DataFrame< double > dataFrameIn( pathIn, dataFile );
+
+    DataFrame< double > Tp_rho = PredictInterval( std::ref( dataFrameIn ),
+                                                  pathOut,
+                                                  predictFile,
+                                                  lib,
+                                                  pred,
+                                                  maxTp,
+                                                  E,
+                                                  tau,
+                                                  colNames,
+                                                  targetName,
+                                                  embedded,
+                                                  verbose,
+                                                  nThreads );
     return Tp_rho;
 }
 
@@ -313,22 +305,22 @@ DataFrame<double> PredictInterval( std::string pathIn,
 // PredictInterval() : Evaluate Simplex rho vs. predict interval Tp
 // API Overload 2: DataFrame provided
 //-----------------------------------------------------------------
-DataFrame<double> PredictInterval( DataFrame< double > &data,
-                                   std::string          pathOut,
-                                   std::string          predictFile,
-                                   std::string          lib,
-                                   std::string          pred,
-                                   int                  maxTp,
-                                   int                  E,
-                                   int                  tau,
-                                   std::string          colNames,
-                                   std::string          targetName,
-                                   bool                 embedded,
-                                   bool                 verbose,
-                                   unsigned             nThreads ) {
-    
+DataFrame< double > PredictInterval( DataFrame< double > & data,
+                                     std::string           pathOut,
+                                     std::string           predictFile,
+                                     std::string           lib,
+                                     std::string           pred,
+                                     int                   maxTp,
+                                     int                   E,
+                                     int                   tau,
+                                     std::string           colNames,
+                                     std::string           targetName,
+                                     bool                  embedded,
+                                     bool                  verbose,
+                                     unsigned              nThreads ) {
+
     // Container for results
-    DataFrame<double> Tp_rho( maxTp, 2, "Tp rho" );
+    DataFrame< double > Tp_rho( maxTp, 2, "Tp rho" );
 
     // Build work queue
     EDM_Eval::WorkQueue workQ( maxTp );
@@ -339,9 +331,9 @@ DataFrame<double> PredictInterval( DataFrame< double > &data,
     }
 
     unsigned maxThreads = std::thread::hardware_concurrency();
-    if ( maxThreads < nThreads ) { nThreads = maxThreads; }
-    if ( nThreads   > maxTp    ) { nThreads = maxTp;      }
-    
+    if ( maxThreads < nThreads  ) { nThreads = maxThreads; }
+    if ( (int) nThreads > maxTp ) { nThreads = maxTp;      }
+
     // thread container
     std::vector< std::thread > threads;
     for ( unsigned i = 0; i < nThreads; ++i ) {
@@ -358,12 +350,12 @@ DataFrame<double> PredictInterval( DataFrame< double > &data,
                                         embedded,
                                         verbose ) );
     }
-    
+
     // join threads
     for ( auto &thrd : threads ) {
         thrd.join();
     }
-    
+
     // If thread threw exception, get from queue and rethrow
     if ( not EDM_Eval::predictIntExceptQ.empty() ) {
         std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
@@ -373,12 +365,11 @@ DataFrame<double> PredictInterval( DataFrame< double > &data,
 
         // Unroll all other exception from the thread/loops
         while( not EDM_Eval::predictIntExceptQ.empty() ) {
-            // JP When do these exception_ptr get deleted? Is it a leak?
             EDM_Eval::predictIntExceptQ.pop();
         }
         std::rethrow_exception( exceptionPtr );
     }
-    
+
     if ( predictFile.size() ) {
         Tp_rho.WriteData( pathOut, predictFile );
     }
@@ -403,39 +394,39 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
 {
     std::size_t i = std::atomic_fetch_add( &EDM_Eval::tp_count_i,
                                            std::size_t(1) );
-    
+
     while( i < workQ.size() ) {
-        
+
         // WorkQueue stores Tp
         int Tp = workQ[ i ];
-        
+
         // In a multthreaded application we need to pass a unique copy of
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
         DataFrame< double > localData( data );
 
         try {
-            DataFrame<double> S = Simplex( std::ref( localData ),
-                                           "",          // pathOut,
-                                           "",          // predictFile,
-                                           lib,
-                                           pred,
-                                           E,
-                                           Tp,
-                                           0,           // knn
-                                           tau,
-                                           0,           // exclusionRadius
-                                           colNames,
-                                           targetName,
-                                           embedded,
-                                           false,       // const_pred
-                                           verbose );
-            
+            DataFrame< double > S = Simplex( std::ref( localData ),
+                                             "",          // pathOut,
+                                             "",          // predictFile,
+                                             lib,
+                                             pred,
+                                             E,
+                                             Tp,
+                                             0,           // knn
+                                             tau,
+                                             0,           // exclusionRadius
+                                             colNames,
+                                             targetName,
+                                             embedded,
+                                             false,       // const_pred
+                                             verbose );
+ 
             VectorError ve = ComputeError( S.VectorColumnName("Observations"),
                                            S.VectorColumnName("Predictions"));
 
             Tp_rho.WriteRow( i, std::valarray<double>({ (double) Tp, ve.rho }));
-        
+
             if ( verbose ) {
                 std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
                 std::cout << "PredictIntervalThread() workQ[" << workQ[i]
@@ -449,10 +440,10 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
             std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
             EDM_Eval::predictIntExceptQ.push( std::current_exception() );
         }
-        
+
         i = std::atomic_fetch_add( &EDM_Eval::tp_count_i, std::size_t(1) );
     }
-    
+
     // Reset counter
     std::atomic_store( &EDM_Eval::tp_count_i, std::size_t(0) );    
 }
@@ -462,28 +453,27 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2: 
 //----------------------------------------------------------------
-DataFrame<double> PredictNonlinear( std::string pathIn,
-                                    std::string dataFile,
-                                    std::string pathOut,
-                                    std::string predictFile,
-                                    std::string lib,
-                                    std::string pred,
-                                    std::string theta,
-                                    int         E,
-                                    int         Tp,
-                                    int         knn,
-                                    int         tau,
-                                    std::string colNames,
-                                    std::string targetName,
-                                    bool        embedded,
-                                    bool        verbose,
-                                    unsigned    nThreads ) {
-    
+DataFrame< double > PredictNonlinear( std::string pathIn,
+                                      std::string dataFile,
+                                      std::string pathOut,
+                                      std::string predictFile,
+                                      std::string lib,
+                                      std::string pred,
+                                      std::string theta,
+                                      int         E,
+                                      int         Tp,
+                                      int         knn,
+                                      int         tau,
+                                      std::string colNames,
+                                      std::string targetName,
+                                      bool        embedded,
+                                      bool        verbose,
+                                      unsigned    nThreads ) {
+
     // Create DataFrame (constructor loads data)
-    DataFrame< double > *dataFrameIn =
-        new DataFrame< double > ( pathIn, dataFile );
-    
-    DataFrame< double > Theta_rho = PredictNonlinear( std::ref( *dataFrameIn ),
+    DataFrame< double > dataFrameIn( pathIn, dataFile );
+
+    DataFrame< double > Theta_rho = PredictNonlinear( std::ref( dataFrameIn ),
                                                       pathOut,
                                                       predictFile,
                                                       lib,
@@ -496,9 +486,8 @@ DataFrame<double> PredictNonlinear( std::string pathIn,
                                                       colNames,
                                                       targetName,
                                                       embedded,
-                                                      verbose );
-    delete dataFrameIn;
-    
+                                                      verbose,
+                                                      nThreads );
     return Theta_rho;
 }
 
@@ -506,59 +495,59 @@ DataFrame<double> PredictNonlinear( std::string pathIn,
 // PredictNonlinear() : Smap rho vs. localisation parameter theta
 // API Overload 2: DataFrame provided
 //----------------------------------------------------------------
-DataFrame<double> PredictNonlinear( DataFrame< double > &data,
-                                    std::string          pathOut,
-                                    std::string          predictFile,
-                                    std::string          lib,
-                                    std::string          pred,
-                                    std::string          theta,
-                                    int                  E,
-                                    int                  Tp,
-                                    int                  knn,
-                                    int                  tau,
-                                    std::string          colNames,
-                                    std::string          targetName,
-                                    bool                 embedded,
-                                    bool                 verbose,
-                                    unsigned             nThreads ) {
+DataFrame< double > PredictNonlinear( DataFrame< double > & data,
+                                      std::string           pathOut,
+                                      std::string           predictFile,
+                                      std::string           lib,
+                                      std::string           pred,
+                                      std::string           theta,
+                                      int                   E,
+                                      int                   Tp,
+                                      int                   knn,
+                                      int                   tau,
+                                      std::string           colNames,
+                                      std::string           targetName,
+                                      bool                  embedded,
+                                      bool                  verbose,
+                                      unsigned              nThreads ) {
 
     std::vector<double> ThetaValues( { 0.01, 0.1, 0.3, 0.5, 0.75, 1,
                                        1.5, 2, 3, 4, 5, 6, 7, 8, 9 } );
 
-   if ( theta.size() ) {
-       // Use theta values passed in as parameter string
-       ThetaValues.clear();
-        
-       std::vector<std::string> theta_vec = SplitString( theta, " \t,\n" );
-       
-       try {
-           for ( auto ci =  theta_vec.begin(); ci != theta_vec.end(); ++ci ) {
-               ThetaValues.push_back( std::stod( *ci ) );
-           }
-       }
-       catch ( const std::invalid_argument &ia ) {
-           std::stringstream errMsg;
-           errMsg << "PredictNonlinear(): Unable to convert theta ["
-                  << ia.what() << "] to numeric.";
-           throw std::runtime_error( errMsg.str() );
-       }
-   }
-   
+    if ( theta.size() ) {
+        // Use theta values passed in as parameter string
+        ThetaValues.clear();
+
+        std::vector< std::string > theta_vec = SplitString( theta, " \t,\n" );
+
+        try {
+            for ( auto ci =  theta_vec.begin(); ci != theta_vec.end(); ++ci ) {
+                ThetaValues.push_back( std::stod( *ci ) );
+            }
+        }
+        catch ( const std::invalid_argument &ia ) {
+            std::stringstream errMsg;
+            errMsg << "PredictNonlinear(): Unable to convert theta ["
+                   << ia.what() << "] to numeric.";
+            throw std::runtime_error( errMsg.str() );
+        }
+    }
+
     // Container for results
-    DataFrame<double> Theta_rho( ThetaValues.size(), 2, "Theta rho" );
+    DataFrame< double > Theta_rho( ThetaValues.size(), 2, "Theta rho" );
 
     // Build work queue
     EDM_Eval::WorkQueue workQ( ThetaValues.size() );
 
     // Insert ThetaValues indexes into work queue
-    for ( auto i = 0; i < ThetaValues.size(); i++ ) {
+    for ( size_t i = 0; i < ThetaValues.size(); i++ ) {
         workQ[ i ] = i;
     }
 
     unsigned maxThreads = std::thread::hardware_concurrency();
     if ( maxThreads < nThreads           ) { nThreads = maxThreads;         }
     if ( nThreads   > ThetaValues.size() ) { nThreads = ThetaValues.size(); }
-    
+
     // thread container
     std::vector< std::thread > threads;
     for ( unsigned i = 0; i < nThreads; ++i ) {
@@ -578,7 +567,7 @@ DataFrame<double> PredictNonlinear( DataFrame< double > &data,
                                         embedded,
                                         verbose ) );
     }
-    
+
     // join threads
     for ( auto &thrd : threads ) {
         thrd.join();
@@ -593,16 +582,15 @@ DataFrame<double> PredictNonlinear( DataFrame< double > &data,
 
         // Unroll all other exception from the thread/loops
         while( not EDM_Eval::predictNLExceptQ.empty() ) {
-            // JP When do these exception_ptr get deleted? Is it a leak?
             EDM_Eval::predictNLExceptQ.pop();
         }
         std::rethrow_exception( exceptionPtr );
     }
-    
+
     if ( predictFile.size() ) {
         Theta_rho.WriteData( pathOut, predictFile );
     }
-    
+
     return Theta_rho;
 }
 
@@ -624,14 +612,13 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                  bool                   embedded,
                  bool                   verbose )
 {
-    
     std::size_t i =
         std::atomic_fetch_add( &EDM_Eval::smap_count_i, std::size_t(1) );
 
     while( i < workQ.size() ) {
-        
+
         double theta = ThetaValues[ workQ[ i ] ];  
-        
+
         // In a multthreaded application we need to pass a unique copy of
         // the data so that DeletePartialDataRows() is not recursively
         // applied to the same data frame.
@@ -656,16 +643,16 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                                  embedded,
                                  false,     // const_predict
                                  verbose );
-            
+
             DataFrame< double > predictions  = S.predictions;
             DataFrame< double > coefficients = S.coefficients;
-            
+
             VectorError ve = ComputeError(
                 predictions.VectorColumnName( "Observations" ),
                 predictions.VectorColumnName( "Predictions"  ) );
-            
+
             Theta_rho.WriteRow( i, std::valarray<double>({ theta, ve.rho }));
-            
+
             if ( verbose ) {
                 std::lock_guard<std::mutex> lck( EDM_Eval::mtx );
                 std::cout << "Theta " << theta
@@ -678,10 +665,10 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
             std::lock_guard<std::mutex> lck( EDM_Eval::q_mtx );
             EDM_Eval::predictNLExceptQ.push( std::current_exception() );
         }
-        
+
         i = std::atomic_fetch_add( &EDM_Eval::smap_count_i, std::size_t(1) );
     }
-    
+
     // Reset counter
     std::atomic_store( &EDM_Eval::smap_count_i, std::size_t(0) );
 }

@@ -3,16 +3,18 @@
 
 //----------------------------------------------------------------
 // Constructor
-// Default values set in Parameter.h
+// Default values set in Parameter.h declaration
 //----------------------------------------------------------------
 Parameters::Parameters(
     Method      method,
     std::string pathIn,
     std::string dataFile,
     std::string pathOut,
-    std::string predictFile,    
+    std::string predictOutputFile,
+
     std::string lib_str,
     std::string pred_str,
+
     int         E,
     int         Tp,
     int         knn,
@@ -22,42 +24,43 @@ Parameters::Parameters(
 
     std::string columns_str,
     std::string target_str,
-    
+
     bool        embedded,
     bool        const_predict,
     bool        verbose,
-    
-    std::string SmapFile,
-    std::string blockFile,
-    std::string derivatives_str,
-    
-    double      svdSig,
-    double      tikhonov,
-    double      elasticNet,
-    
-    int         multi,
+
+    std::string SmapOutputFile,
+    std::string blockOutputFile,
+
+    int         multiviewEnsemble,
+    int         multiviewD,
+    bool        multiviewTrainLib,
+
     std::string libSizes_str,
-    int         sample,
-    bool        random,
+    int         subSamples,
+    bool        randomLib,
     bool        replacement,
-    unsigned    rseed,
-    bool        noNeigh
+    unsigned    seed,
+    bool        includeData,
+    bool        noNeighborLimit
     ) :
     // Variable initialization from Parameters arguments
     method           ( method ),
     pathIn           ( pathIn ),
     dataFile         ( dataFile ),
     pathOut          ( pathOut ),
-    predictOutputFile( predictFile ),    
+    predictOutputFile( predictOutputFile ),
+
     lib_str          ( lib_str ),
     pred_str         ( pred_str ),
+
     E                ( E ),
     Tp               ( Tp ),
     knn              ( knn ),
     tau              ( tau ),
     theta            ( theta ),
     exclusionRadius  ( exclusionRadius ),
-    
+
     columns_str      ( columns_str ),
     target_str       ( target_str ),
     targetIndex      ( 0 ),
@@ -65,32 +68,31 @@ Parameters::Parameters(
     embedded         ( embedded ),
     const_predict    ( const_predict ),
     verbose          ( verbose ),
-    
-    SmapOutputFile   ( SmapFile ),
-    blockOutputFile  ( blockFile ),
 
-    derivatives_str  ( derivatives_str ),
-    SVDSignificance  ( svdSig ),
-    TikhonovAlpha    ( tikhonov ),
-    ElasticNetAlpha  ( elasticNet ),
-    
-    MultiviewEnsemble( multi ),
+    SmapOutputFile   ( SmapOutputFile ),
+    blockOutputFile  ( blockOutputFile ),
+
+    multiviewEnsemble( multiviewEnsemble ),
+    multiviewD       ( multiviewD ),
+    multiviewTrainLib( multiviewTrainLib ),
+
     libSizes_str     ( libSizes_str ),
-    subSamples       ( sample ),
-    randomLib        ( random ),
+    subSamples       ( subSamples ),
+    randomLib        ( randomLib ),
     replacement      ( replacement ),
-    seed             ( rseed ),
-    noNeighborLimit  ( noNeigh ),
+    seed             ( seed ),
+    includeData      ( includeData ),
+    noNeighborLimit  ( noNeighborLimit ),
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 3, 8, "2020-05-23" )
+    version          ( 1, 5, 0, "2020-07-01" )
 {
     // Constructor code
     if ( method != Method::None ) {
 
         Validate();
-        
+
         if ( verbose ) {
             version.ShowVersion();
         }
@@ -101,11 +103,6 @@ Parameters::Parameters(
 // Destructor
 //----------------------------------------------------------------
 Parameters::~Parameters() {}
-
-//----------------------------------------------------------------
-// 
-//----------------------------------------------------------------
-void Parameters::Load() {}
 
 //----------------------------------------------------------------
 // Index offsets, generate library and prediction indices,
@@ -146,9 +143,9 @@ void Parameters::Validate() {
         for ( auto thisPair : libPairs ) {
             size_t lib_start = thisPair.first;
             size_t lib_end   = thisPair.second;
-            
+
             nLib += lib_end - lib_start + 1;
-            
+
             // Validate end > stop indices
             if ( method == Method::Simplex or method == Method::SMap ) {
                 // Don't check if method == None, Embed or CCM since default
@@ -198,9 +195,9 @@ void Parameters::Validate() {
         for ( auto thisPair : predPairs ) {
             size_t pred_start = thisPair.first;
             size_t pred_end   = thisPair.second;
-            
+
             nPred += pred_end - pred_start + 1;
-            
+
             // Validate end > stop indices
             if ( method == Method::Simplex or method == Method::SMap ) {
                 // Don't check if method == None, Embed or CCM since default
@@ -224,7 +221,7 @@ void Parameters::Validate() {
             }
         }
     }
-    
+
     if ( method == Method::Simplex or method == Method::SMap ) {
         if ( not library.size() ) {
             std::string errMsg( "Parameters::Validate(): "
@@ -246,7 +243,7 @@ void Parameters::Validate() {
             prediction = std::vector<size_t>( 1, 0 );
         }
     }
-    
+
 #ifdef DEBUG_ALL
     PrintIndices( library, prediction );
 #endif
@@ -254,23 +251,23 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     // Convert multi argument parameters from string to vectors
     //--------------------------------------------------------------
-    
+
     // Columns
     // If columns are purely integer, then populate vector<size_t> columnIndex
     // Otherwise fill in vector<string> columnNames
     if ( columns_str.size() ) {
-        
+
         std::vector<std::string> columns_vec = SplitString( columns_str,
                                                             " \t,\n" );
-        
+
         bool onlyDigits = false;
-        
+
         for ( auto ci = columns_vec.begin(); ci != columns_vec.end(); ++ci ) {
             onlyDigits = OnlyDigits( *ci, true );
             
             if ( not onlyDigits ) { break; }
         }
-        
+
         if ( onlyDigits ) {
             for ( auto ci =  columns_vec.begin();
                        ci != columns_vec.end(); ++ci ) {
@@ -288,7 +285,7 @@ void Parameters::Validate() {
                << " No valid columns found." << std::endl;
         throw std::runtime_error( errMsg.str() );
     }
-    
+
     // target
     if ( target_str.size() ) {
         bool onlyDigits = OnlyDigits( target_str, true );
@@ -297,20 +294,6 @@ void Parameters::Validate() {
         }
         else {
             targetName = target_str;
-        }
-    }
-    
-    // Derivatives
-    if ( derivatives_str.size() > 0 ) {
-        std::vector<std::string> der_vec = SplitString(derivatives_str," \t,");
-        if ( der_vec.size() < 2 ) {
-            std::string errMsg( "Parameters::Validate(): "
-                                "derivatives must be integer pairs.\n");
-            throw std::runtime_error( errMsg );
-        }
-        derivatives = std::vector<size_t>( der_vec.size() );
-        for ( size_t i = 0; i < der_vec.size(); i++ ) {
-            derivatives.push_back( std::stoi( der_vec[i] ) );
         }
     }
 
@@ -334,7 +317,7 @@ void Parameters::Validate() {
                                 "CCM librarySizes must be three integers.\n" );
             throw std::runtime_error( errMsg );
         }
-        
+
         size_t start     = std::stoi( libsize_vec[0] );
         size_t stop      = std::stoi( libsize_vec[1] );
         size_t increment = std::stoi( libsize_vec[2] );
@@ -346,7 +329,7 @@ void Parameters::Validate() {
                    << " is invalid.\n";
             throw std::runtime_error( errMsg.str() );
         }
-        
+
         if ( start > stop ) {
             std::stringstream errMsg;
             errMsg << "Parameters::Validate(): "
@@ -354,16 +337,16 @@ void Parameters::Validate() {
                    << " stop " << stop  << " are invalid.\n";
             throw std::runtime_error( errMsg.str() );
         }
-        
+
         size_t N_lib = std::floor( (stop-start)/increment + 1/increment ) + 1;
 
-        if ( start < E ) {
+        if ( (int) start < E ) {
             std::stringstream errMsg;
             errMsg << "Parameters::Validate(): "
                    << "CCM librarySizes start < E = " << E << "\n";
             throw std::runtime_error( errMsg.str() );
         }
-        else if ( start < 3 ) {
+        else if ( (int) start < 3 ) {
             std::string errMsg( "Parameters::Validate(): "
                                 "CCM librarySizes start < 3.\n" );
             throw std::runtime_error( errMsg );
@@ -444,43 +427,6 @@ void Parameters::Validate() {
                              "data/dimension correspondance.\n" );
             std::cout << msg;
         }
-
-        // S-Map coefficient columns for derivatives start at 1 since the 0th
-        // column is the S-Map linear prediction bias term
-        if ( derivatives.size() > 1 ) {
-            std::vector<size_t>::iterator it = std::find( derivatives.begin(),
-                                                          derivatives.end(), 0);
-            if ( it != derivatives.end() ) {
-                std::string errMsg( "Parameters::Validate() S-Map coefficient "
-                            " columns for derivatives can not use column 0.\n");
-                throw std::runtime_error( errMsg );
-            }
-            if ( derivatives.size() % 2 ) {
-                std::string errMsg( "Parameters::Validate() S-Map coefficient "
-                            " columns for derivatives must be in pairs.\n");
-                throw std::runtime_error( errMsg );                
-            }
-        }
-
-        // Tikhonov and ElasticNet are mutually exclusive
-        if ( TikhonovAlpha and ElasticNetAlpha ) {
-            std::string errMsg( "Parameters::Validate() Multiple S-Map solve "
-                                "methods specified.  Use one or none of: "
-                                "tikhonov,   elasticNet.\n");
-            throw std::runtime_error( errMsg );                
-        }
-
-        // Very small alphas don't make sense in elastic net
-        if ( ElasticNetAlpha < 0.01 ) {
-            std::cout << "Parameters::Validate() ElasticNetAlpha too small."
-                         " Setting to 0.01.";
-            ElasticNetAlpha = 0.01;
-        }
-        if ( ElasticNetAlpha > 1 ) {
-            std::cout << "Parameters::Validate() ElasticNetAlpha too large."
-                         " Setting to 1.";
-            ElasticNetAlpha = 1;
-        }
     }
     else if ( method == Method::Embed ) {
         // no-op
@@ -531,7 +477,7 @@ void Parameters::DeleteLibPred() {
             break;
         }
     }
-    
+
     bool deletePredIndex = false;
     for ( auto element  = deleted_pred_elements.begin();
                element != deleted_pred_elements.end(); element++ ) {
@@ -541,9 +487,9 @@ void Parameters::DeleteLibPred() {
             break;
         }
     }
-    
+
 #ifdef DEBUG_ALL
-    std::cout << "DeleteLibPred(): Nrows: " << NRows
+    std::cout << "DeleteLibPred(): shift: " << shift
               << " deleteLibIndex: " << deleteLibIndex
               << " deletePredIndex: " << deletePredIndex << std::endl;
     std::cout << " deleted_lib_elements: ";
@@ -556,12 +502,12 @@ void Parameters::DeleteLibPred() {
         std::cout << *element << ", ";
     } std::cout << std::endl;
 #endif
-        
+
     // Erase elements of row indices that were deleted
     if ( deleteLibIndex ) {
         for ( auto element  = deleted_lib_elements.begin();
               element != deleted_lib_elements.end(); element++ ) {
-            
+
             std::vector< size_t >::iterator it;
             it = std::find( library.begin(), library.end(), *element );
             
@@ -574,17 +520,17 @@ void Parameters::DeleteLibPred() {
     if ( deletePredIndex ) {
         for ( auto element  = deleted_pred_elements.begin();
               element != deleted_pred_elements.end(); element++ ) {
-            
+
             std::vector< size_t >::iterator it;
             it = std::find( prediction.begin(),
                             prediction.end(), *element );
-            
+
             if ( it != prediction.end() ) {
                 prediction.erase( it );
             }
         }
     }
-            
+
     // Now offset all values by shift so that vectors indices
     // in library and prediction refer to the same data rows
     // before the deletion/shift.
@@ -615,7 +561,7 @@ std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
     else if ( p.method == Method::CCM     ) { method = "CCM";     }
     else if ( p.method == Method::None    ) { method = "None";    }
     else if ( p.method == Method::Embed   ) { method = "Embed";   }
-    
+
     os << "Method: " << method
        << " E=" << p.E << " Tp=" << p.Tp
        << " knn=" << p.knn << " tau=" << p.tau << " theta=" << p.theta
@@ -639,9 +585,8 @@ std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
        << p.prediction[ p.prediction.size() - 1 ]
        << "] " << std::endl;
 
-    
     os << "-------------------------------------------------------\n";
-    
+
     return os;
 }
 

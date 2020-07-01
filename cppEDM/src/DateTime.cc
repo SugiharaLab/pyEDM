@@ -1,3 +1,4 @@
+
 #include "DateTime.h"
 
 //  Provide some utility for parsing datetime std::strings
@@ -30,9 +31,9 @@ std::string fmt_hhmmsssss       ("%H:%M:%S");
 // @param date_fmt       : true if this is a date object
 // @return               : none, just populates the tm obj
 //----------------------------------------------------------------------
-void parse_datetime_str ( struct tm & time_obj, 
-                          std::string datetime_str,
-                          bool        date_fmt ) {
+void ParseDatetimeString ( struct tm & time_obj, 
+                           std::string datetime_str,
+                           bool        date_fmt ) {
     // parsing delim is different for date or time
     char parse_delim = date_fmt ? '-' : ':';
     
@@ -72,18 +73,18 @@ void parse_datetime_str ( struct tm & time_obj,
 // @param  datetime      :  the datetime to parse
 // @return datetime      :  the datetime to parse
 //----------------------------------------------------------------------
-datetime_info parse_datetime ( std::string datetime ) {
+datetime_info ParseDatetime ( std::string datetime ) {
     
     datetime_info output;
     
     // check which time format we have. populate output with each case
     if ( std::regex_match( datetime, regEx_yyyymmdd ) ) {
         output.datetime_fmt = fmt_yyyymmdd; 
-        parse_datetime_str( output.time, datetime, true );            
+        ParseDatetimeString( output.time, datetime, true );            
     }
     else if ( std::regex_match( datetime, regEx_hhmmss )) {
         output.datetime_fmt = fmt_hhmmss; 
-        parse_datetime_str( output.time, datetime, false );            
+        ParseDatetimeString( output.time, datetime, false );            
     }
     else if ( std::regex_match( datetime, regEx_yymmddhhmmss )) {
         output.datetime_fmt = fmt_yymmddhhmmss; 
@@ -91,8 +92,8 @@ datetime_info parse_datetime ( std::string datetime ) {
         int delim_pos       = datetime.find(' ');
         std::string date    = datetime.substr(0, delim_pos);
         std::string time    = datetime.substr(delim_pos+1, datetime.size());
-        parse_datetime_str( output.time, date, true );            
-        parse_datetime_str( output.time, time, false );            
+        ParseDatetimeString( output.time, date, true );            
+        ParseDatetimeString( output.time, time, false );            
     }
     else if ( std::regex_match( datetime, regEx_yymmddthhmmss )) {
         output.datetime_fmt = fmt_yymmddthhmmss; 
@@ -100,14 +101,14 @@ datetime_info parse_datetime ( std::string datetime ) {
         int delim_pos       = datetime.find('T');
         std::string date    = datetime.substr(0, delim_pos);
         std::string time    = datetime.substr(delim_pos+1, datetime.size());
-        parse_datetime_str( output.time, date, true );            
-        parse_datetime_str( output.time, time, false );            
+        ParseDatetimeString( output.time, date, true );            
+        ParseDatetimeString( output.time, time, false );            
     }
     else if ( std::regex_match( datetime, regEx_hhmmsssss )) {
         output.datetime_fmt = fmt_hhmmsssss; 
         // trim the milliseconds off and parse
         datetime = datetime.substr(0,datetime.size()-4);
-        parse_datetime_str( output.time, datetime, false );            
+        ParseDatetimeString( output.time, datetime, false );            
     }
     else {
         output.unrecognized_fmt = true;
@@ -125,11 +126,11 @@ datetime_info parse_datetime ( std::string datetime ) {
 // @param tp             :  the amount to increment the time diff by
 // @return               :  the new incremented timestd::string
 //----------------------------------------------------------------------
-std::string increment_datetime_str ( std::string datetime1, 
-                                     std::string datetime2, int tp ) {
-    //parse datetimes
-    datetime_info dtinfo1 = parse_datetime( datetime1 );
-    datetime_info dtinfo2 = parse_datetime( datetime2 );
+std::string IncrementDatetime ( std::string datetime1, 
+                                std::string datetime2, int tp ) {
+    // parse datetimes
+    datetime_info dtinfo1 = ParseDatetime( datetime1 );
+    datetime_info dtinfo2 = ParseDatetime( datetime2 );
     
     if ( dtinfo1.unrecognized_fmt or dtinfo2.unrecognized_fmt ) {
         // return empty string

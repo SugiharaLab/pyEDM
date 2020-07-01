@@ -19,14 +19,13 @@ struct datetime_info {
 };
 
 // Prototypes
-void parse_datetime_str ( struct tm & time_obj, 
-                          std::string datetime_str,
-                          bool        date_fmt );
+void ParseDatetimeString ( struct tm & time_obj, 
+                           std::string datetime_str,
+                           bool        date_fmt );
 
-datetime_info parse_datetime ( std::string datetime );
+datetime_info ParseDatetime ( std::string datetime );
 
-std::string increment_datetime_str ( std::string datetime1, 
-                                     std::string datetime2,
-                                     int         tp );
-
+std::string IncrementDatetime ( std::string datetime1, 
+                                std::string datetime2,
+                                int         tp );
 #endif
