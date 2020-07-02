@@ -312,54 +312,75 @@ void Parameters::Validate() {
     // CCM librarySizes
     if ( libSizes_str.size() > 0 ) {
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
-        if ( libsize_vec.size() != 3 ) {
-            std::string errMsg( "Parameters::Validate(): "
-                                "CCM librarySizes must be three integers.\n" );
-            throw std::runtime_error( errMsg );
+
+        bool   libSizeSequence = false;
+        size_t start;
+        size_t stop;
+        size_t increment;
+        
+        if ( libsize_vec.size() == 3 ) {
+            // Presume ( start, stop, increment ) sequence arguments
+            start     = std::stoi( libsize_vec[0] );
+            stop      = std::stoi( libsize_vec[1] );
+            increment = std::stoi( libsize_vec[2] );
+
+            // However, it might just be 3 library sizes...
+            // If increment < stop, then presume 3 sequence arguments
+            if ( increment < stop ) {
+                libSizeSequence = true;
+            }
         }
 
-        size_t start     = std::stoi( libsize_vec[0] );
-        size_t stop      = std::stoi( libsize_vec[1] );
-        size_t increment = std::stoi( libsize_vec[2] );
+        if ( libSizeSequence ) {
+            if ( increment < 1 ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): "
+                       << "CCM librarySizes increment " << increment
+                       << " is invalid.\n";
+                throw std::runtime_error( errMsg.str() );
+            }
 
-        if ( increment < 1 ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): "
-                   << "CCM librarySizes increment " << increment
-                   << " is invalid.\n";
-            throw std::runtime_error( errMsg.str() );
+            if ( start > stop ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): "
+                       << "CCM librarySizes start " << start
+                       << " stop " << stop  << " are invalid.\n";
+                throw std::runtime_error( errMsg.str() );
+            }
+
+            size_t N_lib = std::floor((stop-start)/increment + 1/increment) + 1;
+
+            if ( (int) start < E ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): "
+                       << "CCM librarySizes start < E = " << E << "\n";
+                throw std::runtime_error( errMsg.str() );
+            }
+            else if ( (int) start < 3 ) {
+                std::string errMsg( "Parameters::Validate(): "
+                                    "CCM librarySizes start < 3.\n" );
+                throw std::runtime_error( errMsg );
+            }
+
+            // Allocate the librarySizes vector
+            librarySizes = std::vector< size_t >( N_lib, 0 );
+
+            // Fill in the sizes
+            size_t libSize = start;
+            for ( size_t i = 0; i < librarySizes.size(); i++ ) {
+                librarySizes[i] = libSize;
+                libSize = libSize + increment;
+            }
         }
-
-        if ( start > stop ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): "
-                   << "CCM librarySizes start " << start
-                   << " stop " << stop  << " are invalid.\n";
-            throw std::runtime_error( errMsg.str() );
-        }
-
-        size_t N_lib = std::floor( (stop-start)/increment + 1/increment ) + 1;
-
-        if ( (int) start < E ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): "
-                   << "CCM librarySizes start < E = " << E << "\n";
-            throw std::runtime_error( errMsg.str() );
-        }
-        else if ( (int) start < 3 ) {
-            std::string errMsg( "Parameters::Validate(): "
-                                "CCM librarySizes start < 3.\n" );
-            throw std::runtime_error( errMsg );
-        }
-
-        // Create the librarySizes vector
-        librarySizes = std::vector<size_t>( N_lib, 0 );
-
-        // Fill in the sizes
-        size_t libSize = start;
-        for ( size_t i = 0; i < librarySizes.size(); i++ ) {
-            librarySizes[i] = libSize;
-            libSize = libSize + increment;
+        else {
+            // Presume a list of lib sizes
+            librarySizes = std::vector< size_t >( libsize_vec.size(), 0 );
+            for ( size_t i = 0; i < librarySizes.size(); i++ ) {
+                size_t libSize;
+                std::stringstream libStringStream( libsize_vec[i] );
+                libStringStream >> libSize;
+                librarySizes[i] = libSize;
+            }
         }
     }
 
