@@ -6,18 +6,15 @@ CXX = g++
 HEADERS = API.h CCM.h Common.h DataFrame.h DateTime.h EDM.h EDM_Neighbors.h\
           Multiview.h Parameter.h Simplex.h SMap.h Version.h
 
-#SRCS = API.cc CCM.cc Common.cc DateTime.cc EDM.cc EDM_Formatting.cc\
-#       EDM_Neighbors.cc Eval.cc Multiview.cc Parameter.cc Simplex.cc SMap.cc
-SRCS = API.cc Common.cc DateTime.cc EDM.cc EDM_Formatting.cc\
-       EDM_Neighbors.cc Parameter.cc Simplex.cc
+SRCS = API.cc CCM.cc Common.cc DateTime.cc EDM.cc EDM_Formatting.cc\
+       EDM_Neighbors.cc Eval.cc Multiview.cc Parameter.cc Simplex.cc SMap.cc
 
 OBJ = $(SRCS:%.cc=%.o)
 
 LIB = libEDM.a
 
 CFLAGS += -std=c++11 -Wpedantic -Wall -Wextra -Wreorder -O3
-# CFLAGS += -DCCM_THREADED
-CFLAGS += -DGENERIC_MANIFOLD_NETWORK -fPIC
+CFLAGS += -DCCM_THREADED -fPIC
 # CFLAGS += -g # -DDEBUG_ALL
 # LFLAGS = -L./ -lstdc++ -lEDM -lpthread -llapacke -llapack -lblas 
 

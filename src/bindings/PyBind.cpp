@@ -9,12 +9,15 @@
 #include "ComputeError.cpp"
 #include "Embed.cpp"
 #include "Simplex.cpp"
+
+#ifdef NO_GENERIC_MANIFOLD_NETWORK
 #include "SMap.cpp"
 #include "Multiview.cpp"
 #include "CCM.cpp"
 #include "EmbedDim.cpp"
 #include "PredictInterval.cpp"
 #include "PredictNL.cpp"
+#endif
 
 //-------------------------------------------------------------------------
 // PYBIND11_MODULE macro creates entry points invoked when the Python
@@ -35,7 +38,17 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
     pyMod.def( "ComputeError", &ComputeError_pybind );
 
     pyMod.def( "DataFrameToDF", &DataFrameToDF );
-
+    
+#ifdef GENERIC_MANIFOLD_NETWORK
+    py::class_<DFI>( pyMod, "DFI" )
+        .def( py::init() )  // Default constructor (?)
+        .def_readwrite( "timeName", &DFI::timeName )
+        .def_readwrite( "time",     &DFI::time     )
+        .def_readwrite( "dataList", &DFI::dataList );
+    
+    pyMod.def( "DataFrameToDFI", &DataFrameToDFI );
+#endif
+    
     // Load cppEDM DataFrame( path, file ) into py::dict
     pyMod.def( "ReadDataFrame", &ReadDataFrame,
                py::arg("path")   = "",
@@ -84,6 +97,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("const_pred")  = false,
                py::arg("verbose")     = false );
     
+#ifndef GENERIC_MANIFOLD_NETWORK
     pyMod.def( "SMap", &SMap_pybind,
                py::arg("pathIn")      = std::string("./"),
                py::arg("dataFile")    = std::string(""),
@@ -200,4 +214,5 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("embedded")    = false,
                py::arg("verbose")     = false,
                py::arg("numThreads")  = 4 );
+#endif
 }

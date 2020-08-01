@@ -38,7 +38,14 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
                                int                      tau,
                                std::vector<std::string> columnNames );
 
+
+#ifdef GENERIC_MANIFOLD_NETWORK
+double LibraryValueFromNeighbors( std::valarray< double > neighbors );
+
+SimplexValues       Simplex( std::string pathIn          = "./data/",
+#else
 DataFrame< double > Simplex( std::string pathIn          = "./data/",
+#endif
                              std::string dataFile        = "",
                              std::string pathOut         = "./",
                              std::string predictFile     = "",
@@ -55,7 +62,11 @@ DataFrame< double > Simplex( std::string pathIn          = "./data/",
                              bool        const_predict   = false,
                              bool        verbose         = true );
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+SimplexValues       Simplex( DataFrame< double > & dataFrameIn,
+#else
 DataFrame< double > Simplex( DataFrame< double > & dataFrameIn,
+#endif
                              std::string pathOut         = "./",
                              std::string predictFile     = "",
                              std::string lib             = "",
@@ -71,6 +82,7 @@ DataFrame< double > Simplex( DataFrame< double > & dataFrameIn,
                              bool        const_predict   = false,
                              bool        verbose         = true );
 
+#ifndef GENERIC_MANIFOLD_NETWORK
 // SMap is a special case since it can be called with a function pointer
 // to the SVD solver. This is done so that interfaces such as pybind11
 // can provide their own object for the solver.
@@ -324,4 +336,5 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & dataFrameIn,
                                       bool        embedded    = false,
                                       bool        verbose     = true,
                                       unsigned    nThreads    = 4 );
+#endif
 #endif

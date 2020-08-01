@@ -4,7 +4,9 @@
 //-------------------------------------------------------------
 // 
 //-------------------------------------------------------------
-py::dict Simplex_pybind( std::string pathIn,
+//py::dict Simplex_pybind( std::string pathIn,
+// JP for GMN return a dictionary, not just a data frame
+std::map< std::string, py::dict > Simplex_pybind( std::string pathIn,
                          std::string dataFile,
                          DF          df,
                          std::string pathOut,
@@ -22,7 +24,8 @@ py::dict Simplex_pybind( std::string pathIn,
                          bool        const_predict,
                          bool        verbose ) {
 
-    DataFrame< double > S;
+    // JP DataFrame< double > S;
+    SimplexValues S;
     
     if ( dataFile.size() ) {
         // dataFile specified, dispatch overloaded Simplex, ignore df.dataList
@@ -66,8 +69,18 @@ py::dict Simplex_pybind( std::string pathIn,
         throw std::runtime_error( "Simplex_pybind(): Invalid input.\n" );
     }
     
-    DF       dfout = DataFrameToDF( S );
-    py::dict D     = DFtoDict( dfout );
+    // JP  DF       dfout = DataFrameToDF( S );
+    // JP  py::dict D     = DFtoDict( dfout );
+
+    DF  df_pred  = DataFrameToDF( S.predictions   );
+    DFI df_neigh = DataFrameToDFI( S.knn_neighbors );
+    DFI df_lib   = DataFrameToDFI( S.knn_library   );
+ 
+    std::map< std::string, py::dict > D;
+
+    D["predictions" ]  = DFtoDict( df_pred  );
+    D["knn_neighbors"] = DFItoDict( df_neigh );
+    D["knn_library"]   = DFItoDict( df_lib   );
     
     return D;
 }

@@ -161,8 +161,11 @@ public:
     //------------------------------------------------------------------
     // Return data column selected by column name
     //------------------------------------------------------------------
+#ifdef GENERIC_MANIFOLD_NETWORK
+    std::valarray< T > VectorColumnName( std::string column ) {
+#else
     std::valarray< double > VectorColumnName( std::string column ) {
-        
+#endif
         std::vector< std::string >::iterator ci = std::find(columnNames.begin(),
                                                             columnNames.end(),
                                                             column );
@@ -180,7 +183,11 @@ public:
 
         size_t col_i = std::distance( columnNames.begin(), ci );
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+        std::valarray< T > vec = Column( col_i );
+#else
         std::valarray< double > vec = Column( col_i );
+#endif
 
         return vec;
     }

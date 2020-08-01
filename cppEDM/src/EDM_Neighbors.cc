@@ -80,6 +80,155 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
     }
 }
 
+
+#ifdef GENERIC_MANIFOLD_NETWORK
+//----------------------------------------------------------------
+// Assumed that EDM::Distances() has been called.
+//
+// Writes to EDM object:
+// knn_library  :  library neighbor rows of knn_distances
+//----------------------------------------------------------------
+void EDM::FindLibraryNeighbors() {
+
+#ifdef DEBUG_ALL
+    PrintDataFrameIn();
+#endif
+
+    size_t N_library_rows = parameters.library.size();
+
+    auto max_lib_it = std::max_element( parameters.library.begin(),
+                                        parameters.library.end() );
+    int max_lib_index = *max_lib_it;
+
+    // allLibRows are the library row indices, 1 row x lib columns
+    std::valarray< size_t > rowLib = allLibRows.Row( 0 );
+
+    // Pair the distances and library row indices for sort on distance
+    // Each libPairs element correponds to a library row and
+    // holds a vector of < distance, lib_row > pairs for each rowLib
+    std::vector< std::vector< std::pair< double, size_t > > >
+        libPairs( N_library_rows );
+
+    for ( size_t lib_row = 0; lib_row < N_library_rows; lib_row++ ) {
+
+        std::valarray< double > rowDist = libDistances.Row( lib_row );
+
+        std::vector< std::pair< double, size_t > > rowPairs( rowDist.size() );
+
+        for ( size_t i = 0; i < rowDist.size(); i++ ) {
+            rowPairs[ i ] = std::make_pair( rowDist[ i ], rowLib[ i ] );
+        }
+        // insert into libPairs
+        libPairs[ lib_row ] = rowPairs;
+    }
+
+#ifdef DEBUG_ALL
+    std::cout << allLibRows;
+    std::cout << libDistances;
+    for ( size_t lib_row = 0; lib_row < libPairs.size(); lib_row++ ) {
+        std::vector< std::pair<double, size_t> > rowPair = libPairs[ lib_row ];
+        for ( size_t i = 0; i < rowPair.size(); i++ ) {
+            std::pair<double, size_t> thisPair = rowPair[ i ];
+            std::cout << "[" << thisPair.first << ", "
+                      << thisPair.second << "] ";
+        } std::cout << std::endl;
+    } std::cout << std::endl;
+#endif
+
+    // Allocate in EDM class object
+    knn_library = DataFrame< size_t >( N_library_rows, parameters.knn );
+
+    //-------------------------------------------------------------------
+    // For each library vector (row in DataFrame) find the
+    // list of library indices that are within k_NN points
+    //-------------------------------------------------------------------
+    for ( size_t libPair_i = 0; libPair_i < libPairs.size(); libPair_i++ ) {
+
+        // The actual library row specified by user (zero offset)
+        size_t libraryRow = parameters.library[ libPair_i ]; // JP library!
+
+        // rowPair is a vector of pairs of length library rows
+        // Get the rowPair for this prediction row
+        std::vector< std::pair<double, size_t> > rowPair = libPairs[libPair_i];
+
+        int rowPairSize = (int) rowPair.size();
+
+        // sort < distance, lib_row > pairs for this libPair_i
+        // distance must be .first
+        std::sort( rowPair.begin(), rowPair.end(), DistanceCompare );
+
+        //----------------------------------------------------------------
+        // Insert knn distance / library row index into knn vectors
+        //----------------------------------------------------------------
+        std::valarray< size_t > knnLibRows( nanl("knn"), parameters.knn );
+
+        int lib_row_i = 0;
+        int k         = 0;
+        while ( k < parameters.knn ) {
+            if ( lib_row_i >= rowPairSize ) {
+                std::stringstream errMsg;
+                errMsg << "WARNING: FindLibraryNeighbors(): knn search failed "
+                       << "at row " << libraryRow << ". "
+                       << k << " out of " << parameters.knn
+                       << " neighbors were found in the library.\n";
+                std::cout << errMsg.str();
+
+                k = (int) rowPair.size(); // Avoid tie check below
+                break;                    // Continue to next row
+            }
+
+            size_t lib_row  = rowPair[ lib_row_i ].second;
+
+            if ( lib_row == libraryRow ) {
+                lib_row_i++;
+                continue; // degenerate lib : lib, ignore
+            }
+
+            if ( not parameters.noNeighborLimit ) {
+                // Reach exceeding grasp : forecast point is outside library
+                if ( (int) lib_row + parameters.Tp > max_lib_index or
+                     (int) lib_row + parameters.Tp < 0 ) {
+                    lib_row_i++;
+                    continue; // keep looking 
+                }
+            }
+
+            // Exclusion radius: units are data rows, not time
+            if ( parameters.exclusionRadius ) {
+                int xrad = (int) lib_row - (int) libPair_i;
+                if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
+                    lib_row_i++;
+                    continue; // skip this neighbor
+                }
+            }
+
+            knnLibRows[ k ] = lib_row;
+            lib_row_i++;
+            k++;
+        }
+
+        knn_library.WriteRow( libPair_i, knnLibRows   );
+
+    } // for ( libPair_i = 0; libPair_i < libPairs.size(); libPair_i++ )
+
+#ifdef DEBUG_ALL
+    for ( size_t i = 0; i < ties.size(); i++ ) {
+        if ( ties[ i ] ) {
+            std::vector< std::pair< double, size_t > > rowTiePairs =
+                tiePairs[ i ];
+            std::cout << "Ties at pred_i " << i << ": ";
+            for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
+                double dist = rowTiePairs[ j ].first;
+                size_t prow = rowTiePairs[ j ].second;
+                std::cout << "[ " << dist << ", " << prow << "] ";
+            } std::cout << std::endl;
+        }
+    }
+    PrintNeighbors();
+#endif
+}
+#endif // GENERIC_MANIFOLD_NETWORK
+
 //----------------------------------------------------------------
 // Assumed that EDM::Distances() has been called.
 //
@@ -310,6 +459,17 @@ void EDM::FindNeighbors() {
 //               distance(i,j) is distance between the E-dimensional
 //               phase space point prediction row i and library row j.
 // allLibRows  : 1 row x lib cols matrix with lib rows
+//
+// JP Note: All prediction x library distances are computed.
+//          This is not optimal since some values are degenerate.
+//          Ideally, degenerate values are computed once, then copied.
+//          This should be addressed.  However, it's sticky since the
+//          allDistances matrix is indexed from [0:Npred] rows x
+//          [0:Nlib] columns, whereas the actual library or prediction
+//          rows are not required to be in [0:Npred], [0:Nlib].
+//          Therefore, allDistances D(i,j) != D(j,i) unless lib = pred.
+//          Rather, actual rows are parameters.prediction[ predRow ],
+//          parameters.library[ libRow ] with predRow in [0:Npred]...
 //---------------------------------------------------------------------
 void EDM::Distances () {
 
@@ -320,7 +480,7 @@ void EDM::Distances () {
 
     max_it = std::max_element( parameters.library.begin(),
                                parameters.library.end() );
-    size_t  maxLibIndex = (size_t) *max_it;
+    size_t maxLibIndex = (size_t) *max_it;
 
     if ( maxPredIndex >= embedding.NRows() or
          maxLibIndex  >= embedding.NRows() ) {
@@ -358,18 +518,52 @@ void EDM::Distances () {
 
         for ( size_t libRow = 0; libRow < Nlib; libRow++ ) {
 
-            if ( predictionRow == parameters.library[ libRow ] ) {
+            size_t libraryRow = parameters.library[ libRow ];
+
+            if ( predictionRow == libraryRow ) {
                 continue;  // degenerate pred & lib
             }
 
             // Find distance between vector (v1) and library vector v2
-            std::valarray< double > v2 =
-                embedding.Row( parameters.library[ libRow ] );
+            std::valarray< double > v2 = embedding.Row( libraryRow );
 
             allDistances( predRow, libRow ) =
                 Distance( v1, v2, DistanceMetric::Euclidean );
         }
     }
+#ifdef GENERIC_MANIFOLD_NETWORK
+    // Allocate output distance matrix and libRows list in EDM object
+    libDistances = DataFrame< double >( Nlib, Nlib );
+    // Initialise D to DistanceMax
+    std::valarray< double > libRow_init( EDM_Distance::DistanceMax, Nlib );
+    for ( size_t row = 0; row < Nlib; row++ ) {
+        libDistances.WriteRow( row, libRow_init );
+    }
+    
+    // Compute all library row : library row distances -> libDistances
+    for ( size_t libRow = 0; libRow < Nlib; libRow++ ) {
+
+        size_t libraryRow = parameters.library[ libRow ];
+
+        // Get E-dimensional vector from this library row
+        std::valarray< double > v1 = embedding.Row( libraryRow );
+
+        for ( size_t libRowInner = 0; libRowInner < Nlib; libRowInner++ ) {
+
+            size_t libraryRowInner = parameters.library[ libRowInner ];
+
+            if ( libraryRow == libraryRowInner ) {
+                continue;  // degenerate lib rows
+            }
+
+            // Find distance between vector (v1) and library vector v2
+            std::valarray< double > v2 = embedding.Row( libraryRowInner );
+
+            libDistances( libRow, libRowInner ) =
+                Distance( v1, v2, DistanceMetric::Euclidean );
+        }
+    }
+#endif
 }
 
 //----------------------------------------------------------------

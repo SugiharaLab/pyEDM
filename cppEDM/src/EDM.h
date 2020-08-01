@@ -29,6 +29,11 @@ public: // No need for private or protected
     DataFrame< double > projection;   // Simplex & SMap Output
     DataFrame< double > coefficients; // SMap Output
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+    DataFrame< size_t > knn_library;  // N lib rows, knn columns; sorted
+    DataFrame< double > libDistances; // N lib rows  N lib columns
+#endif
+    
     // Project() vectors to populate projection DataFrame in FormatData()
     // JP Can we do away with these and write directly to projection (+Tp)?
     std::valarray< double > predictions;
@@ -57,6 +62,9 @@ public: // No need for private or protected
     void PrepareEmbedding( bool checkDataRows = true );
     void Distances();
     void FindNeighbors();
+#ifdef GENERIC_MANIFOLD_NETWORK
+    void FindLibraryNeighbors();
+#endif
 
     // EDM_Formatting.cc
     void CheckDataRows( std::string call );

@@ -21,6 +21,10 @@ void SimplexClass::Project () {
     
     FindNeighbors();
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+    FindLibraryNeighbors();
+#endif
+    
     Simplex();
 
     FormatOutput();

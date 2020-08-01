@@ -132,7 +132,11 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
 //----------------------------------------------------------------------
 // Simplex with path/file input
 //----------------------------------------------------------------------
+#ifdef GENERIC_MANIFOLD_NETWORK
+SimplexValues Simplex( std::string pathIn,
+#else
 DataFrame< double > Simplex( std::string pathIn,
+#endif
                              std::string dataFile,
                              std::string pathOut,
                              std::string predictFile,
@@ -152,8 +156,12 @@ DataFrame< double > Simplex( std::string pathIn,
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+    SimplexValues simplexProjection = Simplex( std::ref( DF ),
+#else
     // Pass data frame to Simplex 
     DataFrame< double > simplexProjection = Simplex( std::ref( DF ),
+#endif
                                                      pathOut,
                                                      predictFile,
                                                      lib,
@@ -175,7 +183,11 @@ DataFrame< double > Simplex( std::string pathIn,
 //----------------------------------------------------------------------
 // Simplex with DataFrame input
 //----------------------------------------------------------------------
+#ifdef GENERIC_MANIFOLD_NETWORK
+SimplexValues Simplex( DataFrame< double > & DF,
+#else
 DataFrame<double> Simplex( DataFrame< double > & DF,
+#endif
                            std::string pathOut,
                            std::string predictFile,
                            std::string lib,
@@ -204,9 +216,19 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
 
     SimplexModel.Project();
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+    SimplexValues values = SimplexValues();
+    values.predictions   = SimplexModel.projection;
+    values.knn_neighbors = SimplexModel.knn_neighbors;
+    values.knn_library   = SimplexModel.knn_library;
+
+    return values;
+#else
     return SimplexModel.projection;
+#endif
 }
 
+#ifndef GENERIC_MANIFOLD_NETWORK
 //----------------------------------------------------------------------------
 // 1) SMap with path/file input
 //    Default SVD (LAPACK) assigned in SMap() overload 2)
@@ -545,3 +567,4 @@ MultiviewValues Multiview( DataFrame< double > & DF,
 
     return MultiviewModel.MVvalues;
 }
+#endif

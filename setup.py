@@ -192,8 +192,8 @@ def read_version(*file_paths):
 #
 #----------------------------------------------------------------------
 setup(
-    name             = 'pyEDM', # name of *-version.dist-info directory
-    version          = read_version( 'pyEDM', '__init__.py' ),
+    name             = 'gmn', # name of *-version.dist-info directory
+    version          = read_version( 'gmn', '__init__.py' ),
     author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
     url              = 'https://github.com/SugiharaLab/pyEDM',
@@ -204,7 +204,7 @@ setup(
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
     ext_modules      = Extension_modules,
-    package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
+    package_data     = { 'gmn' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
     install_requires = ['pybind11>=2.3', 'pandas>=0.20.3', 'matplotlib>=2.2'],
     python_requires  = '>=3',

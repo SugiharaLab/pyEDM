@@ -30,6 +30,14 @@ struct VectorError {
     double MAE;
 };
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+struct SimplexValues {
+    DataFrame< double > predictions;
+    DataFrame< size_t > knn_neighbors; // N pred rows, knn columns; sorted
+    DataFrame< size_t > knn_library;   // N lib  rows, knn columns; sorted
+};
+#endif
+
 struct SMapValues {
     DataFrame< double > predictions;
     DataFrame< double > coefficients;

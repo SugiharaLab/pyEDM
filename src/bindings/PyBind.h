@@ -6,6 +6,8 @@
 
 namespace py = pybind11;
 
+#define GENERIC_MANIFOLD_NETWORK
+
 #include "Common.h"  // cpp DataFrame
 
 // There are three data frame representations:
@@ -25,4 +27,16 @@ struct DF {
 DataFrame< double > DFToDataFrame ( DF df );
 DF                  DataFrameToDF ( DataFrame< double > dataFrame );
 
+#ifdef GENERIC_MANIFOLD_NETWORK
+typedef std::list< std::pair< std::string, std::valarray<size_t> > > DataListI;
+struct DFI {
+    std::string                timeName;
+    std::vector< std::string > time;
+    DataListI                  dataList;
+};
+
+// Forward declarations for DataFrameWrapper.cpp convertors
+DataFrame< size_t > DFIToDataFrame ( DFI df );
+DFI                 DataFrameToDFI ( DataFrame< size_t > dataFrame );
+#endif
 #endif
