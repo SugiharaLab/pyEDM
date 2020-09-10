@@ -27,8 +27,8 @@ from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
 # Set msvc runtime dll for windows build
-#import distutils.cygwinccompiler
-#distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
+import distutils.cygwinccompiler
+distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
 
 # Package paths e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
