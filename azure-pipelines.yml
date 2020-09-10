@@ -4,50 +4,50 @@ variables:
 
 strategy:
   matrix:
-#    Windows_3.6:
-#      vmImage: 'vs2017-win2016'
-#      build_name: 'Windows_3.6_EDM'
-#      python.version: '3.6'
-#    Windows_3.7:
-#      vmImage: 'vs2017-win2016'
-#      build_name: 'Windows_3.7_EDM'
-#      python.version: '3.7'
+    Windows_3.6:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.6_EDM'
+      python.version: '3.6'
+    Windows_3.7:
+      vmImage: 'vs2017-win2016'
+      build_name: 'Windows_3.7_EDM'
+      python.version: '3.7'
     Windows_3.8:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.8_EDM'
       python.version: '3.8'
-#    Windows_3.8_2019:
-#      vmImage: 'windows-2019'
-#      build_name: 'Windows_2019_3.8_EDM'
-#      python.version: '3.8'
-#    MacOS_3.5:
-#      vmImage: 'macos-latest'
-#      build_name: 'MacOS_3.5_EDM'
-#      python.version: '3.5'
-#    MacOS_3.6:
-#      vmImage: 'macos-latest'
-#      build_name: 'MacOS_3.6.9_EDM'
-#      python.version: '3.6'
-#    MacOS_3.7:
-#      vmImage: 'macos-latest'
-#      build_name: 'MacOS_3.7_EDM'
-#      python.version: '3.7'
-#    MacOS_3.8:
-#      vmImage: 'macos-latest'
-#      build_name: 'MacOS_3.8_EDM'
-#      python.version: '3.8'
-#    Linux_3.6:
-#      vmImage: 'ubuntu-latest'
-#      build_name: 'manylinux36'
-#      python.version: '3.6'
-#    Linux_3.7:
-#      vmImage: 'ubuntu-latest'
-#      build_name: 'manylinux37'
-#      python.version: '3.7'
-#    Linux_3.8:
-#      vmImage: 'ubuntu-latest'
-#      build_name: 'manylinux38'
-#      python.version: '3.8'
+    Windows_3.8_2019:
+      vmImage: 'windows-2019'
+      build_name: 'Windows_2019_3.8_EDM'
+      python.version: '3.8'
+    MacOS_3.5:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.5_EDM'
+      python.version: '3.5'
+    MacOS_3.6:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.6.9_EDM'
+      python.version: '3.6'
+    MacOS_3.7:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.7_EDM'
+      python.version: '3.7'
+    MacOS_3.8:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.8_EDM'
+      python.version: '3.8'
+    Linux_3.6:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux36'
+      python.version: '3.6'
+    Linux_3.7:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux37'
+      python.version: '3.7'
+    Linux_3.8:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux38'
+      python.version: '3.8'
 
 pool:
 
@@ -81,15 +81,9 @@ steps:
   displayName: setup visual studio env on windows
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-# took this from the scipy azure build script so credit to them in case needed
-# JP This hardcoded link to openblas is a problem.  Seems it's gone...
 - powershell: |
-    $wc = New-Object net.webclient;
-    $wc.Downloadfile("https://3f23b170c54c2533c070-1c8a9b3114517dc5fe17b7c3f8c63a43.ssl.cf2.rackcdn.com/openblas-v0.3.7-win_amd64-gcc_7_1_0.zip", "openblas.zip")
-    $tmpdir = New-TemporaryFile | %{ rm $_; mkdir $_ }
-    Expand-Archive "openblas.zip" $tmpdir
-    cp $tmpdir\64\lib\libopenblas_v0.3.7-gcc_7_1_0.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
-  displayName: 'download openblas'
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib
+  displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - bash: |
