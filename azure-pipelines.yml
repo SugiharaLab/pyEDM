@@ -82,9 +82,10 @@ steps:
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 # took this from the scipy azure build script so credit to them in case needed
+# JP This hardlink is not sustainable... 
 - powershell: |
     $wc = New-Object net.webclient;
-    $wc.Downloadfile("https://3f23b170c54c2533c070-1c8a9b3114517dc5fe17b7c3f8c63a43.ssl.cf2.rackcdn.com/openblas-v0.3.7-win_amd64-gcc_7_1_0.zip", "openblas.zip")
+    $wc.Downloadfile("https://downloads.sourceforge.net/project/openblas/v0.3.10/OpenBLAS%200.3.10%20version.zip", "openblas.zip")
     $tmpdir = New-TemporaryFile | %{ rm $_; mkdir $_ }
     Expand-Archive "openblas.zip" $tmpdir
     cp $tmpdir\64\lib\libopenblas_v0.3.7-gcc_7_1_0.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
