@@ -1,5 +1,5 @@
 variables:
-    CIBW_BUILD: cp35-* cp36-* cp37-*
+    CIBW_BUILD: cp36-* cp37-* cp38-*
     CIBW_BEFORE_BUILD: yum install -y lapack-devel libpng-devel freetype-devel freetype blas-devel pkg-config; pip install -r requirements.txt; 
 
 strategy:
@@ -15,6 +15,10 @@ strategy:
     Windows_3.8:
       vmImage: 'vs2017-win2016'
       build_name: 'Windows_3.8_EDM'
+      python.version: '3.8'
+    Windows_3.8_2019:
+      vmImage: 'windows-2019'
+      build_name: 'Windows_2019_3.8_EDM'
       python.version: '3.8'
     MacOS_3.5:
       vmImage: 'macos-latest'
@@ -33,15 +37,15 @@ strategy:
       build_name: 'MacOS_3.8_EDM'
       python.version: '3.8'
     Linux_3.6:
-      vmImage: 'Ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
       build_name: 'manylinux36'
       python.version: '3.6'
     Linux_3.7:
-      vmImage: 'Ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
       build_name: 'manylinux37'
       python.version: '3.7'
     Linux_3.8:
-      vmImage: 'Ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
       build_name: 'manylinux38'
       python.version: '3.8'
 
