@@ -26,10 +26,6 @@ import setuptools
 from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
-# Set msvc runtime dll for windows build
-import distutils.cygwinccompiler
-distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
-
 # Package paths e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
 EDM_Lib_Path   = os.path.join( tmpInstallPath, "cppEDM/lib" )
@@ -118,7 +114,7 @@ class BuildExt( build_ext ):
     c_opts = {
         'msvc'    : ['/EHsc'],
         'unix'    : ['-llapack'],
-        'mingw32' : ['-DMS_WIN64','-D_hypot=hypot'] # Only for win cp35!!!
+        'mingw32' : ['-DMS_WIN64']
     }
 
     if sys.platform == 'darwin':
