@@ -13,13 +13,12 @@ Functionality includes:
 ## Installation
 
 ### Python Package Index (PyPI)
-Certain Mac OSX and Windows platforms are supported with prebuilt binary distributions and can be installed using the Python pip [pyEDM](https://pypi.org/project/pyEDM/) module on PyPI.
+Certain MacOS, Linux and Windows platforms are supported with prebuilt binary distributions installed from PyPI [pyEDM](https://pypi.org/project/pyEDM/) using the Python pip module. 
 
-Installation can be executed as: `python -m pip install pyEDM`
-
+Command line using the Python pip module: `python -m pip install pyEDM`
 
 ### Manual Install
-Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user is required to first build the cppEDM library on their machine, and then install the Python package using pip.  On OSX and Linux this requires g++, on Windows, Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
+Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user can build the cppEDM library on their machine, then install the Python package using pip.  On OSX and Linux this requires g++. On Windows, [mingw](http://www.mingw.org/) and Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
 
 Note that the [LAPACK](http://www.netlib.org/lapack/explore-html/index.html) library is required to build cppEDM.
 
@@ -29,9 +28,13 @@ Note that the [LAPACK](http://www.netlib.org/lapack/explore-html/index.html) lib
 3. Build and install package: `cd ../..; python -m pip install . --user --trusted-host pypi.org`
 
 #### Windows
-1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
-2. Build cppEDM library: `cd pyEDM\cppEDM\src; nmake /f makefile.windows`
-3. Build and install package: `cd ..\..; python -m pip install . --user --trusted-host pypi.org`
+0. We do not have resources to maintain windows build support. These suggestions may be useful.
+1. Requires [mingw](http://www.mingw.org/) installation.
+2. Requires [gfortran](https://gcc.gnu.org/wiki/GFortranBinariesWindows) libraries.
+3. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
+4. Build cppEDM library: `cd pyEDM\cppEDM\src; make`
+5. Adjust paths to find gfortran and openblas libraries (pyEDM/pyEDM/etc/windows/libopenblas.a). You may need to rename libEDM.a to EDM.lib, and openblas.a to openblas.lib.
+6. Build and install package in `pyEDM\`: `python -m pip install . --user --trusted-host pypi.org`
 
 ---
 ## Usage
