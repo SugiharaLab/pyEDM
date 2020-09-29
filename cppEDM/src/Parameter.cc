@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 5, 0, "2020-07-01" )
+    version          ( 1, 6, 0, "2020-09-27" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -439,6 +439,12 @@ void Parameters::Validate() {
                 msg << "Parameters::Validate(): Set knn = " << knn
                     << " for SMap. " << std::endl;
                 std::cout << msg.str();
+            }
+            if ( knn < E + 1 ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate() S-Map knn must be at least "
+                          " E+1 = " << E + 1 << ".\n";
+                throw std::runtime_error( errMsg.str() );
             }
         }
         if ( not embedded and columnNames.size() > 1 ) {
