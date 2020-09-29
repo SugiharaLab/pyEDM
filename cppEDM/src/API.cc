@@ -371,6 +371,7 @@ CCMValues CCM( std::string pathIn,
                int         Tp,
                int         knn,
                int         tau,
+               int         exclusionRadius,
                std::string colNames,
                std::string targetName,
                std::string libSizes_str,
@@ -385,8 +386,9 @@ CCMValues CCM( std::string pathIn,
     DataFrame< double > DF( pathIn, dataFile );
 
     CCMValues ccmValues = CCM( std::ref( DF ), pathOut, predictFile,
-                               E, Tp, knn, tau, colNames, targetName,
-                               libSizes_str, sample, random, replacement,
+                               E, Tp, knn, tau, exclusionRadius,
+                               colNames, targetName, libSizes_str,
+                               sample, random, replacement,
                                seed, includeData, verbose );
 
     return ccmValues;
@@ -396,55 +398,56 @@ CCMValues CCM( std::string pathIn,
 // CCM with DataFrame input
 //----------------------------------------------------------------------
 CCMValues CCM( DataFrame< double > & DF,
-               std::string         pathOut,
-               std::string         predictFile,
-               int                 E,
-               int                 Tp,
-               int                 knn,
-               int                 tau,
-               std::string         colNames,
-               std::string         targetName,
-               std::string         libSizes_str,
-               int                 sample,
-               bool                random,
-               bool                replacement,
-               unsigned            seed,
-               bool                includeData,
-               bool                verbose )
+               std::string pathOut,
+               std::string predictFile,
+               int         E,
+               int         Tp,
+               int         knn,
+               int         tau,
+               int         exclusionRadius,
+               std::string colNames,
+               std::string targetName,
+               std::string libSizes_str,
+               int         sample,
+               bool        random,
+               bool        replacement,
+               unsigned    seed,
+               bool        includeData,
+               bool        verbose )
 {
     // Set library and prediction indices to entire library (embedded)
     std::stringstream ss;
     ss << "1 " << DF.NRows();
 
     Parameters parameters = Parameters( Method::CCM,
-                                        "",           // pathIn
-                                        "",           // dataFile
-                                        pathOut,      // 
-                                        predictFile,  // 
-                                        ss.str(),     // lib_str
-                                        ss.str(),     // pred_str
-                                        E,            // 
-                                        Tp,           // 
-                                        knn,          // 
-                                        tau,          // 
-                                        0,            // theta
-                                        0,            // exclusionRadius
-                                        colNames,     // 
-                                        targetName,   // 
-                                        false,        // embedded
-                                        false,        // const_predict
-                                        verbose,      // 
-                                        "",           // SmapFile
-                                        "",           // blockFile
-                                        0,            // multiviewEnsemble
-                                        0,            // multiviewD
-                                        false,        // multiviewTrainLib
-                                        libSizes_str, // 
-                                        sample,       // 
-                                        random,       // 
-                                        replacement,  // 
-                                        seed,         //
-                                        includeData );//
+                                        "",              // pathIn
+                                        "",              // dataFile
+                                        pathOut,         // 
+                                        predictFile,     // 
+                                        ss.str(),        // lib_str
+                                        ss.str(),        // pred_str
+                                        E,               // 
+                                        Tp,              // 
+                                        knn,             // 
+                                        tau,             // 
+                                        0,               // theta
+                                        exclusionRadius, //
+                                        colNames,        // 
+                                        targetName,      // 
+                                        false,           // embedded
+                                        false,           // const_predict
+                                        verbose,         // 
+                                        "",              // SmapFile
+                                        "",              // blockFile
+                                        0,               // multiviewEnsemble
+                                        0,               // multiviewD
+                                        false,           // multiviewTrainLib
+                                        libSizes_str,    // 
+                                        sample,          // 
+                                        random,          // 
+                                        replacement,     // 
+                                        seed,            //
+                                        includeData );   //
 
     // Instantiate EDM::Simplex::CCM object
     CCMClass CCMModel = CCMClass( DF, std::ref( parameters ) );

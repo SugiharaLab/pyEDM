@@ -159,7 +159,7 @@ class test_EDM( unittest.TestCase ):
         print ( "--- CCM ---" )
         df = EDM.CCM( "", self.Files[ "sardine_anchovy_sst.csv" ],
                       None, "./", "", 
-                      3, 0, 0, -1, "anchovy", "np_sst",
+                      3, 0, 0, -1, 0, "anchovy", "np_sst",
                       "10 75 5", 1, False, False, 0, False, True )
 
         dfv = EDM.ReadDataFrame( "",

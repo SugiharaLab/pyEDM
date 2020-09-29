@@ -61,7 +61,7 @@ def main():
                   "x y", "x", "", "", None, True, False, True, True )
     
     df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
-                  3, 0, 0, -1, "anchovy", "np_sst",
+                  3, 0, 0, -1, 0, "anchovy", "np_sst",
                   "10 70 10", 100, True, False, 0, False, True, True )
 
 #------------------------------------------------------------

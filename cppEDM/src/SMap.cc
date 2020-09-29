@@ -161,13 +161,34 @@ void SMapClass::WriteOutput () {
         coefficients.TimeName() = projection.TimeName();
     }
     // else { throw ? }  JP
-    
-    // coefficients column names: C0, C1, C2, ...
+
+    // coefficients column names
     std::vector<std::string> coefNames;
-    for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
-        std::stringstream coefName;
-        coefName << "C" << col;
-        coefNames.push_back( coefName.str() );
+    if ( parameters.columnNames.size() and parameters.targetName.size() ) {
+        coefNames.push_back( "C0" );
+        
+        if ( parameters.embedded ) {
+            for ( auto colName : parameters.columnNames ) {
+                std::stringstream coefName;
+                coefName << "∂" << colName << "/∂" << parameters.targetName;
+                coefNames.push_back( coefName.str() );
+            }
+        }
+        else {
+            for ( auto colName : embedding.ColumnNames() ) {
+                std::stringstream coefName;
+                coefName << "∂" << colName << "/∂" << parameters.targetName;
+                coefNames.push_back( coefName.str() );
+            }
+        }
+    }
+    else {
+        // Default: C0, C1, C2, ...
+        for ( size_t col = 0; col < coefficients.NColumns(); col++ ) {
+            std::stringstream coefName;
+            coefName << "C" << col;
+            coefNames.push_back( coefName.str() );
+        }
     }
     coefficients.ColumnNames() = coefNames;
 
