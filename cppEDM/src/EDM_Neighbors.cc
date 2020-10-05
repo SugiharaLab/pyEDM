@@ -207,7 +207,22 @@ void EDM::FindNeighbors() {
         //     to nan, which translate to "quiet nan".  Following PEP 20,
         //     generate WARNING if parameters.knn neighbors are not found.
         std::valarray< double > knnDistances( nanf("knn"), parameters.knn );
-        std::valarray< size_t > knnLibRows  ( nanl("knn"), parameters.knn );
+
+        // JP: Wow. To satisfy the R clang-UBSAN, we cannot initialise
+        //     knnLibRows size_t with nanl(), it complains:
+        //     "nan is outside the range of representable values of type
+        //     'const unsigned long'"  --- Ooookay.
+        //     Sooo... let's roll the dice that init with 0 causes no
+        //     problems since we use knnDistances to select rows.
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //     This breaks code conformity between cppEDM : pyEDM : rEDM
+        //     with potential to defeat the purpose of a unified engine. 
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#ifndef USING_R
+        std::valarray< size_t > knnLibRows( nanl("knn"), parameters.knn );
+#else
+        std::valarray< size_t > knnLibRows( 0, parameters.knn );
+#endif
 
         int lib_row_i = 0;
         int k         = 0;

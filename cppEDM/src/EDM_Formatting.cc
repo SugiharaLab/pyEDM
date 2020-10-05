@@ -43,40 +43,28 @@ void EDM::CheckDataRows( std::string call )
     size_t library_max_i =
         parameters.library[ parameters.library.size() - 1 ];
 
-    size_t shift;
-    if ( parameters.embedded ) {
-        shift = 0;
-    }
-    else {
+    if ( not parameters.embedded ) {
         if ( parameters.E < 1 ) {
             std::stringstream errMsg;
             errMsg << "CheckDataRows(): E = " << parameters.E
                    << " is invalid.\n" ;
             throw std::runtime_error( errMsg.str() );
         }
-
-        shift = abs( parameters.tau ) * ( parameters.E - 1 );
     }
 
     if ( data.NRows() <= prediction_max_i ) {
         std::stringstream errMsg;
         errMsg << "CheckDataRows(): " << call
-               << ": The prediction index "
-               << prediction_max_i + 1
+               << ": The prediction index " << prediction_max_i + 1
                << " exceeds the number of data rows "
                << data.NRows();
         throw std::runtime_error( errMsg.str() );
     }
 
-    // Tweak for CCM that sets lib = pred = [1, NRow]
-    if ( parameters.method == Method::CCM ) { shift = 0; }
-    
-    if ( data.NRows() <= library_max_i + shift ) {
+    if ( data.NRows() <= library_max_i ) {
         std::stringstream errMsg;
         errMsg << "CheckDataRows(): " << call
                << ": The library index " << library_max_i + 1
-               <<  " + tau(E-1) " << shift << " = "
-               << library_max_i + 1 + shift
                << " exceeds the number of data rows "
                << data.NRows();
         throw std::runtime_error( errMsg.str() );
