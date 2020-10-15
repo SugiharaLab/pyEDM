@@ -218,10 +218,11 @@ void EDM::FindNeighbors() {
         //     This breaks code conformity between cppEDM : pyEDM : rEDM
         //     with potential to defeat the purpose of a unified engine. 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifndef USING_R
-        std::valarray< size_t > knnLibRows( nanl("knn"), parameters.knn );
+#ifdef USING_R
+        size_t knnLibRowInit = 0;
+        std::valarray< size_t > knnLibRows( knnLibRowInit, parameters.knn );
 #else
-        std::valarray< size_t > knnLibRows( 0, parameters.knn );
+        std::valarray< size_t > knnLibRows( nanl("knn"), parameters.knn );
 #endif
 
         int lib_row_i = 0;
