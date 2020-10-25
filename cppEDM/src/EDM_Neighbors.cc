@@ -112,10 +112,6 @@ void EDM::FindNeighbors() {
     size_t N_library_rows    = parameters.library.size();
     size_t N_prediction_rows = parameters.prediction.size();
 
-    auto max_lib_it = std::max_element( parameters.library.begin(),
-                                        parameters.library.end() );
-    int max_lib_index = *max_lib_it;
-
     if ( parameters.verbose and parameters.method != Method::CCM ) {
         // Identify degenerate library : prediction points by
         // set_intersection() of lib & pred indices, needs a result vector
@@ -173,13 +169,24 @@ void EDM::FindNeighbors() {
     } std::cout << std::endl;
 #endif
 
-    // Allocate in EDM class object
+    // Allocate objects in EDM class
     // JP Put on heap & destructor, or use smart pointers
-    knn_neighbors = DataFrame< size_t >( N_prediction_rows, parameters.knn );
-    knn_distances = DataFrame< double >( N_prediction_rows, parameters.knn );
-    ties          = std::vector< bool >( N_prediction_rows, false );
+    knn_neighbors = DataFrame  < size_t >( N_prediction_rows, parameters.knn );
+    knn_distances = DataFrame  < double >( N_prediction_rows, parameters.knn );
+    ties          = std::vector< bool   >( N_prediction_rows, false );
+    tieFirstIndex = std::vector< size_t >( N_prediction_rows, 0     );
     tiePairs      = std::vector< std::vector< std::pair< double, size_t > > >
                     ( N_prediction_rows );
+
+    // Identify maximum library index to compare against lib_row + Tp 
+    // to avoid asking for neighbors outside the library
+    // JP: Can this be generalised to handle disjoint library breaks?
+    auto max_lib_it = std::max_element( parameters.library.begin(),
+                                        parameters.library.end() );
+    int max_lib_index = *max_lib_it;
+
+    // Flag to push warning if knn neigbhors not found
+    bool knnNeighborsFound = true;
 
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find the
@@ -190,7 +197,7 @@ void EDM::FindNeighbors() {
         // The actual prediction row specified by user (zero offset)
         size_t predictionRow = parameters.prediction[ predPair_i ];
 
-        // rowPair is a vector of pairs of length library rows
+        // rowPair is a vector of [Distance, lib] pairs of length library rows
         // Get the rowPair for this prediction row
         std::vector< std::pair<double, size_t> > rowPair = predPairs[predPair_i];
 
@@ -203,41 +210,25 @@ void EDM::FindNeighbors() {
         //----------------------------------------------------------------
         // Insert knn distance / library row index into knn vectors
         //----------------------------------------------------------------
-        // JP: This is sneaky: knnDistances & knnLibRows are initialised
-        //     to nan, which translate to "quiet nan".  Following PEP 20,
+        // JP: This is sneaky: knnDistances are initialised to nan,
+        //     which translate to "quiet nan".  Following PEP 20,
         //     generate WARNING if parameters.knn neighbors are not found.
         std::valarray< double > knnDistances( nanf("knn"), parameters.knn );
-
-        // JP: Wow. To satisfy the R clang-UBSAN, we cannot initialise
-        //     knnLibRows size_t with nanl(), it complains:
-        //     "nan is outside the range of representable values of type
-        //     'const unsigned long'"  --- Ooookay.
-        //     Sooo... let's roll the dice that init with 0 causes no
-        //     problems since we use knnDistances to select rows.
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //     This breaks code conformity between cppEDM : pyEDM : rEDM
-        //     with potential to defeat the purpose of a unified engine. 
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef USING_R
-        size_t knnLibRowInit = 0;
-        std::valarray< size_t > knnLibRows( knnLibRowInit, parameters.knn );
-#else
-        std::valarray< size_t > knnLibRows( nanl("knn"), parameters.knn );
-#endif
+        std::valarray< size_t > knnLibRows  ( (size_t) 0,  parameters.knn );
 
         int lib_row_i = 0;
         int k         = 0;
         while ( k < parameters.knn ) {
             if ( lib_row_i >= rowPairSize ) {
-                std::stringstream errMsg;
-                errMsg << "WARNING: FindNeighbors(): knn search failed "
-                       << "at prediction row " << predictionRow << ". "
-                       << k << " out of " << parameters.knn
-                       << " neighbors were found in the library.\n";
-                std::cout << errMsg.str();
+                // Failed to find knn neighbors
+                knnNeighborsFound = false;
 
-                k = (int) rowPair.size(); // Avoid tie check below
-                break;                    // Continue to next row
+                // JP: Bogus : Fill missing values, can't resize the DataFrame
+                for ( int k_ = k; k_ < parameters.knn; k_++ ) {
+                    knnDistances[ k_ ] = 1.E300;
+                    knnLibRows  [ k_ ] = 0;
+                }
+                break; // Continue to next predictionRow
             }
 
             double distance = rowPair[ lib_row_i ].first;
@@ -275,22 +266,59 @@ void EDM::FindNeighbors() {
         knn_distances.WriteRow( predPair_i, knnDistances );
         knn_neighbors.WriteRow( predPair_i, knnLibRows   );
 
-        // Check for ties. 1.18e−38 is float 32-bit min
-        if ( k < (int) rowPair.size() ) {
-            if ( rowPair[ k ].first <= rowPair[ k-1 ].first ) {
-                // At least one tie...
+        //----------------------------------------------------------------
+        // Check for ties.
+        // Set ties[predPair_i] = true; anyTies = true if found.
+        // Note: A tie exists only if the k-th nn has distance equal
+        //       to the k+1 nn. Multiple ties can exist beyond k+1. 
+        //----------------------------------------------------------------
+        if ( parameters.method == Method::Simplex or
+             parameters.method == Method::CCM ) {
+
+            // Is there a tie? Note k was post incremented in loop above
+            bool   knnDistanceTie = false;
+            double tieDistance    = -1;
+            if ( rowPair[ k ].first > 0 and
+                 rowPair[ k ].first == rowPair[ k - 1 ].first ) {
+                knnDistanceTie = true;
+                tieDistance    = rowPair[ k ].first;
+            }
+
+            if ( knnDistanceTie ) {
+                // At least one tie... find the first tie in knn
+                size_t firstTieIndex = 0;
+                for ( size_t i = 0; i < knnDistances.size(); i++ ) {
+                    if ( knnDistances[ i ] == tieDistance ) {
+                        firstTieIndex = i;
+                        break;
+                    }
+                }
+
+                tieFirstIndex[ predPair_i ] = firstTieIndex;
+
+                // Save list of rowTiePairs
                 std::vector< std::pair< double, size_t > > rowTiePairs;
 
-                while( k < (int) rowPair.size() and rowPair[ k ].first > 0 and
-                       rowPair[ k ].first <= rowPair[ k-1 ].first ) {
+                // Start looking at firstTieIndex
+                size_t kk = firstTieIndex;
+                while( kk < rowPair.size() - 1 and
+                       rowPair[ kk ].first > 0 and
+                       rowPair[ kk ].first == rowPair[ k+1 ].first ) {
 
                     // Set flag in ties and store tie pairs in tiePairs
                     ties[ predPair_i ] = true;
-                    
-                    rowTiePairs.push_back(std::make_pair( rowPair[ k ].first,
-                                                          rowPair[ k ].second ));
-                    k++;
+
+                    std::pair< double, size_t > thisPair =
+                        std::make_pair(rowPair[ kk ].first,
+                                       rowPair[ kk ].second);
+
+                    rowTiePairs.push_back( thisPair );
+                    kk++;
                 }
+
+                // Add the final tie since the above loop is pairs : ???
+                // Or, in Simplex add 1 to rowTiePairs.size() for numTies.
+                // ...
 
                 if ( find( ties.begin(), ties.end(), true ) != ties.end() ) {
                     anyTies = true;
@@ -299,6 +327,13 @@ void EDM::FindNeighbors() {
             }
         }
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
+
+    if ( not knnNeighborsFound ) {
+        std::stringstream errMsg;
+        errMsg << "WARNING: FindNeighbors(): knn search failed to find "
+               << parameters.knn << " neighbors in the library.\n";
+        std::cout << errMsg.str();
+    }
 
 #ifdef DEBUG_ALL
     for ( size_t i = 0; i < ties.size(); i++ ) {

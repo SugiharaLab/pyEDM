@@ -80,7 +80,7 @@ void SMapClass::SMap ( Solver solver ) {
             libRowBase = knn_neighbors( row, k );
             libRow     = libRowBase + parameters.Tp;
             
-            if ( libRow > maxLibIndex ) {
+            if ( libRow > maxLibIndex or libRow < 0 ) {
                 // The knn index + Tp is outside the library domain
                 // Can only happen if noNeighborLimit = true is used.
                 if ( parameters.verbose ) {
@@ -88,12 +88,8 @@ void SMapClass::SMap ( Solver solver ) {
                     msg << "SMap() in row " << row << " libRow " << libRow
                         << " exceeds library domain.\n";
                     std::cout << msg.str();
-                }                
-                // Use the neighbor at the 'base' of the trajectory
-                B[ k ] = target[ libRowBase ];
-            }
-            else if ( libRow < 0 ) {
-                B[ k ] = target[ 0 ];
+                }
+                B[ k ] = NAN;
             }
             else {
                 B[ k ] = target[ libRow ];

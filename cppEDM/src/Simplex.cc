@@ -89,27 +89,16 @@ void SimplexClass::Simplex () {
         for ( int k = 0; k < parameters.knn; k++ ) {
             int libRow = knn_neighbors( row, k ) + parameters.Tp;
 
-            if ( libRow > maxLibIndex ) {
-                // The k_NN index + Tp is outside the library domain
+            if ( libRow > maxLibIndex or libRow < 0 ) {
+                // The k_NN index + Tp is outside the library domain.
                 // Can only happen if noNeighborLimit = true is used.
                 if ( parameters.verbose ) {
                     std::stringstream msg;
                     msg << "Simplex() in row " << row << " libRow " << libRow
-                        << " exceeds library domain.\n";
+                        << " outside library domain.\n";
                     std::cout << msg.str();
                 }
-                // Use the neighbor at the 'base' of the trajectory
-                libTarget[ k ] = target[ libRow - abs( parameters.Tp ) ];
-            }
-            else if ( libRow < 0 ) {
-                if ( parameters.verbose ) {
-                    std::stringstream msg;
-                    msg << "Simplex() in row " << row << " libRow " << libRow
-                        << " precedes library domain.\n";
-                    std::cout << msg.str();
-                }
-                // Use the neighbor at the 'base' of the trajectory
-                libTarget[ k ] = target[ 0 ];
+                libTarget[ k ] = NAN;
             }
             else {
                 libTarget[ k ] = target[ libRow ];
@@ -121,83 +110,46 @@ void SimplexClass::Simplex () {
         //------------------------------------------------------------------
         if ( anyTies ) {
             if ( ties[ row ] ) {
+
                 std::vector< std::pair< double, size_t > > rowTiePairs =
                     tiePairs[ row ];
-                
-                size_t numTies   = rowTiePairs.size();
-                double tieFactor = 1;
-                if ( numTies ) {
-                    tieFactor = 1 / double( numTies );
-                }
+
+                size_t tieFirstIdx = tieFirstIndex[ row ];
+                size_t numTies     = rowTiePairs.size() + 1; // +1 : Pairs
+                size_t knnSize     = tieFirstIdx + numTies;
+
+                double tieFactor = double( numTies + parameters.knn - knnSize )/
+                                   double( numTies );
+
+                double tieTarget = *( end( libTarget ) - 1 );
+                double tieWeight = *( end( weights   ) - 1 );
 
                 // resize libTarget
                 std::valarray< double > libTargetCopy( libTarget );
-                libTarget.resize( parameters.knn + numTies );// destroys contents
+                libTarget.resize( knnSize );// destroys contents
 
-                // Copy original libTarget knn values
+                // Copy original libTarget values
                 libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
 
-                // Add numTies values
-                for ( size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
-                    int libRow = rowTiePairs[ k2 ].second + parameters.Tp;
-                    if ( libRow > maxLibIndex ) {
-                        libTarget[ k2 + parameters.knn ] =
-                            target[ libRow - abs( parameters.Tp ) ];
-                    }
-                    else if ( libRow < 0 ) {
-                        libTarget[ k2 + parameters.knn ] = target[ 0 ];
-                    }
-                    else {
-                        libTarget[ k2 + parameters.knn ] = target[ libRow ];
-                    }
-                }
-
-                // Weights
-                // Resize distanceRow 
-                std::valarray<double> distanceRowCopy( distanceRow );
-                distanceRow.resize(parameters.knn + numTies);// destroys contents
-                
-                // Copy original distanceRow knn values
-                distanceRow[ std::slice( 0, parameters.knn, 1 ) ] =
-                    distanceRowCopy;
-                
-                // Add numTies values
-                for (size_t k2 = 0; k2 < rowTiePairs.size(); k2++ ) {
-                    distanceRow[ k2 + parameters.knn ] = rowTiePairs[ k2 ].first;
-                }
-                minDistance = distanceRow.min();
-
-                // Resize weightedDistances
-                std::valarray<double> weightedDistancesCopy( weightedDistances );
-                weightedDistances.resize( parameters.knn + numTies ); // destroys
-                
-                if ( minDistance == 0 ) {
-                    // Handle cases of distanceRow = 0
-                    for ( int i = 0; i < parameters.knn + (int) numTies; i++ ) {
-                        if ( distanceRow[i] > 0 ) {
-                            weightedDistances[i] = exp( -distanceRow[i] /
-                                                        minDistance );
-                        }
-                        else {
-                            weightedDistances[i] = 1;
-                        }
-                    }
-                }
-                else {
-                    weightedDistances = exp( -distanceRow / minDistance );
-                }
+                // Copy ties at end
+                std::slice knnExpandSlice =
+                    std::slice( parameters.knn - 1,
+                                knnSize - parameters.knn + 1, 1 );
+                libTarget[ knnExpandSlice ] = tieTarget;
 
                 // Resize weights
                 std::valarray<double> weightsCopy( weights );
-                weights.resize( parameters.knn + numTies ); // destroys
-                
+                weights.resize( knnSize ); // destroys
+
                 // Copy original knn weight values
                 weights[ std::slice( 0, parameters.knn, 1 ) ] = weightsCopy;
-                
-                // Apply weight adjusment for ties
-                for ( size_t k2 = parameters.knn; k2 < weights.size(); k2++ ) {
-                    weights[k2] = tieFactor *
-                        std::max( weightedDistances[k2], minWeight );
+
+                // Copy ties at end
+                weights[ knnExpandSlice ] = tieWeight;
+
+                // Apply weight adjusment to ties
+                for ( size_t i = tieFirstIdx; i < weights.size(); i++ ) {
+                    weights[i] = tieFactor * weights[i];
                 }
             } // if ( ties[ row ] )
         } // if ( anyTies )
