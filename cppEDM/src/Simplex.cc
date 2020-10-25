@@ -41,10 +41,6 @@ void SimplexClass::Simplex () {
     const_predictions = std::valarray< double > ( 0., Npred );
     variance          = std::valarray< double > ( 0., Npred );
     
-    auto maxLibit = std::max_element( parameters.library.begin(),
-                                      parameters.library.end() );
-    int maxLibIndex = *maxLibit; // int for compare to libRow int
-    
     double minWeight = 1.E-6;
 
     // Process each prediction row in neighbors : distances
@@ -55,7 +51,7 @@ void SimplexClass::Simplex () {
         // Establish exponential weight reference, the 'distance scale'
         double minDistance = distanceRow.min();
 
-        // Compute weight vector for each k_NN
+        // Compute weightedDistances vector for each k_NN
         std::valarray< double > weightedDistances( minWeight, parameters.knn );
 
         if ( minDistance == 0 ) {
@@ -77,7 +73,7 @@ void SimplexClass::Simplex () {
             weightedDistances = exp( -distanceRow / minDistance );
         }
 
-        // weight vector
+        // weights vector is weightedDistances > minWeight
         std::valarray< double > weights( parameters.knn );
         for  ( int i = 0; i < parameters.knn; i++ ) {
             weights[i] = std::max( weightedDistances[i], minWeight );
@@ -87,22 +83,8 @@ void SimplexClass::Simplex () {
         std::valarray< double > libTarget( parameters.knn );
 
         for ( int k = 0; k < parameters.knn; k++ ) {
-            int libRow = knn_neighbors( row, k ) + parameters.Tp;
-
-            if ( libRow > maxLibIndex or libRow < 0 ) {
-                // The k_NN index + Tp is outside the library domain.
-                // Can only happen if noNeighborLimit = true is used.
-                if ( parameters.verbose ) {
-                    std::stringstream msg;
-                    msg << "Simplex() in row " << row << " libRow " << libRow
-                        << " outside library domain.\n";
-                    std::cout << msg.str();
-                }
-                libTarget[ k ] = NAN;
-            }
-            else {
-                libTarget[ k ] = target[ libRow ];
-            }
+            int libRow     = knn_neighbors( row, k ) + parameters.Tp;
+            libTarget[ k ] = target[ libRow ];
         }
 
         //------------------------------------------------------------------
@@ -111,8 +93,8 @@ void SimplexClass::Simplex () {
         if ( anyTies ) {
             if ( ties[ row ] ) {
 
-                std::vector< std::pair< double, size_t > > rowTiePairs =
-                    tiePairs[ row ];
+                std::vector< std::pair< double, size_t > >
+                    rowTiePairs = tiePairs[ row ];
 
                 size_t tieFirstIdx = tieFirstIndex[ row ];
                 size_t numTies     = rowTiePairs.size() + 1; // +1 : Pairs
@@ -126,7 +108,7 @@ void SimplexClass::Simplex () {
 
                 // resize libTarget
                 std::valarray< double > libTargetCopy( libTarget );
-                libTarget.resize( knnSize );// destroys contents
+                libTarget.resize( knnSize ); // destroys contents
 
                 // Copy original libTarget values
                 libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
@@ -135,11 +117,12 @@ void SimplexClass::Simplex () {
                 std::slice knnExpandSlice =
                     std::slice( parameters.knn - 1,
                                 knnSize - parameters.knn + 1, 1 );
+
                 libTarget[ knnExpandSlice ] = tieTarget;
 
                 // Resize weights
                 std::valarray<double> weightsCopy( weights );
-                weights.resize( knnSize ); // destroys
+                weights.resize( knnSize ); // destroys contents
 
                 // Copy original knn weight values
                 weights[ std::slice( 0, parameters.knn, 1 ) ] = weightsCopy;
@@ -153,7 +136,6 @@ void SimplexClass::Simplex () {
                 }
             } // if ( ties[ row ] )
         } // if ( anyTies )
-        //------------------------------------------------------------------
         //------------------------------------------------------------------
 
         // Prediction is average of weighted library projections

@@ -239,13 +239,11 @@ void EDM::FindNeighbors() {
                 continue; // degenerate pred : lib, ignore
             }
 
-            if ( not parameters.noNeighborLimit ) {
-                // Reach exceeding grasp : forecast point is outside library
-                if ( (int) lib_row + parameters.Tp > max_lib_index or
-                     (int) lib_row + parameters.Tp < 0 ) {
-                    lib_row_i++;
-                    continue; // keep looking 
-                }
+            // Reach exceeding grasp : forecast point is outside library
+            if ( (int) lib_row + parameters.Tp > max_lib_index or
+                 (int) lib_row + parameters.Tp < 0 ) {
+                lib_row_i++;
+                continue; // keep looking 
             }
 
             // Exclusion radius: units are data rows, not time
