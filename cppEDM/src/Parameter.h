@@ -60,7 +60,6 @@ public: // No need for protected or private
     unsigned    seed;             // CCM random selection RNG seed
     bool        includeData;      // CCM include all simplex projection results
 
-    bool        noNeighborLimit;  // Strictly forbid neighbors outside library
     bool        validated;
 
     Version version; // Version object, instantiated in constructor
@@ -104,8 +103,7 @@ public: // No need for protected or private
         bool        randomLib         = true,
         bool        replacement       = false,
         unsigned    seed              = 0,  // 0: Generate random seed in CCM
-        bool        includeData       = false,
-        bool        noNeighborLimit   = false
+        bool        includeData       = false
     );
 
     ~Parameters();

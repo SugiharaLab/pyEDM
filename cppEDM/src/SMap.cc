@@ -49,16 +49,12 @@ void SMapClass::SMap ( Solver solver ) {
     coefficients = DataFrame< double >( Npred + abs( parameters.Tp ),
                                         parameters.E + 1 );
     
-    auto maxLibit = std::max_element( parameters.library.begin(),
-                                      parameters.library.end() );
-    int maxLibIndex = *maxLibit; // int for compare to libRow int
-    
     // Process each prediction row in neighbors : distances
     for ( size_t row = 0; row < Npred; row++ ) {
         
         double D_avg = knn_distances.Row( row ).sum() / parameters.knn;
 
-        // Compute weight vector 
+        // Compute weight vector w
         std::valarray< double > w = std::valarray< double >( parameters.knn );
         if ( parameters.theta > 0 ) {
             w = std::exp( (-parameters.theta / D_avg) * knn_distances.Row(row) );
@@ -80,20 +76,7 @@ void SMapClass::SMap ( Solver solver ) {
             libRowBase = knn_neighbors( row, k );
             libRow     = libRowBase + parameters.Tp;
             
-            if ( libRow > maxLibIndex or libRow < 0 ) {
-                // The knn index + Tp is outside the library domain
-                // Can only happen if noNeighborLimit = true is used.
-                if ( parameters.verbose ) {
-                    std::stringstream msg;
-                    msg << "SMap() in row " << row << " libRow " << libRow
-                        << " exceeds library domain.\n";
-                    std::cout << msg.str();
-                }
-                B[ k ] = NAN;
-            }
-            else {
-                B[ k ] = target[ libRow ];
-            }
+            B[ k ] = target[ libRow ];
 
             //---------------------------------------------------------------
             // Linear system coefficient matrix

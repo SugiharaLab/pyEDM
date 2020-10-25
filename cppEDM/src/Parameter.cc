@@ -41,8 +41,7 @@ Parameters::Parameters(
     bool        randomLib,
     bool        replacement,
     unsigned    seed,
-    bool        includeData,
-    bool        noNeighborLimit
+    bool        includeData
     ) :
     // Variable initialization from Parameters arguments
     method           ( method ),
@@ -82,11 +81,10 @@ Parameters::Parameters(
     replacement      ( replacement ),
     seed             ( seed ),
     includeData      ( includeData ),
-    noNeighborLimit  ( noNeighborLimit ),
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 6, 2, "2020-10-21" )
+    version          ( 1, 6, 2, "2020-10-25" )
 {
     // Constructor code
     if ( method != Method::None ) {
