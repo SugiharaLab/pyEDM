@@ -218,7 +218,9 @@ void EDM::FindNeighbors() {
 
         int lib_row_i = 0;
         int k         = 0;
+
         while ( k < parameters.knn ) {
+
             if ( lib_row_i >= rowPairSize ) {
                 // Failed to find knn neighbors
                 knnNeighborsFound = false;
@@ -243,7 +245,20 @@ void EDM::FindNeighbors() {
             if ( (int) lib_row + parameters.Tp > max_lib_index or
                  (int) lib_row + parameters.Tp < 0 ) {
                 lib_row_i++;
-                continue; // keep looking 
+                continue; // keep looking
+            }
+            // If disjoint lib, grind through the library to exclude
+            if ( parameters.libPairs.size() > 1 ) {
+                // Already checked for global (<0, >max_lib_index) bounds
+                int thisLibRow = (int) lib_row + parameters.Tp;
+                auto libi = find( parameters.library.begin(),
+                                  parameters.library.end(),(size_t) thisLibRow );
+
+                if ( libi == parameters.library.end() ) {
+                    // lib_row + Tp not in library
+                    lib_row_i++;
+                    continue; // keep looking
+                }
             }
 
             // Exclusion radius: units are data rows, not time

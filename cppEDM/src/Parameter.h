@@ -23,6 +23,8 @@ public: // No need for protected or private
     std::string lib_str;            // multi argument parameters for library
     std::string pred_str;           // multi argument parameters for prediction
 
+    std::vector< std::pair< size_t, size_t > > libPairs; // numeric bounds
+
     std::vector<size_t> library;    // library row indices
     std::vector<size_t> prediction; // prediction row indices
 
