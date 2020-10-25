@@ -35,9 +35,10 @@ public: // No need for private or protected
     std::valarray< double > const_predictions;
     std::valarray< double > variance;
 
-    // Prediction row accounting of library neighbor ties
+    // Prediction row accounting of library neighbor ties :: Simplex
     bool anyTies;
-    std::vector< bool > ties;  // true/false each prediction row
+    std::vector< bool >   ties;          // true/false each prediction row
+    std::vector< size_t > tieFirstIndex; // index in knn of first tie
     std::vector< std::vector< std::pair< double, size_t > > > tiePairs;
 
     std::valarray< double > target; // JP Can we do away with this?
