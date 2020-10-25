@@ -128,8 +128,8 @@ void Parameters::Validate() {
             throw std::runtime_error( errMsg );
         }
 
-        // Generate vector of start, stop index pairs
-        std::vector< std::pair< size_t, size_t > > libPairs;
+        // Generate libPairs vector of start, stop index pairs
+        libPairs.clear(); // JP: Is shared libPairs a multithreading issue?
         for ( size_t i = 0; i < lib_vec.size(); i = i + 2 ) {
             libPairs.emplace_back( std::make_pair( std::stoi( lib_vec[i] ),
                                                    std::stoi( lib_vec[i+1] ) ) );
