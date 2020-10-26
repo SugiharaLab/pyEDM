@@ -108,7 +108,8 @@ Parameters::~Parameters() {}
 //----------------------------------------------------------------
 void Parameters::Validate() {
 
-    validated = true;
+    validated       = true;
+    disjointLibrary = false;
 
     if ( not embedded and tau == 0 ) {
         std::string errMsg( "Parameters::Validate(): "
@@ -129,10 +130,13 @@ void Parameters::Validate() {
         }
 
         // Generate libPairs vector of start, stop index pairs
-        libPairs.clear(); // JP: Is shared libPairs a multithreading issue?
+        std::vector< std::pair< size_t, size_t > > libPairs; // numeric bounds
         for ( size_t i = 0; i < lib_vec.size(); i = i + 2 ) {
             libPairs.emplace_back( std::make_pair( std::stoi( lib_vec[i] ),
                                                    std::stoi( lib_vec[i+1] ) ) );
+        }
+        if ( libPairs.size() > 1 ) {
+            disjointLibrary = true;
         }
 
         size_t nLib = 0; // Count of lib items

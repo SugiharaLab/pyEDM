@@ -247,9 +247,9 @@ void EDM::FindNeighbors() {
                 lib_row_i++;
                 continue; // keep looking
             }
-            // If disjoint lib, grind through the library to exclude
-            if ( parameters.libPairs.size() > 1 ) {
-                // Already checked for global (<0, >max_lib_index) bounds
+            // If disjoint lib, grind through library to exclude
+            if ( parameters.disjointLibrary ) {
+                // Already checked for global ( < 0, > max_lib_index) bounds
                 int thisLibRow = (int) lib_row + parameters.Tp;
                 auto libi = find( parameters.library.begin(),
                                   parameters.library.end(),(size_t) thisLibRow );
