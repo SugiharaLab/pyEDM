@@ -346,7 +346,7 @@ void CrossMap( SimplexClass   & S,
                 values.PredictStats.WriteRow( predictionCount,
                                               predOutVec );
                 // Save predictions
-                values.Predictions.push_front( S.projection );
+                values.Predictions.push_front( Simplex_.projection );
             }
 
             predictionCount++;

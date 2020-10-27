@@ -122,7 +122,7 @@ class test_EDM( unittest.TestCase ):
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "Smap_embd_block_3sp_pyEDM.csv" ] )
         
-        S1 =       dfv.get('Prediction_t(+1)')
+        S1 =       dfv.get('Predictions')
         S2 = round( df.get('Predictions'), 4 ) 
         self.assertTrue( S1.equals( S2 ) )
         

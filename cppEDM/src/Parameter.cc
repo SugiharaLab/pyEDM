@@ -451,7 +451,12 @@ void Parameters::Validate() {
     //--------------------------------------------------------------------
     else if ( method == Method::SMap ) {
         if ( knn == 0 ) { // default knn = 0, set knn value
-            knn = library.size() - abs( Tp ) * (E + 1);
+            if ( Tp < 0 ) {
+                knn = library.size() - abs( Tp ) * (E + 1);
+            }
+            else {
+                knn = library.size() - 1;
+            }
 
             if ( verbose ) {
                 std::stringstream msg;

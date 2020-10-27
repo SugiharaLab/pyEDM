@@ -227,8 +227,7 @@ void EDM::FindNeighbors() {
 
                 // JP: Bogus : Fill missing values, can't resize the DataFrame
                 for ( int k_ = k; k_ < parameters.knn; k_++ ) {
-                    knnDistances[ k_ ] = 1.E300;
-                    knnLibRows  [ k_ ] = 0;
+                    knnDistances[ k_ ] = 0;
                 }
                 break; // Continue to next predictionRow
             }
@@ -341,7 +340,7 @@ void EDM::FindNeighbors() {
         }
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
 
-    if ( not knnNeighborsFound ) {
+    if ( parameters.verbose and not knnNeighborsFound ) {
         std::stringstream errMsg;
         errMsg << "WARNING: FindNeighbors(): knn search failed to find "
                << parameters.knn << " neighbors in the library.\n";
