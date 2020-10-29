@@ -450,13 +450,17 @@ void Parameters::Validate() {
     // embedded true : E set to size( columns ) for output processing
     //--------------------------------------------------------------------
     else if ( method == Method::SMap ) {
+        if ( embedded and columnNames.size() > 1 ) {
+            if ( columnIndex.size() ) {
+                E = columnIndex.size();
+            }
+            else if ( columnNames.size() ) {
+                E = columnNames.size();
+            }
+        }
+
         if ( knn == 0 ) { // default knn = 0, set knn value
-            if ( Tp < 0 ) {
-                knn = library.size() - abs( Tp ) * (E + 1);
-            }
-            else {
-                knn = library.size() - 1;
-            }
+            knn = library.size() - E;
 
             if ( verbose ) {
                 std::stringstream msg;
@@ -469,15 +473,6 @@ void Parameters::Validate() {
             std::stringstream errMsg;
             errMsg << "Parameters::Validate() S-Map knn must be at least 2.\n";
             throw std::runtime_error( errMsg.str() );
-        }
-
-        if ( embedded and columnNames.size() > 1 ) {
-            if ( columnIndex.size() ) {
-                E = columnIndex.size();
-            }
-            else if ( columnNames.size() ) {
-                E = columnNames.size();
-            }
         }
 
         if ( not embedded and columnNames.size() > 1 ) {
