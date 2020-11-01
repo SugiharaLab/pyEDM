@@ -139,7 +139,7 @@ void EDM::FindNeighbors() {
 
     // Pair the distances and library row indices for sort on distance
     // Each predPairs element correponds to a prediction row and
-    // holds a vector of < distance, lib_row > pairs for each lib_row
+    // holds a vector of < distance, libRow > pairs for each libRow
     std::vector< std::vector< std::pair< double, size_t > > >
         predPairs( N_prediction_rows );
 
@@ -178,7 +178,7 @@ void EDM::FindNeighbors() {
     tiePairs      = std::vector< std::vector< std::pair< double, size_t > > >
                     ( N_prediction_rows );
 
-    // Identify maximum library index to compare against lib_row + Tp 
+    // Identify maximum library index to compare against libRow + Tp 
     // to avoid asking for neighbors outside the library
     // JP: Can this be generalised to handle disjoint library breaks?
     auto max_lib_it = std::max_element( parameters.library.begin(),
@@ -203,7 +203,7 @@ void EDM::FindNeighbors() {
 
         int rowPairSize = (int) rowPair.size();
 
-        // sort < distance, lib_row > pairs for this predPair_i
+        // sort < distance, libRow > pairs for this predPair_i
         // distance must be .first
         std::sort( rowPair.begin(), rowPair.end(), DistanceCompare );
 
@@ -213,15 +213,15 @@ void EDM::FindNeighbors() {
         // JP: This is sneaky: knnDistances are initialised to nan,
         //     which translate to "quiet nan".  Following PEP 20,
         //     generate WARNING if parameters.knn neighbors are not found.
-        std::valarray< double > knnDistances( nanf("knn"), parameters.knn );
-        std::valarray< size_t > knnLibRows  ( (size_t) 0,  parameters.knn );
+        std::valarray< double > knnDistances( nan("knn"), parameters.knn );
+        std::valarray< size_t > knnLibRows  ( (size_t) 0, parameters.knn );
 
-        int lib_row_i = 0;
-        int k         = 0;
+        int libRow_i = 0;
+        int k        = 0;
 
         while ( k < parameters.knn ) {
 
-            if ( lib_row_i >= rowPairSize ) {
+            if ( libRow_i >= rowPairSize ) {
                 // Failed to find knn neighbors
                 knnNeighborsFound = false;
 
@@ -232,46 +232,44 @@ void EDM::FindNeighbors() {
                 break; // Continue to next predictionRow
             }
 
-            double distance = rowPair[ lib_row_i ].first;
-            size_t lib_row  = rowPair[ lib_row_i ].second;
+            double distance = rowPair[ libRow_i ].first;
+            size_t libRow   = rowPair[ libRow_i ].second;
+            int    libRowTp = (int) libRow + parameters.Tp;
 
-            if ( lib_row == predictionRow ) {
-                lib_row_i++;
-                continue; // degenerate pred : lib, ignore
+            if ( libRowTp == (int) predictionRow ) {
+                libRow_i++;
+                continue; // degenerate pred : lib + Tp, ignore
             }
 
             // Reach exceeding grasp : forecast point is outside library
-            if ( (int) lib_row + parameters.Tp > max_lib_index or
-                 (int) lib_row + parameters.Tp < 0 ) {
-                lib_row_i++;
+            if ( libRowTp > max_lib_index or libRowTp < 0 ) {
+                libRow_i++;
                 continue; // keep looking
             }
             // If disjoint lib, grind through library to exclude
             if ( parameters.disjointLibrary ) {
                 // Already checked for global ( < 0, > max_lib_index) bounds
-                int thisLibRow = (int) lib_row + parameters.Tp;
                 auto libi = find( parameters.library.begin(),
-                                  parameters.library.end(),(size_t) thisLibRow );
+                                  parameters.library.end(),(size_t) libRowTp );
 
                 if ( libi == parameters.library.end() ) {
-                    // lib_row + Tp not in library
-                    lib_row_i++;
-                    continue; // keep looking
+                    libRow_i++;
+                    continue;  // libRowTp not in library keep looking
                 }
             }
 
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
-                int xrad = (int) lib_row - (int) predPair_i;
+                int xrad = (int) libRow - (int) predPair_i;
                 if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
-                    lib_row_i++;
+                    libRow_i++;
                     continue; // skip this neighbor
                 }
             }
 
             knnDistances[ k ] = distance;
-            knnLibRows  [ k ] = lib_row;
-            lib_row_i++;
+            knnLibRows  [ k ] = libRow;
+            libRow_i++;
             k++;
         }
 
@@ -435,7 +433,7 @@ void EDM::Distances () {
             size_t libraryRow = parameters.library[ libRow ];
 
             if ( predictionRow == libraryRow ) {
-                continue;  // degenerate pred & lib
+                continue;  // degenerate pred & lib : default DistanceMax
             }
 
             // Find distance between vector (v1) and library vector v2
