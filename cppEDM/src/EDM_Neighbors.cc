@@ -260,7 +260,7 @@ void EDM::FindNeighbors() {
 
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
-                int xrad = (int) libRow - (int) predPair_i;
+                int xrad = (int) libRowTp - (int) predPair_i;
                 if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
                     libRow_i++;
                     continue; // skip this neighbor
