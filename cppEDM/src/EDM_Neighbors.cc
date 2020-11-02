@@ -250,7 +250,7 @@ void EDM::FindNeighbors() {
             if ( parameters.disjointLibrary ) {
                 // Already checked for global ( < 0, > max_lib_index) bounds
                 auto libi = find( parameters.library.begin(),
-                                  parameters.library.end(),(size_t) libRowTp );
+                                  parameters.library.end(), (size_t) libRowTp );
 
                 if ( libi == parameters.library.end() ) {
                     libRow_i++;
@@ -260,7 +260,7 @@ void EDM::FindNeighbors() {
 
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
-                int xrad = (int) libRowTp - (int) predPair_i;
+                int xrad = libRowTp - (int) predictionRow;
                 if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
                     libRow_i++;
                     continue; // skip this neighbor
