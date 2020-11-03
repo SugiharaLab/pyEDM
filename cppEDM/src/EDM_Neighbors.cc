@@ -180,13 +180,13 @@ void EDM::FindNeighbors() {
 
     // Identify maximum library index to compare against libRow + Tp 
     // to avoid asking for neighbors outside the library
-    // JP: Can this be generalised to handle disjoint library breaks?
     auto max_lib_it = std::max_element( parameters.library.begin(),
                                         parameters.library.end() );
     int max_lib_index = *max_lib_it;
 
     // Flag to push warning if knn neigbhors not found
     bool knnNeighborsFound = true;
+    int  knnFound          = (int) parameters.knn;
 
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find the
@@ -224,11 +224,8 @@ void EDM::FindNeighbors() {
             if ( libRow_i >= rowPairSize ) {
                 // Failed to find knn neighbors
                 knnNeighborsFound = false;
+                knnFound          = std::min( knnFound, k );
 
-                // JP: Bogus : Fill missing values, can't resize the DataFrame
-                for ( int k_ = k; k_ < parameters.knn; k_++ ) {
-                    knnDistances[ k_ ] = 0;
-                }
                 break; // Continue to next predictionRow
             }
 
@@ -236,9 +233,13 @@ void EDM::FindNeighbors() {
             size_t libRow   = rowPair[ libRow_i ].second;
             int    libRowTp = (int) libRow + parameters.Tp;
 
-            if ( libRowTp == (int) predictionRow ) {
+            // "leave-one-out" 
+            // JP: Using libRow1 matches 0.7.4, doesn't seem right...
+            int libRow1 = parameters.method == Method::SMap ?
+                                               libRowTp : (int) libRow;
+            if ( libRow1 == (int) predictionRow ) {
                 libRow_i++;
-                continue; // degenerate pred : lib + Tp, ignore
+                continue; // degenerate pred : lib, ignore
             }
 
             // Reach exceeding grasp : forecast point is outside library
@@ -246,21 +247,24 @@ void EDM::FindNeighbors() {
                 libRow_i++;
                 continue; // keep looking
             }
+
             // If disjoint lib, grind through library to exclude
             if ( parameters.disjointLibrary ) {
                 // Already checked for global ( < 0, > max_lib_index) bounds
+                // JP: Using libRow2 matches 0.7.4, doesn't seem right...
+                int libRow2 = parameters.Tp > 0 ? libRowTp : (int) libRow;
                 auto libi = find( parameters.library.begin(),
-                                  parameters.library.end(), (size_t) libRowTp );
+                                  parameters.library.end(), libRow2 );
 
                 if ( libi == parameters.library.end() ) {
                     libRow_i++;
-                    continue;  // libRowTp not in library keep looking
+                    continue;  // libRow_ not in library keep looking
                 }
             }
 
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
-                int xrad = libRowTp - (int) predictionRow;
+                int xrad = (int) libRow - (int) predPair_i;
                 if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
                     libRow_i++;
                     continue; // skip this neighbor
@@ -282,14 +286,12 @@ void EDM::FindNeighbors() {
         // Note: A tie exists only if the k-th nn has distance equal
         //       to the k+1 nn. Multiple ties can exist beyond k+1. 
         //----------------------------------------------------------------
-        if ( parameters.method == Method::Simplex or
-             parameters.method == Method::CCM ) {
-
+        if ( parameters.method == Method::Simplex ) {
+            
             // Is there a tie? Note k was post incremented in loop above
             bool   knnDistanceTie = false;
             double tieDistance    = -1;
-            if ( rowPair[ k ].first > 0 and
-                 rowPair[ k ].first == rowPair[ k - 1 ].first ) {
+            if ( rowPair[ k ].first == rowPair[ k - 1 ].first ) {
                 knnDistanceTie = true;
                 tieDistance    = rowPair[ k ].first;
             }
@@ -312,8 +314,7 @@ void EDM::FindNeighbors() {
                 // Start looking at firstTieIndex
                 size_t kk = firstTieIndex;
                 while( kk < rowPair.size() - 1 and
-                       rowPair[ kk ].first > 0 and
-                       rowPair[ kk ].first == rowPair[ k+1 ].first ) {
+                       rowPair[ kk ].first == rowPair[ kk + 1 ].first ) {
 
                     // Set flag in ties and store tie pairs in tiePairs
                     ties[ predPair_i ] = true;
@@ -326,9 +327,9 @@ void EDM::FindNeighbors() {
                     kk++;
                 }
 
-                // Add the final tie since the above loop is pairs : ???
-                // Or, in Simplex add 1 to rowTiePairs.size() for numTies.
-                // ...
+                // Add the final tie since the above loop is pairs
+                rowTiePairs.push_back( std::make_pair( rowPair[ kk ].first,
+                                                       rowPair[ kk ].second ) );
 
                 if ( find( ties.begin(), ties.end(), true ) != ties.end() ) {
                     anyTies = true;
@@ -338,11 +339,27 @@ void EDM::FindNeighbors() {
         }
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
 
-    if ( parameters.verbose and not knnNeighborsFound ) {
+    if ( not knnNeighborsFound ) {
         std::stringstream errMsg;
         errMsg << "WARNING: FindNeighbors(): knn search failed to find "
-               << parameters.knn << " neighbors in the library.\n";
+               << parameters.knn << " neighbors in the library. "
+               << "Found " << knnFound << std::endl;
         std::cout << errMsg.str();
+
+        parameters.knn = knnFound - 1;
+
+        // For SMap, resize knn_neighbors knn_distances 
+        if ( parameters.method == Method::SMap ) {
+            DataFrame < size_t > knn_nbr ( N_prediction_rows, parameters.knn );
+            DataFrame < double > knn_dist( N_prediction_rows, parameters.knn );
+            for ( size_t col = 0; col < (size_t) parameters.knn; col++ ) {
+                knn_nbr.WriteColumn ( col, knn_neighbors.Column( col ) );
+                knn_dist.WriteColumn( col, knn_distances.Column( col ) );
+            }
+            // Replace
+            knn_neighbors = knn_nbr;
+            knn_distances = knn_dist;
+        }
     }
 
 #ifdef DEBUG_ALL
@@ -350,11 +367,11 @@ void EDM::FindNeighbors() {
         if ( ties[ i ] ) {
             std::vector< std::pair< double, size_t > > rowTiePairs =
                 tiePairs[ i ];
-            std::cout << "Ties at pred_i " << i << ": ";
+            std::cout << "Ties at pred_i " << i << " ";
             for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
                 double dist = rowTiePairs[ j ].first;
                 size_t prow = rowTiePairs[ j ].second;
-                std::cout << "[ " << dist << ", " << prow << "] ";
+                std::cout << "[" << prow << " : " <<  dist << "] ";
             } std::cout << std::endl;
         }
     }

@@ -91,20 +91,20 @@ void SimplexClass::Simplex () {
         // If ties, expand & adjust libTarget & weights
         //------------------------------------------------------------------
         if ( anyTies ) {
+
             if ( ties[ row ] ) {
 
                 std::vector< std::pair< double, size_t > >
                     rowTiePairs = tiePairs[ row ];
 
                 size_t tieFirstIdx = tieFirstIndex[ row ];
-                size_t numTies     = rowTiePairs.size() + 1; // +1 : Pairs
+                size_t numTies     = rowTiePairs.size();
                 size_t knnSize     = tieFirstIdx + numTies;
 
                 double tieFactor = double( numTies + parameters.knn - knnSize )/
                                    double( numTies );
 
-                double tieTarget = *( end( libTarget ) - 1 );
-                double tieWeight = *( end( weights   ) - 1 );
+                double tieWeight = *( end( weights ) - 1 );
 
                 // resize libTarget
                 std::valarray< double > libTargetCopy( libTarget );
@@ -113,12 +113,17 @@ void SimplexClass::Simplex () {
                 // Copy original libTarget values
                 libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
 
-                // Copy ties at end
-                std::slice knnExpandSlice =
-                    std::slice( parameters.knn - 1,
-                                knnSize - parameters.knn + 1, 1 );
-
-                libTarget[ knnExpandSlice ] = tieTarget;
+                // Copy nn target values
+                for ( size_t i = tieFirstIdx + 1; i < knnSize; i++ ) {
+                    int libRow = rowTiePairs[ i - 1 ].second + parameters.Tp;
+                    if ( libRow < 0 or libRow > (int) target.size() - 1 ) {
+                        libTarget[ i ] = nan( "tie" );
+                    }
+                    else {
+                        libTarget[ i ] = target[ libRow ];
+                    }
+                    //libTarget[ i ] = target[ libRow ];
+                }
 
                 // Resize weights
                 std::valarray<double> weightsCopy( weights );
@@ -127,7 +132,10 @@ void SimplexClass::Simplex () {
                 // Copy original knn weight values
                 weights[ std::slice( 0, parameters.knn, 1 ) ] = weightsCopy;
 
-                // Copy ties at end
+                // Copy weight ties at end
+                std::slice knnExpandSlice =
+                    std::slice( parameters.knn - 1,
+                                knnSize - parameters.knn + 1, 1 );
                 weights[ knnExpandSlice ] = tieWeight;
 
                 // Apply weight adjusment to ties
