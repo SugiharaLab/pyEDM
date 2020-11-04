@@ -122,7 +122,6 @@ void SimplexClass::Simplex () {
                     else {
                         libTarget[ i ] = target[ libRow ];
                     }
-                    //libTarget[ i ] = target[ libRow ];
                 }
 
                 // Resize weights

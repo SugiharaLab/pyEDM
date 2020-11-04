@@ -264,8 +264,8 @@ void EDM::FindNeighbors() {
 
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
-                int xrad = (int) libRow - (int) predPair_i;
-                if ( std::abs( xrad ) <= parameters.exclusionRadius ) {
+                int delta_i = std::abs( (int) predictionRow - (int) libRow );
+                if ( delta_i <= parameters.exclusionRadius ) {
                     libRow_i++;
                     continue; // skip this neighbor
                 }
@@ -335,16 +335,18 @@ void EDM::FindNeighbors() {
                     anyTies = true;
                     tiePairs[ predPair_i ] = rowTiePairs;
                 }
-            }
-        }
+            } // if ( knnDistanceTie )
+        } // if ( parameters.method == Method::Simplex ) {
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
 
     if ( not knnNeighborsFound ) {
-        std::stringstream errMsg;
-        errMsg << "WARNING: FindNeighbors(): knn search failed to find "
-               << parameters.knn << " neighbors in the library. "
-               << "Found " << knnFound << std::endl;
-        std::cout << errMsg.str();
+        if ( parameters.verbose ) {
+            std::stringstream errMsg;
+            errMsg << "WARNING: FindNeighbors(): knn search failed to find "
+                   << parameters.knn << " neighbors in the library. "
+                   << "Found " << knnFound << "." << std::endl;
+            std::cout << errMsg.str();
+        }
 
         parameters.knn = knnFound - 1;
 
