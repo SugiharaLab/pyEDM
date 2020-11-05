@@ -186,7 +186,7 @@ void EDM::FindNeighbors() {
 
     // Flag to push warning if knn neigbhors not found
     bool knnNeighborsFound = true;
-    int  knnFound          = (int) parameters.knn;
+    int  knnFoundMin       = (int) parameters.knn;
 
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find the
@@ -224,8 +224,27 @@ void EDM::FindNeighbors() {
             if ( libRow_i >= rowPairSize ) {
                 // Failed to find knn neighbors
                 knnNeighborsFound = false;
-                knnFound          = std::min( knnFound, k );
 
+                if ( parameters.verbose ) {
+                    std::stringstream errMsg;
+                    errMsg << "WARNING: FindNeighbors(): "
+                           << "knn search failed to find " << parameters.knn
+                           << " neighbors in the library at prediction row "
+                           << predictionRow << ". Found "
+                           << k << "." << std::endl;
+                    std::cout << errMsg.str();
+                }
+
+                if ( k == 0 ) {
+                    std::stringstream errMsg;
+                    errMsg << "WARNING: FindNeighbors(): No neighbors found. "
+                           << "NA prediction at row " << predictionRow
+                           << "." << std::endl;
+                    std::cout << errMsg.str();
+                }
+
+                knnFoundMin = std::min( knnFoundMin, k ); // For global warning
+                
                 break; // Continue to next predictionRow
             }
 
@@ -340,17 +359,11 @@ void EDM::FindNeighbors() {
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
 
     if ( not knnNeighborsFound ) {
-        if ( parameters.verbose ) {
-            std::stringstream errMsg;
-            errMsg << "WARNING: FindNeighbors(): knn search failed to find "
-                   << parameters.knn << " neighbors in the library. "
-                   << "Found " << knnFound << "." << std::endl;
-            std::cout << errMsg.str();
+        if ( knnFoundMin > 1 ) { // JP Only for SMap ?
+            parameters.knn = knnFoundMin - 1;
         }
 
-        parameters.knn = knnFound - 1;
-
-        // For SMap, resize knn_neighbors knn_distances 
+        // SMap: resize knn_neighbors knn_distances to knnFound
         if ( parameters.method == Method::SMap ) {
             DataFrame < size_t > knn_nbr ( N_prediction_rows, parameters.knn );
             DataFrame < double > knn_dist( N_prediction_rows, parameters.knn );

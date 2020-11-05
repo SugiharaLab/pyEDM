@@ -116,12 +116,7 @@ void SimplexClass::Simplex () {
                 // Copy nn target values
                 for ( size_t i = tieFirstIdx + 1; i < knnSize; i++ ) {
                     int libRow = rowTiePairs[ i - 1 ].second + parameters.Tp;
-                    if ( libRow < 0 or libRow > (int) target.size() - 1 ) {
-                        libTarget[ i ] = nan( "tie" );
-                    }
-                    else {
-                        libTarget[ i ] = target[ libRow ];
-                    }
+                    libTarget[ i ] = target[ libRow ];
                 }
 
                 // Resize weights
