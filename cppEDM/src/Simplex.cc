@@ -113,18 +113,19 @@ void SimplexClass::Simplex () {
                 // Copy original libTarget values
                 libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
 
-                // Copy nn target values
-                for ( size_t i = tieFirstIdx + 1; i < knnSize; i++ ) {
-                    int libRow = rowTiePairs[ i - 1 ].second + parameters.Tp;
-                    if ( libRow < 0 or libRow >= (int) target.size() ) {
-                        // JP How does this happen?
-                        libRow = rowTiePairs[ i - 1 ].second;
-                        if ( libRow < 0 or libRow >= (int) target.size() ) {
-                            std::string errMsg( "Simplex(): Tie target err.\n" );
-                            throw std::runtime_error( errMsg );
-                        }
+                // Copy expanded nn target values
+                size_t p = 1;
+                for ( size_t k = tieFirstIdx + 1; k < knnSize; k++ ) {
+
+                    if ( p > rowTiePairs.size() - 1 ) {
+                        std::string errMsg( "Simplex(): Tie index error.\n" );
+                        throw std::runtime_error( errMsg );
                     }
-                    libTarget[ i ] = target[ libRow ];
+
+                    int libRow = (int) rowTiePairs[ p ].second + parameters.Tp;
+                    p++;
+
+                    libTarget[ k ] = target[ libRow ];
                 }
 
                 // Resize weights
