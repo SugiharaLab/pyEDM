@@ -380,12 +380,15 @@ void EDM::FindNeighbors() {
 #ifdef DEBUG_ALL
     for ( size_t i = 0; i < tiePairs.size(); i++ ) {
         std::vector< std::pair< double, size_t > > rowTiePairs = tiePairs[ i ];
-        std::cout << "Ties at pred_i " << i << " ";
-        for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
-            double dist = rowTiePairs[ j ].first;
-            size_t prow = rowTiePairs[ j ].second;
-            std::cout << "[" << prow << " : " <<  dist << "] ";
-        } std::cout << std::endl;
+
+        if ( rowTiePairs.size() ) {
+            std::cout << "Ties at pred_i " << i << " ";
+            for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
+                double dist = rowTiePairs[ j ].first;
+                size_t prow = rowTiePairs[ j ].second;
+                std::cout << "[" << prow << " : " <<  dist << "] ";
+            } std::cout << std::endl;
+        }
     }
     PrintNeighbors();
 #endif
