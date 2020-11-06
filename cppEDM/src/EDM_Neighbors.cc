@@ -156,19 +156,6 @@ void EDM::FindNeighbors() {
         predPairs[ pred_row ] = rowPairs;
     }
 
-#ifdef DEBUG_ALL
-    std::cout << allLibRows;
-    std::cout << allDistances;
-    for ( size_t pred_row = 0; pred_row < predPairs.size(); pred_row++ ) {
-        std::vector< std::pair<double, size_t> > rowPair = predPairs[ pred_row ];
-        for ( size_t i = 0; i < rowPair.size(); i++ ) {
-            std::pair<double, size_t> thisPair = rowPair[ i ];
-            std::cout << "[" << thisPair.first << ", "
-                      << thisPair.second << "] ";
-        } std::cout << std::endl;
-    } std::cout << std::endl;
-#endif
-
     // Allocate objects in EDM class
     // JP Put on heap & destructor, or use smart pointers
     knn_neighbors = DataFrame  < size_t >( N_prediction_rows, parameters.knn );
@@ -307,12 +294,24 @@ void EDM::FindNeighbors() {
         //----------------------------------------------------------------
         if ( parameters.method == Method::Simplex ) {
             
-            // Is there a tie? Note k was post incremented in loop above
-            bool   knnDistanceTie = false;
-            double tieDistance    = -1;
-            if ( rowPair[ k ].first == rowPair[ k - 1 ].first ) {
+            // Is there a tie?  A quick check.
+            // Note k was post incremented in loop above
+            bool   knnDistanceTie       = false;
+            double tieDistance          = knnDistances[ parameters.knn - 1 ];
+            size_t tieNNindex           = knnLibRows  [ parameters.knn - 1 ];
+            size_t rowPairFirstTieIndex = 0;
+
+            // First, find the NN index in rowPair[].second that matches
+            // that of the terminal knn value, store in rowPairFirstTieIndex
+            for ( size_t i = 0; i < rowPair.size(); i++ ) {
+                if ( rowPair[ i ].second == tieNNindex ) {
+                    rowPairFirstTieIndex = i;
+                    break;
+                }
+            }
+
+            if ( tieDistance == rowPair[ rowPairFirstTieIndex + 1 ].first ) {
                 knnDistanceTie = true;
-                tieDistance    = rowPair[ k ].first;
             }
 
             if ( knnDistanceTie ) {
@@ -325,17 +324,18 @@ void EDM::FindNeighbors() {
                     }
                 }
 
+                // Save knn firstTieIndex for Simplex
                 tieFirstIndex[ predPair_i ] = firstTieIndex;
 
-                // Save list of rowTiePairs
+                // List of rowTiePairs for Simplex
                 std::vector< std::pair< double, size_t > > rowTiePairs;
 
-                // Start looking at firstTieIndex
-                size_t kk = firstTieIndex;
+                // Start looking at rowPairFirstTieIndex
+                size_t kk = rowPairFirstTieIndex;
                 while( kk < rowPair.size() - 1 and
                        rowPair[ kk ].first == rowPair[ kk + 1 ].first ) {
 
-                    // Set flag in ties and store tie pairs in tiePairs
+                    // Set ties flag and store tie pairs in tiePairs for Simplex
                     ties[ predPair_i ] = true;
 
                     std::pair< double, size_t > thisPair =
@@ -378,17 +378,14 @@ void EDM::FindNeighbors() {
     }
 
 #ifdef DEBUG_ALL
-    for ( size_t i = 0; i < ties.size(); i++ ) {
-        if ( ties[ i ] ) {
-            std::vector< std::pair< double, size_t > > rowTiePairs =
-                tiePairs[ i ];
-            std::cout << "Ties at pred_i " << i << " ";
-            for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
-                double dist = rowTiePairs[ j ].first;
-                size_t prow = rowTiePairs[ j ].second;
-                std::cout << "[" << prow << " : " <<  dist << "] ";
-            } std::cout << std::endl;
-        }
+    for ( size_t i = 0; i < tiePairs.size(); i++ ) {
+        std::vector< std::pair< double, size_t > > rowTiePairs = tiePairs[ i ];
+        std::cout << "Ties at pred_i " << i << " ";
+        for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
+            double dist = rowTiePairs[ j ].first;
+            size_t prow = rowTiePairs[ j ].second;
+            std::cout << "[" << prow << " : " <<  dist << "] ";
+        } std::cout << std::endl;
     }
     PrintNeighbors();
 #endif
