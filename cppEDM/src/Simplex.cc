@@ -116,6 +116,14 @@ void SimplexClass::Simplex () {
                 // Copy nn target values
                 for ( size_t i = tieFirstIdx + 1; i < knnSize; i++ ) {
                     int libRow = rowTiePairs[ i - 1 ].second + parameters.Tp;
+                    if ( libRow < 0 or libRow >= (int) target.size() ) {
+                        // JP How does this happen?
+                        libRow = rowTiePairs[ i - 1 ].second;
+                        if ( libRow < 0 or libRow >= (int) target.size() ) {
+                            std::string errMsg( "Simplex(): Tie target err.\n" );
+                            throw std::runtime_error( errMsg );
+                        }
+                    }
                     libTarget[ i ] = target[ libRow ];
                 }
 
