@@ -32,7 +32,7 @@ void SimplexClass::Project () {
 // Simplex algorithm
 //----------------------------------------------------------------
 void SimplexClass::Simplex () {
-
+    
     // Allocate output vectors to populate EDM class projections DataFrame.
     // Must be after FindNeighbors()
     size_t Npred = knn_neighbors.NRows();
@@ -101,50 +101,47 @@ void SimplexClass::Simplex () {
                 size_t numTies     = rowTiePairs.size();
                 size_t knnSize     = tieFirstIdx + numTies;
 
-                double tieFactor = double( numTies + parameters.knn - knnSize )/
-                                   double( numTies );
+                if ( (int) knnSize > parameters.knn ) {
 
-                double tieWeight = *( end( weights ) - 1 );
+                    double tieFactor =
+                        double( numTies + parameters.knn - knnSize )/
+                        double( numTies );
+                    
+                    double tieWeight = *( end( weights ) - 1 );
 
-                // resize libTarget
-                std::valarray< double > libTargetCopy( libTarget );
-                libTarget.resize( knnSize ); // destroys contents
+                    // Make copies of libTarget and weights for resize
+                    std::valarray< double > libTargetCopy( libTarget );
+                    std::valarray< double > weightsCopy  ( weights );
 
-                // Copy original libTarget values
-                libTarget[ std::slice( 0, parameters.knn, 1 ) ] = libTargetCopy;
+                    // resize libTarget & weights : destroys contents
+                    libTarget.resize( (size_t) parameters.knn + knnSize, 0. );
+                    weights.resize  ( (size_t) parameters.knn + knnSize, 0. );
 
-                // Copy expanded nn target values
-                size_t p = 1;
-                for ( size_t k = tieFirstIdx + 1; k < knnSize; k++ ) {
+                    // Copy original knn libTarget & weights values
+                    libTarget[std::slice(0, parameters.knn, 1)] = libTargetCopy;
+                    weights  [std::slice(0, parameters.knn, 1)] = weightsCopy;
+                    
+                    // Copy expanded nn target values
+                    size_t p = 1;
+                    for ( size_t k = tieFirstIdx + 1; k < knnSize; k++ ) {
 
-                    if ( p > rowTiePairs.size() - 1 ) {
-                        std::string errMsg( "Simplex(): Tie index error.\n" );
-                        throw std::runtime_error( errMsg );
+                        if ( p >= rowTiePairs.size() ) {
+                            std::string errMsg("Simplex(): Tie index error.\n");
+                            throw std::runtime_error( errMsg );
+                        }
+
+                        int libRow = (int) rowTiePairs[p].second + parameters.Tp;
+                        p++;
+
+                        libTarget[ k ] = target[ libRow ];
+                        weights  [ k ] = tieWeight;
                     }
 
-                    int libRow = (int) rowTiePairs[ p ].second + parameters.Tp;
-                    p++;
-
-                    libTarget[ k ] = target[ libRow ];
-                }
-
-                // Resize weights
-                std::valarray<double> weightsCopy( weights );
-                weights.resize( knnSize ); // destroys contents
-
-                // Copy original knn weight values
-                weights[ std::slice( 0, parameters.knn, 1 ) ] = weightsCopy;
-
-                // Copy weight ties at end
-                std::slice knnExpandSlice =
-                    std::slice( parameters.knn - 1,
-                                knnSize - parameters.knn + 1, 1 );
-                weights[ knnExpandSlice ] = tieWeight;
-
-                // Apply weight adjusment to ties
-                for ( size_t i = tieFirstIdx; i < weights.size(); i++ ) {
-                    weights[i] = tieFactor * weights[i];
-                }
+                    // Apply weight adjusment to ties
+                    for ( size_t i = tieFirstIdx; i < weights.size(); i++ ) {
+                        weights[i] = tieFactor * weights[i];
+                    }
+                } // if ( (int) knnSize > parameters.knn )
             } // if ( ties[ row ] )
         } // if ( anyTies )
         //------------------------------------------------------------------
@@ -154,7 +151,7 @@ void SimplexClass::Simplex () {
 
         // "Variance" estimate assuming weights are probabilities
         std::valarray< double > deltaSqr =
-            std::pow(libTarget - predictions[ row ], 2);
+            std::pow( libTarget - predictions[ row ], 2 );
         variance[ row ] = ( weights * deltaSqr ).sum() / weights.sum();
 
     } // for ( row = 0; row < Npred; row++ )
@@ -165,7 +162,7 @@ void SimplexClass::Simplex () {
         std::slice pred_slice =
             std::slice( parameters.prediction[ 0 ],
                         parameters.prediction.size(), 1 );
-        
+
         const_predictions = target[ pred_slice ];
     }
 }
