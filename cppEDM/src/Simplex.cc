@@ -35,13 +35,13 @@ void SimplexClass::Simplex () {
     
     // Allocate output vectors to populate EDM class projections DataFrame.
     // Must be after FindNeighbors()
-    size_t Npred = knn_neighbors.NRows();
-    
+    size_t Npred      = knn_neighbors.NRows();
     predictions       = std::valarray< double > ( 0., Npred );
     const_predictions = std::valarray< double > ( 0., Npred );
     variance          = std::valarray< double > ( 0., Npred );
-    
-    double minWeight = 1.E-6;
+
+    int    targetSize = (int) target.size();
+    double minWeight  = 1.E-6;
 
     // Process each prediction row in neighbors : distances
     for ( size_t row = 0; row < Npred; row++ ) {
@@ -55,7 +55,7 @@ void SimplexClass::Simplex () {
         std::valarray< double > weightedDistances( minWeight, parameters.knn );
 
         if ( minDistance == 0 ) {
-            // Handle cases of distanceRow = 0 : can't divide by minDistance
+            // Handle cases of distanceRow = 0
             for ( int i = 0; i < parameters.knn; i++ ) {
                 if ( distanceRow[i] > 0 ) {
                     weightedDistances[i] = exp( -distanceRow[i] / minDistance );
@@ -80,10 +80,11 @@ void SimplexClass::Simplex () {
         }
 
         // target library vector, one element for each knn
-        std::valarray< double > libTarget( parameters.knn );
+        std::valarray< double > libTarget( 0., parameters.knn );
 
         for ( int k = 0; k < parameters.knn; k++ ) {
-            int libRow     = knn_neighbors( row, k ) + parameters.Tp;
+            int libRow = knn_neighbors( row, k ) + parameters.Tp;
+            if ( libRow >= targetSize ) { continue; } // target at Tp not in lib
             libTarget[ k ] = target[ libRow ];
         }
 
@@ -109,18 +110,18 @@ void SimplexClass::Simplex () {
                     
                     double tieWeight = *( end( weights ) - 1 );
 
-                    // Make copies of libTarget and weights for resize
+                    // Copies of libTarget & weights for resize
                     std::valarray< double > libTargetCopy( libTarget );
                     std::valarray< double > weightsCopy  ( weights );
 
-                    // resize libTarget & weights : destroys contents
+                    // resize libTarget & weights : destroys contents, init 0
                     libTarget.resize( (size_t) parameters.knn + knnSize, 0. );
                     weights.resize  ( (size_t) parameters.knn + knnSize, 0. );
 
                     // Copy original knn libTarget & weights values
                     libTarget[std::slice(0, parameters.knn, 1)] = libTargetCopy;
                     weights  [std::slice(0, parameters.knn, 1)] = weightsCopy;
-                    
+
                     // Copy expanded nn target values
                     size_t p = 1;
                     for ( size_t k = tieFirstIdx + 1; k < knnSize; k++ ) {
@@ -133,6 +134,7 @@ void SimplexClass::Simplex () {
                         int libRow = (int) rowTiePairs[p].second + parameters.Tp;
                         p++;
 
+                        if (libRow >= targetSize) { continue; } // no target lib
                         libTarget[ k ] = target[ libRow ];
                         weights  [ k ] = tieWeight;
                     }
