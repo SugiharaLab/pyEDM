@@ -5,7 +5,7 @@
 // Constructor
 //----------------------------------------------------------------
 SimplexClass::SimplexClass (
-    DataFrame< double > & data, 
+    DataFrame< double > & data,
     Parameters          & parameters ):
     EDM{ data, parameters } {
 }
@@ -14,11 +14,11 @@ SimplexClass::SimplexClass (
 // Project : Polymorphic implementation
 //----------------------------------------------------------------
 void SimplexClass::Project () {
-    
+
     PrepareEmbedding();
-    
+
     Distances(); // all pred : lib vector distances into allDistances
-    
+
     FindNeighbors();
 
     Simplex();
@@ -32,7 +32,7 @@ void SimplexClass::Project () {
 // Simplex algorithm
 //----------------------------------------------------------------
 void SimplexClass::Simplex () {
-    
+
     // Allocate output vectors to populate EDM class projections DataFrame.
     // Must be after FindNeighbors()
     size_t Npred      = knn_neighbors.NRows();
@@ -47,7 +47,7 @@ void SimplexClass::Simplex () {
     for ( size_t row = 0; row < Npred; row++ ) {
 
         std::valarray< double > distanceRow = knn_distances.Row( row );
-        
+
         // Establish exponential weight reference, the 'distance scale'
         double minDistance = distanceRow.min();
 
@@ -101,13 +101,14 @@ void SimplexClass::Simplex () {
                 size_t tieFirstIdx = tieFirstIndex[ row ];
                 size_t numTies     = rowTiePairs.size();
                 size_t knnSize     = tieFirstIdx + numTies;
+                size_t tiesFound   = 0;
 
                 if ( (int) knnSize > parameters.knn ) {
 
                     double tieFactor =
                         double( numTies + parameters.knn - knnSize )/
                         double( numTies );
-                    
+
                     double tieWeight = *( end( weights ) - 1 );
 
                     // Copies of libTarget & weights for resize
@@ -135,13 +136,18 @@ void SimplexClass::Simplex () {
                         p++;
 
                         if (libRow >= targetSize) { continue; } // no target lib
+
                         libTarget[ k ] = target[ libRow ];
                         weights  [ k ] = tieWeight;
+
+                        tiesFound++;
                     }
 
                     // Apply weight adjusment to ties
-                    for ( size_t i = tieFirstIdx; i < weights.size(); i++ ) {
-                        weights[i] = tieFactor * weights[i];
+                    if ( tiesFound ) {
+                        for ( size_t i = tieFirstIdx; i < weights.size(); i++ ) {
+                            weights[i] = tieFactor * weights[i];
+                        }
                     }
                 } // if ( (int) knnSize > parameters.knn )
             } // if ( ties[ row ] )
