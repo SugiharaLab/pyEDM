@@ -22,6 +22,7 @@ std::map< std::string, py::dict > Multiview_pybind (
     int          multiview,
     int          exclusionRadius,
     bool         trainLib,
+    bool         excludeTarget,
     bool         verbose,
     unsigned int numThreads ) {
 
@@ -29,7 +30,7 @@ std::map< std::string, py::dict > Multiview_pybind (
 
     if ( dataFile.size() ) {
         // dataFile specified, dispatch overloaded Multiview, ignore dataList
-        
+
         MV = Multiview( pathIn,
                         dataFile,
                         pathOut,
@@ -46,12 +47,13 @@ std::map< std::string, py::dict > Multiview_pybind (
                         multiview,
                         exclusionRadius,
                         trainLib,
+                        excludeTarget,
                         verbose,
                         numThreads );
     }
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
-        
+
         MV = Multiview( dataFrame,
                         pathOut,
                         predictFile,
@@ -67,6 +69,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         multiview,
                         exclusionRadius,
                         trainLib,
+                        excludeTarget,
                         verbose,
                         numThreads );
     }

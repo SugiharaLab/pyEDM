@@ -442,6 +442,7 @@ CCMValues CCM( DataFrame< double > & DF,
                                         0,               // multiviewEnsemble
                                         0,               // multiviewD
                                         false,           // multiviewTrainLib
+                                        false,           // multiviewExcludeTarg
                                         libSizes_str,    // 
                                         sample,          // 
                                         random,          // 
@@ -481,6 +482,7 @@ MultiviewValues Multiview( std::string pathIn,
                            int         multiview,
                            int         exclusionRadius,
                            bool        trainLib,
+                           bool        excludeTarget,
                            bool        verbose,
                            unsigned    nThreads )
 {
@@ -491,7 +493,7 @@ MultiviewValues Multiview( std::string pathIn,
                                           lib, pred, D, E, Tp, knn, tau,
                                           columns, target, multiview,
                                           exclusionRadius, trainLib,
-                                          verbose, nThreads);
+                                          excludeTarget, verbose, nThreads);
 
     return mvValues;
 }
@@ -514,6 +516,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                            int         multiview,
                            int         exclusionRadius,
                            bool        trainLib,
+                           bool        excludeTarget,
                            bool        verbose,
                            unsigned    nThreads )
 {
@@ -539,7 +542,8 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         "",           // blockFile
                                         multiview,    // multiviewEnsemble,
                                         D,            // multiviewD
-                                        trainLib );   // multiviewTrainLib
+                                        trainLib,     // multiviewTrainLib
+                                        excludeTarget );// multiviewExcludeTarget
 
     // Instantiate EDM::Simplex::Multiview object
     MultiviewClass MultiviewModel = MultiviewClass( DF, std::ref( parameters ) );
