@@ -109,12 +109,50 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
     }
     header << "rho MAE RMSE";
 
+    //--------------------------------------------------------------------
     // Combinations of possible embedding variables, D at-a-time
     // Note that these combinations are not zero-offset, i.e.
     // Combination( 3, 2 ) = [(1, 2), (1, 3), (2, 3)]
     // These correspond to column indices +1
+    //--------------------------------------------------------------------
     std::vector< std::vector< size_t > > combos =
         Combination( embedding.NColumns(), parameters.multiviewD );
+
+    //--------------------------------------------------------------------
+    // Remove target columns from combos
+    //--------------------------------------------------------------------
+    if ( parameters.multiviewExcludeTarget ) {
+        // Get indices of embedding columns from the target
+        std::vector< size_t > targetColIndices;
+        for ( std::string colName : embedding.ColumnNames() ) {
+            if ( colName.find( parameters.targetName ) != std::string::npos ) {
+                // combos are not zero offset... + 1
+                size_t colIndex = embedding.ColumnNameToIndex()[ colName ] + 1;
+                targetColIndices.push_back( colIndex );
+            }
+        }
+        // Get subset of combos without target
+        std::vector< std::vector< size_t > > noTargetCombos;
+
+        for ( size_t i = 0; i < combos.size(); i++ ) {
+            std::vector< size_t > combo_i = combos[i];
+
+            bool targetFound = false;
+            for ( size_t colIndex : targetColIndices ) {
+                if ( std::find( combo_i.begin(), combo_i.end(), colIndex ) !=
+                     combo_i.end() ) {
+                    targetFound = true;
+                    break;
+                }
+            }
+            if ( not targetFound ) {
+                // found a combo with target column
+                noTargetCombos.push_back( combo_i );
+            }
+        }
+        // Replace combos
+        combos = noTargetCombos;
+    }
 
 #ifdef DEBUG_ALL
     std::cout << "Multiview(): " << combos.size() << " combos:\n";
@@ -128,7 +166,13 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
     } std::cout << std::endl;
 #endif
 
+    if ( combos.size() < 1 ) {
+        throw std::runtime_error( "No combinations found." );
+    }
+
+    //--------------------------------------------------------------------
     // Establish number of ensembles if not specified
+    //--------------------------------------------------------------------
     if ( not parameters.multiviewEnsemble ) {
         // Ye & Sugihara suggest sqrt( m ) as the number of embeddings to avg
         parameters.multiviewEnsemble = std::max(2,(int)std::sqrt(combos.size()));
@@ -139,7 +183,9 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
         std::cout << msg.str();
     }
 
+    //--------------------------------------------------------------------
     // Validate number of combinations
+    //--------------------------------------------------------------------
     if ( parameters.multiviewEnsemble > (int) combos.size() ) {
         std::stringstream msg;
         msg << "WARNING: Multiview(): multiview ensembles "

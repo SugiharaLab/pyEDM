@@ -35,6 +35,7 @@ Parameters::Parameters(
     int         multiviewEnsemble,
     int         multiviewD,
     bool        multiviewTrainLib,
+    bool        multiviewExcludeTarget,
 
     std::string libSizes_str,
     int         subSamples,
@@ -71,9 +72,10 @@ Parameters::Parameters(
     SmapOutputFile   ( SmapOutputFile ),
     blockOutputFile  ( blockOutputFile ),
 
-    multiviewEnsemble( multiviewEnsemble ),
-    multiviewD       ( multiviewD ),
-    multiviewTrainLib( multiviewTrainLib ),
+    multiviewEnsemble     ( multiviewEnsemble ),
+    multiviewD            ( multiviewD ),
+    multiviewTrainLib     ( multiviewTrainLib ),
+    multiviewExcludeTarget( multiviewExcludeTarget ),
 
     libSizes_str     ( libSizes_str ),
     subSamples       ( subSamples ),

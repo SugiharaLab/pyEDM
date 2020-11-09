@@ -52,6 +52,7 @@ public: // No need for protected or private
     int         multiviewEnsemble; // Number of ensembles in multiview
     int         multiviewD;        // Multiview state-space dimension
     bool        multiviewTrainLib; // Use prediction as training library
+    bool        multiviewExcludeTarget; // Exclude target from eval combos
 
     std::string libSizes_str;
     std::vector< size_t > librarySizes;// CCM library sizes to evaluate
@@ -95,9 +96,10 @@ public: // No need for protected or private
         std::string SmapOutputFile    = "",
         std::string blockOutputFile   = "",        
 
-        int         multiviewEnsemble = 0,
-        int         multiviewD        = 0,
-        bool        multiviewTrainLib = true,
+        int         multiviewEnsemble      = 0,
+        int         multiviewD             = 0,
+        bool        multiviewTrainLib      = true,
+        bool        multiviewExcludeTarget = false,
 
         std::string libSizes_str      = "",
         int         subSamples        = 0,

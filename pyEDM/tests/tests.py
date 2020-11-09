@@ -133,7 +133,7 @@ class test_EDM( unittest.TestCase ):
         print ( "--- Multiview ---" )
         M = EDM.Multiview( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                            "1 100", "101 198", 0, 3, 1, 0, -1,
-                           "x_t y_t z_t", "x_t", 0, 0, True, False, 4 )
+                           "x_t y_t z_t", "x_t", 0, 0, True, False, False, 4 )
 
         df_pred  = M['Predictions']
         df_combo = round( M['View'  ], 4 )

@@ -125,6 +125,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("multiview")       = 0,
                py::arg("exclusionRadius") = 0,
                py::arg("trainLib")        = true,
+               py::arg("excludeTarget")   = false,
                py::arg("verbose")         = false,
                py::arg("numThreads")      = 4 );
     
