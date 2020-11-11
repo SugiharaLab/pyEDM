@@ -112,9 +112,9 @@ void EDM::FindNeighbors() {
     size_t N_library_rows    = parameters.library.size();
     size_t N_prediction_rows = parameters.prediction.size();
 
+    // Identify degenerate library : prediction points by
+    // set_intersection() of lib & pred indices, needs a result vector
     if ( parameters.verbose and parameters.method != Method::CCM ) {
-        // Identify degenerate library : prediction points by
-        // set_intersection() of lib & pred indices, needs a result vector
         std::vector< double > result( N_library_rows + N_prediction_rows, 0 );
 
         std::vector< double >::iterator ii = set_intersection (
@@ -197,9 +197,6 @@ void EDM::FindNeighbors() {
         //----------------------------------------------------------------
         // Insert knn distance / library row index into knn vectors
         //----------------------------------------------------------------
-        // JP: This is sneaky: knnDistances are initialised to nan,
-        //     which translate to "quiet nan".  Following PEP 20,
-        //     generate WARNING if parameters.knn neighbors are not found.
         std::valarray< double > knnDistances( nan("knn"), parameters.knn );
         std::valarray< size_t > knnLibRows  ( (size_t) 0, parameters.knn );
 
@@ -208,8 +205,9 @@ void EDM::FindNeighbors() {
 
         while ( k < parameters.knn ) {
 
+            // Check for failure to find knn neighbors
             if ( libRow_i >= rowPairSize ) {
-                // Failed to find knn neighbors
+
                 knnNeighborsFound = false;
 
                 if ( parameters.verbose ) {
@@ -239,7 +237,7 @@ void EDM::FindNeighbors() {
             size_t libRow   = rowPair[ libRow_i ].second;
             int    libRowTp = (int) libRow + parameters.Tp;
 
-            // "leave-one-out" 
+            // "Leave-one-out" 
             // JP: Using libRow1 matches 0.7.4, doesn't seem right...
             int libRow1 = parameters.method == Method::SMap ?
                                                libRowTp : (int) libRow;
@@ -249,6 +247,7 @@ void EDM::FindNeighbors() {
             }
 
             // Reach exceeding grasp : forecast point is outside library
+            // libRowTp < 0 prevents libTarget in Simplex with i < 0
             if ( libRowTp > max_lib_index or libRowTp < 0 ) {
                 libRow_i++;
                 continue; // keep looking
@@ -288,7 +287,8 @@ void EDM::FindNeighbors() {
 
         //----------------------------------------------------------------
         // Check for ties.
-        // Set ties[predPair_i] = true; anyTies = true if found.
+        // Set EDM class ties[predPair_i] = true; anyTies = true if found.
+        // Store all tied { nn, distance } pairs in EDM :: tiePairs vector.
         // Note: A tie exists only if the k-th nn has distance equal
         //       to the k+1 nn. Multiple ties can exist beyond k+1. 
         //----------------------------------------------------------------
