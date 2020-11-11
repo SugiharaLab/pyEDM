@@ -84,7 +84,6 @@ void SimplexClass::Simplex () {
 
         for ( int k = 0; k < parameters.knn; k++ ) {
             int libRow = knn_neighbors( row, k ) + parameters.Tp;
-            if ( libRow >= targetSize ) { continue; } // target at Tp not in lib
             libTarget[ k ] = target[ libRow ];
         }
 
