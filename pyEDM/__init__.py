@@ -5,4 +5,4 @@
 from pyEDM.CoreEDM import *
 from pyEDM.AuxFunc import *
 
-__version__ = "1.7.0.0"
+__version__ = "1.7.1.0"
