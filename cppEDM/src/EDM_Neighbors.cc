@@ -10,8 +10,8 @@ namespace EDM_Neighbors_Lock {
 //   0) CheckDataRows()
 //   1) Extract or Embed() data into embedding
 //   2) Get target (library) vector
-//   3) RemovePartialData()
-//   4) Adjust parameters.library and parameters.prediction indices
+//   3) RemovePartialData() :
+//      Adjust parameters.library and parameters.prediction indices
 //
 // NOTE: time column is not returned in the embedding dataBlock.
 //
@@ -177,7 +177,7 @@ void EDM::FindNeighbors() {
 
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find the
-    // list of library indices that are within k_NN points
+    // list of library indices that are within knn points
     //-------------------------------------------------------------------
     for ( size_t predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ ) {
 
@@ -238,10 +238,7 @@ void EDM::FindNeighbors() {
             int    libRowTp = (int) libRow + parameters.Tp;
 
             // "Leave-one-out" 
-            // JP: Using libRow1 matches 0.7.4, doesn't seem right...
-            int libRow1 = parameters.method == Method::SMap ?
-                                               libRowTp : (int) libRow;
-            if ( libRow1 == (int) predictionRow ) {
+            if ( libRow == predictionRow ) {
                 libRow_i++;
                 continue; // degenerate pred : lib, ignore
             }
@@ -249,21 +246,21 @@ void EDM::FindNeighbors() {
             // Reach exceeding grasp : forecast point is outside library
             // libRowTp < 0 prevents libTarget in Simplex with i < 0
             if ( libRowTp > max_lib_index or libRowTp < 0 ) {
-                libRow_i++;
-                continue; // keep looking
+               libRow_i++;
+               continue; // keep looking
             }
 
             // If disjoint lib, grind through library to exclude
             if ( parameters.disjointLibrary ) {
-                // Already checked for global ( < 0, > max_lib_index) bounds
-                // JP: Using libRow2 matches 0.7.4, doesn't seem right...
-                int libRow2 = parameters.Tp > 0 ? libRowTp : (int) libRow;
-                auto libi = find( parameters.library.begin(),
-                                  parameters.library.end(), libRow2 );
+                // Already checked for global ( < 0, > max_lib_index ) bounds
 
-                if ( libi == parameters.library.end() ) {
+                auto libi = find( parameters.disjointLibraryRows.begin(),
+                                  parameters.disjointLibraryRows.end(),
+                                  libRowTp );
+
+                if ( libi != parameters.disjointLibraryRows.end() ) {
                     libRow_i++;
-                    continue;  // libRow_ not in library keep looking
+                    continue;  // libRowTp in disjointLibraryRows keep looking
                 }
             }
 
