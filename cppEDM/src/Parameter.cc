@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 7, 1, "2020-11-21" )
+    version          ( 1, 7, 1, "2020-11-29" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -234,26 +234,30 @@ void Parameters::Validate() {
                 }   
             }
         } // disjointLibrary
-        
-        // Valid lib: E, tau, Tp combination
-        int vectorStart  = std::max( (E - 1) * tau, 0 );
-        vectorStart      = std::max( vectorStart, Tp );
-        int vectorEnd    = std::min( (E - 1) * tau, Tp );
-        vectorEnd        = std::min( vectorEnd, 0 );
-        int vectorLength = std::abs( vectorStart - vectorEnd ) + 1;
-        
-        int maxLibrarySegment = 0;
-        for ( auto thisPair : libPairs ) {
-            int libPairSpan = thisPair.second - thisPair.first + 1;
-            maxLibrarySegment = std::max( maxLibrarySegment, libPairSpan );
-        }
-        
-        if ( vectorLength > maxLibrarySegment ) {
-            std::stringstream errMsg;
-            errMsg << "Parameters::Validate() Combination of E = "
-                   << E << " Tp = " << Tp << " tau = " << tau
-                   << " is invalid.\n";
-            throw std::runtime_error( errMsg.str() );
+
+        if ( method == Method::Simplex or
+             method == Method::SMap or method == Method::CCM ) {
+
+            // Validate lib: E, tau, Tp combination
+            int vectorStart  = std::max( (E - 1) * tau, 0 );
+            vectorStart      = std::max( vectorStart, Tp );
+            int vectorEnd    = std::min( (E - 1) * tau, Tp );
+            vectorEnd        = std::min( vectorEnd, 0 );
+            int vectorLength = std::abs( vectorStart - vectorEnd ) + 1;
+
+            int maxLibrarySegment = 0;
+            for ( auto thisPair : libPairs ) {
+                int libPairSpan = thisPair.second - thisPair.first + 1;
+                maxLibrarySegment = std::max( maxLibrarySegment, libPairSpan );
+            }
+
+            if ( vectorLength > maxLibrarySegment ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): Combination of E = "
+                       << E << " Tp = " << Tp << " tau = " << tau
+                       << " is invalid.\n";
+                throw std::runtime_error( errMsg.str() );
+            }
         }
     }
 
@@ -486,36 +490,36 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------------
-    // Simplex and knn not specified: not embedded : knn set to E+1
-    //                                    embedded : knn set to size( columns )
+    // Simplex: knn not specified: knn set to E+1
+    //    embedded true : E set to number columns
     //--------------------------------------------------------------------
     if ( method == Method::Simplex or method == Method::CCM ) {
-        if ( knn < 1 ) {
-            if ( not embedded ) {
-                knn = E + 1;
-                if ( verbose ) {
-                    std::stringstream msg;
-                    msg << "Parameters::Validate(): Set knn = " << knn
-                        << " (E+1) for Simplex. " << std::endl;
-                    std::cout << msg.str();
+
+        // embedded = true: Set E to number of columns if not already set
+        if ( embedded ) {
+            if ( columnIndex.size() ) {
+                if ( E != (int) columnIndex.size() ) {
+                    E = columnIndex.size();
                 }
             }
-            else { // embedded = true
-                if ( columnIndex.size() ) {
-                    knn = columnIndex.size() + 1;
-                }
-                else if ( columnNames.size() ) {
-                    knn = columnNames.size() + 1;
-                }
-                
-                if ( verbose ) {
-                    std::stringstream msg;
-                    msg << "Parameters::Validate(): Set knn = " << knn
-                        << " for Simplex (embedded = true). " << std::endl;
-                    std::cout << msg.str();
+            else if ( columnNames.size() ) {
+                if ( E != (int) columnNames.size() ) {
+                    E = columnNames.size();
                 }
             }
         }
+
+        if ( knn < 1 ) {
+            knn = E + 1;
+
+            if ( verbose ) {
+                std::stringstream msg;
+                msg << "Parameters::Validate(): Set knn = " << knn
+                    << " (E+1) for Simplex. " << std::endl;
+                std::cout << msg.str();
+            }
+        }
+
         if ( knn < E + 1 ) {
             std::stringstream errMsg;
             errMsg << "Parameters::Validate(): Simplex knn of " << knn
@@ -567,6 +571,15 @@ void Parameters::Validate() {
     else {
         throw std::runtime_error( "Parameters::Validate() "
                                   "Prediction method error.\n" );
+    }
+
+    if ( method == Method::Simplex or method == Method::SMap ) {
+        if ( E < 1 ) {
+            std::stringstream errMsg;
+            errMsg << "Parameters::Validate() E = " << E
+                   << " is invalid with embedded = true.\n" ;
+            throw std::runtime_error( errMsg.str() );
+        }
     }
 }
 
