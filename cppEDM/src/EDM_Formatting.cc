@@ -3,7 +3,7 @@
 #include "DateTime.h"
 
 //----------------------------------------------------------
-// Clip data & target rows to match the embedding
+// Clip data rows to match the embedding
 //----------------------------------------------------------
 void EDM::RemovePartialData()
 {
@@ -22,7 +22,8 @@ void EDM::RemovePartialData()
     // Delete data rows corresponding to embedding partial data rows
     data.DeletePartialDataRows( shift, parameters.tau );
 
-    GetTarget();
+    // Set targetOffset since target is not resized from original data
+    targetOffset = parameters.tau * ( parameters.E - 1 );
     
     // Adjust parameters.library and parameters.prediction vectors of indices
     if ( shift > 0 ) {
@@ -95,7 +96,8 @@ void EDM::FormatOutput() {
     std::valarray< double > observations( N_row + Tp_magnitude );
 
     if ( parameters.Tp > -1 ) {  // Positive Tp ---------------------------
-        std::slice pred_i = std::slice( parameters.prediction[0], N_row, 1 );
+        std::slice pred_i = std::slice( parameters.prediction[0] - targetOffset,
+                                        N_row, 1 );
     
         observations[ std::slice( 0, N_row, 1 ) ] =
             ( std::valarray< double > ) target[ pred_i ];
@@ -108,7 +110,8 @@ void EDM::FormatOutput() {
         std::slice pred_i;
 
         if ( parameters.prediction[0] >= Tp_magnitude ) {
-            pred_i = std::slice( parameters.prediction[ 0 ] - Tp_magnitude,
+            pred_i = std::slice( parameters.prediction[ 0 ] -
+                                 targetOffset - Tp_magnitude,
                                  N_row + Tp_magnitude, 1 );
     
             observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
@@ -116,9 +119,9 @@ void EDM::FormatOutput() {
         }
         else {
             // Edge case where -Tp preceeds available record pred
-            pred_i = std::slice( 0, N_row + Tp_magnitude, 1 );
+            pred_i = std::slice( 0, N_row - targetOffset + Tp_magnitude, 1 );
 
-            observations[std::slice( Tp_magnitude, N_row, 1 )] =
+            observations[ std::slice( Tp_magnitude, N_row, 1 ) ] =
                 ( std::valarray< double > ) target[ pred_i ];
 
             for ( size_t i = 0; i < Tp_magnitude; i++ ) {

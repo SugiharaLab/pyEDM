@@ -236,7 +236,6 @@ void CrossMap( SimplexClass   & S,
 
                     lib_i = result; // Copy result to lib_i
                 }
-                // std::sort( lib_i.begin(), lib_i.end() ); // JP Why?
             }
             else {
                 // Not random samples, contiguous samples increasing size

@@ -81,9 +81,9 @@ void SimplexClass::Simplex () {
 
         // target library vector, one element for each knn
         std::valarray< double > libTarget( 0., parameters.knn );
-
+        int targetLibRowOffset = parameters.Tp - targetOffset;
         for ( int k = 0; k < parameters.knn; k++ ) {
-            int libRow = knn_neighbors( row, k ) + parameters.Tp;
+            int libRow = knn_neighbors( row, k ) + targetLibRowOffset;
             libTarget[ k ] = target[ libRow ];
         }
 
@@ -131,10 +131,13 @@ void SimplexClass::Simplex () {
                             throw std::runtime_error( errMsg );
                         }
 
-                        int libRow = (int) rowTiePairs[p].second + parameters.Tp;
+                        int libRow = (int) rowTiePairs[p].second +
+                                           targetLibRowOffset;
                         p++;
 
-                        if (libRow >= targetSize) { continue; } // no target lib
+                        if ( libRow >= targetSize or libRow < 0 ) {
+                            continue; // no target lib
+                        }
 
                         libTarget[ k ] = target[ libRow ];
                         weights  [ k ] = tieWeight;
