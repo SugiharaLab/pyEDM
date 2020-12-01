@@ -19,7 +19,7 @@ namespace EDM_Neighbors_Lock {
 //       has tau * (E-1) fewer rows than data. Since data is
 //       included in the returned DataEmbedNN struct, the first
 //       (or last) tau * (E-1) data rows are deleted to match
-//       dataBlock.  The target vector is also reduced.
+//       dataBlock.
 //
 // NOTE: If rows are deleted, then the library and prediction
 //       vectors in Parameters are updated to reflect this.
@@ -60,7 +60,7 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
     //------------------------------------------------------------
     if ( not parameters.embedded ) {
         // 3) RemovePartialData()
-        // Delete data & target top or bottom rows of partial embedding data
+        // Delete data top or bottom rows of partial embedding data
         if ( not data.PartialDataRowsDeleted() ) {
             std::lock_guard<std::mutex> lck( EDM_Neighbors_Lock::mtx );
             RemovePartialData(); // Not thread safe
@@ -140,7 +140,7 @@ void EDM::FindNeighbors() {
 
     //-----------------------------------------------------------------
     // Pair the distances and library row indices for sort on distance.
-    // Filter out any library nn that are "invalid".
+    // Filter out library nn that are "invalid".
     // Output predPairs is a "matrix" of prediction : library rows.
     // Each predPairs vector member correponds to a prediction row.
     // Each member is a vector of < distance, libRow (nn) > pairs.
@@ -176,11 +176,21 @@ void EDM::FindNeighbors() {
             if ( libRowTp > max_lib_index ) {
                continue; // keep looking
             }
+            if ( libRowTp < 0 ) {
+                if ( parameters.embedded ) {
+                    continue; // keep looking
+                }
+                else {
+                    if ( libRowTp < parameters.tau * ( parameters.E - 1 ) ) {
+                        continue; // keep looking
+                    }
+                }
+            }
 
-            // If disjoint lib, grind through library to exclude
+            // If disjoint lib, exclude nn in disjointLibraryRows
             if ( parameters.disjointLibrary ) {
                 // Already checked for global ( < 0, > max_lib_index ) bounds
-
+                // disjointLibraryRows setup in Parameters.cc Validate() 
                 auto libi = find( parameters.disjointLibraryRows.begin(),
                                   parameters.disjointLibraryRows.end(),
                                   libRowTp );
@@ -358,9 +368,9 @@ void EDM::FindNeighbors() {
 
     if ( not knnNeighborsFound ) {
         if ( knnFoundMin > 1 ) { // JP Only for SMap ?
-            parameters.knn = knnFoundMin - 1;
+            parameters.knn = knnFoundMin;
         }
-
+        
         // SMap: resize knn_neighbors, knn_distances to knnFound
         if ( parameters.method == Method::SMap ) {
             DataFrame < size_t > knn_nghb( N_prediction_rows, parameters.knn );

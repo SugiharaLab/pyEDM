@@ -71,10 +71,11 @@ void SMapClass::SMap ( Solver solver ) {
         // vector B (target BC's) for this row (observation).
         int    libRow;
         size_t libRowBase;
-        
+        int    targetLibRowOffset = parameters.Tp - targetOffset;
+
         for ( int k = 0; k < parameters.knn; k++ ) {
             libRowBase = knn_neighbors( row, k );
-            libRow     = libRowBase + parameters.Tp;
+            libRow     = libRowBase + targetLibRowOffset;
             
             B[ k ] = target[ libRow ];
 
