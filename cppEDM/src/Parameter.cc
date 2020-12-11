@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 7, 1, "2020-11-29" )
+    version          ( 1, 7, 3, "2020-12-9" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -316,6 +316,15 @@ void Parameters::Validate() {
             for ( size_t li = thisPair.first; li <= thisPair.second; li++ ) {
                 prediction[ i ] = li - 1; // apply zero-offset
                 i++;
+            }
+        }
+        // Require sequential ordering
+        for ( size_t i = 1; i < prediction.size(); i++ ) {
+            if ( prediction[ i ] <= prediction[ i - 1 ] ) {
+                std::stringstream errMsg;
+                errMsg << "Parameters::Validate(): Prediction indices are "
+                       << "not strictly increasing.\n";
+                throw std::runtime_error( errMsg.str() );
             }
         }
     }

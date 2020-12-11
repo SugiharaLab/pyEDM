@@ -53,6 +53,8 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
 
     GetTarget(); // 2) Get target vector
 
+    allTime = data.Time(); // Original, full record of time
+
     //------------------------------------------------------------
     // embedded = false: Embed() was called on data
     //   Remove data & target rows as needed to match embedding
@@ -220,14 +222,13 @@ void EDM::FindNeighbors() {
     // JP Put on heap & destructor, or use smart pointers
     knn_neighbors = DataFrame  < size_t >( N_prediction_rows, parameters.knn );
     knn_distances = DataFrame  < double >( N_prediction_rows, parameters.knn );
+
     ties          = std::vector< bool   >( N_prediction_rows, false );
     tieFirstIndex = std::vector< size_t >( N_prediction_rows, 0     );
     tiePairs      = std::vector< std::vector< std::pair< double, size_t > > >
                     ( N_prediction_rows );
 
-    // Flag to push warning if knn neigbhors not found
-    bool knnNeighborsFound = true;
-    int  knnFoundMin       = (int) parameters.knn;
+    knnSmap = std::vector< size_t > ( N_prediction_rows, parameters.knn );
 
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find
@@ -261,15 +262,16 @@ void EDM::FindNeighbors() {
             // Check for failure to find knn neighbors
             if ( k >= rowPairSize ) {
 
-                knnNeighborsFound = false;
-                knnFoundMin       = std::min( knnFoundMin, k ); // global warning
+                if ( parameters.method == Method::SMap ) {
+                    knnSmap[ predPair_i ] = k;  // Save this reduced knn
+                }
 
                 if ( parameters.verbose ) {
                     std::stringstream errMsg;
                     if ( k == 0) {
                         errMsg << "WARNING: FindNeighbors(): No neighbors found"
-                               << " at prediction row " << predictionRow
-                               << ". NA prediction." << std::endl;
+                               << " for prediction row " << predictionRow
+                               << std::endl;
                     }
                     else {
                         errMsg << "WARNING: FindNeighbors(): "
@@ -299,8 +301,8 @@ void EDM::FindNeighbors() {
         // Note: A tie exists only if the k-th nn has distance equal
         //       to the k+1 nn. Multiple ties can exist beyond k+1. 
         //----------------------------------------------------------------
-        if ( parameters.method == Method::Simplex ) {
-            
+        if ( parameters.method == Method::Simplex and k > 0 ) {
+
             // Is there a tie?  A quick check.
             // Note k was post incremented in loop above
             bool   knnDistanceTie       = false;
@@ -366,31 +368,13 @@ void EDM::FindNeighbors() {
         } // if ( parameters.method == Method::Simplex ) {
     } // for ( predPair_i = 0; predPair_i < predPairs.size(); predPair_i++ )
 
-    if ( not knnNeighborsFound ) {
-        if ( knnFoundMin > 1 ) { // JP Only for SMap ?
-            parameters.knn = knnFoundMin;
-        }
-        
-        // SMap: resize knn_neighbors, knn_distances to knnFound
-        if ( parameters.method == Method::SMap ) {
-            DataFrame < size_t > knn_nghb( N_prediction_rows, parameters.knn );
-            DataFrame < double > knn_dist( N_prediction_rows, parameters.knn );
-            for ( size_t col = 0; col < (size_t) parameters.knn; col++ ) {
-                knn_nghb.WriteColumn( col, knn_neighbors.Column( col ) );
-                knn_dist.WriteColumn( col, knn_distances.Column( col ) );
-            }
-            // Replace
-            knn_neighbors = knn_nghb;
-            knn_distances = knn_dist;
-        }
-    }
-
 #ifdef DEBUG_ALL
     for ( size_t i = 0; i < tiePairs.size(); i++ ) {
+        size_t predictionRow = parameters.prediction[ i ];
         std::vector< std::pair< double, size_t > > rowTiePairs = tiePairs[ i ];
 
         if ( rowTiePairs.size() ) {
-            std::cout << "Ties at pred_i " << i + 1 << " ";
+            std::cout << "Ties at pred " << predictionRow << " ";
             for ( size_t j = 0; j < rowTiePairs.size(); j++ ) {
                 double dist = rowTiePairs[ j ].first;
                 size_t prow = rowTiePairs[ j ].second;
@@ -556,8 +540,10 @@ void EDM::PrintDataFrameIn()
 void EDM::PrintNeighbors()
 {
     std::cout << "EDM::FindNeighbors(): neighbors:distances" << std::endl;
+    size_t predictionRow;
     for ( size_t i = 0; i < knn_neighbors.NRows(); i++ ) {
-        std::cout << "Row " << i + 1 << " | ";
+        predictionRow = parameters.prediction[ i ];
+        std::cout << "pred " << predictionRow << " | ";
         for ( size_t j = 0; j < knn_neighbors.NColumns(); j++ ) {
             std::cout << knn_neighbors( i, j ) << " ";
         } std::cout << "   : ";
