@@ -35,14 +35,19 @@ public: // No need for private or protected
     std::valarray< double > const_predictions;
     std::valarray< double > variance;
 
-    // Prediction row accounting of library neighbor ties :: Simplex
+    // Simplex :: Prediction row accounting of library neighbor ties
     bool                  anyTies;
     std::vector< bool >   ties;          // true/false each prediction row
     std::vector< size_t > tieFirstIndex; // index in knn of first tie
     std::vector< std::vector< std::pair< double, size_t > > > tiePairs;
 
-    std::valarray< double > target;
-    int                     targetOffset;
+    // SMap :: Each prediction row can have variable knn
+    std::vector< size_t > knnSmap;
+
+    std::valarray< double >    target;  // entire record
+    std::vector< std::string > allTime; // entire record
+
+    int embedShift; // number of data rows lost to embedding
 
     Parameters parameters;
 

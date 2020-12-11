@@ -18,13 +18,13 @@ void EDM::RemovePartialData()
     data.PartialDataRowsDeleted() = true;
 
     int shift = abs( parameters.tau ) * ( parameters.E - 1 );
-    
+
     // Delete data rows corresponding to embedding partial data rows
     data.DeletePartialDataRows( shift, parameters.tau );
 
-    // Set targetOffset since target is not resized from original data
-    targetOffset = parameters.tau * ( parameters.E - 1 );
-    
+    // Set embedShift since target is not resized from original data
+    embedShift = parameters.tau * ( parameters.E - 1 );
+
     // Adjust parameters.library and parameters.prediction vectors of indices
     if ( shift > 0 ) {
         parameters.DeleteLibPred();
@@ -79,7 +79,7 @@ void EDM::FormatOutput() {
     //----------------------------------------------------
     // TimeOut vector with additional Tp points
     //----------------------------------------------------
-    size_t N_time       = data.Time().size();
+    size_t N_time       = data.Time().size(); // Used here for data.time bool
     size_t N_row        = parameters.prediction.size();
     size_t Tp_magnitude = abs( parameters.Tp );
 
@@ -96,43 +96,55 @@ void EDM::FormatOutput() {
     std::valarray< double > observations( N_row + Tp_magnitude );
 
     if ( parameters.Tp > -1 ) {  // Positive Tp ---------------------------
-        std::slice pred_i = std::slice( parameters.prediction[0] - targetOffset,
-                                        N_row, 1 );
-    
-        observations[ std::slice( 0, N_row, 1 ) ] =
+        std::slice pred_i = std::slice( parameters.prediction[0] - embedShift,
+                                        N_row + Tp_magnitude, 1 );
+
+        observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
             ( std::valarray< double > ) target[ pred_i ];
-    
-        for ( size_t i = N_row; i < N_row + parameters.Tp; i++ ) {
-            observations[ i ] = NAN;  // assign nan at end
+
+        // If Tp exceeds data, assign nan at end
+        if (parameters.prediction.back() + 1 + parameters.Tp >= target.size()) {
+            for ( size_t i = target.size() - parameters.prediction[0]
+                             + embedShift;
+                         i < N_row + Tp_magnitude; i++ ) {
+                observations[ i ] = NAN;
+            }
         }
     }
-    else {  // Negative Tp -------------------------------------------
+    else {  // Negative Tp ------------------------------------------------
         std::slice pred_i;
 
-        if ( parameters.prediction[0] >= Tp_magnitude ) {
+        if ( parameters.prediction[ 0 ] >= Tp_magnitude ) {
+            // All observations are available in the data
             pred_i = std::slice( parameters.prediction[ 0 ] -
-                                 targetOffset - Tp_magnitude,
+                                 embedShift - Tp_magnitude,
                                  N_row + Tp_magnitude, 1 );
-    
+
             observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
                 ( std::valarray< double > ) target[ pred_i ];
         }
         else {
             // Edge case where -Tp preceeds available record pred
-            pred_i = std::slice( 0, N_row - targetOffset + Tp_magnitude, 1 );
+            pred_i = std::slice( parameters.prediction[ 0 ] -
+                                 embedShift - Tp_magnitude,
+                                 N_row + Tp_magnitude, 1 );
 
-            observations[ std::slice( Tp_magnitude, N_row, 1 ) ] =
+            observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
                 ( std::valarray< double > ) target[ pred_i ];
 
-            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
-                observations[ i ] = NAN;  // assign nan at start
+            // Leading NA's
+            int end_na = (int)( Tp_magnitude - parameters.prediction[ 0 ] ) +
+                         embedShift;
+
+            for ( int i = 0; i < end_na; i++ ) {
+                observations[ i ] = NAN;
             }
         }
     }
 
-    //------------------------------------------------------------------
+    //---------------------------------------------------------------------
     // Predictions & variance: Assign values; insert Tp nan at start/end
-    //------------------------------------------------------------------
+    //---------------------------------------------------------------------
     std::valarray< double > predictionsOut     ( N_row + Tp_magnitude );
     std::valarray< double > constPredictionsOut( N_row + Tp_magnitude );
     std::valarray< double > varianceOut        ( N_row + Tp_magnitude );
@@ -181,7 +193,7 @@ void EDM::FormatOutput() {
     size_t dataFrameColumms = parameters.const_predict ? 4 : 3;
 
     projection = DataFrame< double >( N_row + Tp_magnitude, dataFrameColumms );
-    
+
     if ( parameters.const_predict ) {
         projection.ColumnNames() = { "Observations", "Predictions", 
                                      "Pred_Variance", "Const_Predictions" };
@@ -219,56 +231,60 @@ void EDM::FormatOutput() {
 //----------------------------------------------------------
 void EDM::FillTimes( std::vector< std::string > & timeOut )
 {
-    size_t N_time       = data.Time().size();
-    size_t N_row        = parameters.prediction.size();
-    size_t max_pred_i   = parameters.prediction[ N_row - 1 ];
-    size_t min_pred_i   = parameters.prediction[ 0 ];
-    size_t Tp_magnitude = abs( parameters.Tp );
+    size_t N_time = allTime.size();
 
-    if ( max_pred_i >= N_time ) {
-        // If tau > 0 end rows were deleted. max_pred_i might exceed time bounds
-        max_pred_i = N_time - 1;
-    }
+    if ( not N_time ) { return; }
 
-    if ( timeOut.size() != N_row + Tp_magnitude ) {
+    size_t N_row       = parameters.prediction.size();
+    size_t max_pred_i  = parameters.prediction.back();
+    size_t min_pred_i  = parameters.prediction.front();
+    size_t TpMagnitude = abs( parameters.Tp );
+
+    if ( timeOut.size() != N_row + TpMagnitude ) {
         std::stringstream errMsg;
         errMsg << "FillTimes(): timeOut vector length " << timeOut.size()
                << " is not equal to the number of predictions + Tp "
-               << N_row + Tp_magnitude << std::endl;
+               << N_row + TpMagnitude << std::endl;
         throw std::runtime_error( errMsg.str() );
     }
 
-    // Positive Tp -----------------------------------------------------
-    if ( parameters.Tp > -1 ) {
-        // Fill in times guaranteed to be in parameters.prediction indices
-        for ( size_t i = 0; i < N_row; i++ ) {
-            size_t pred_i = parameters.prediction[ i ];
-            if ( pred_i < N_time ) {
-                timeOut[ i ] = data.Time()[ pred_i ];
-            }
-        }
+    bool TpPositive = parameters.Tp > -1 ? true : false;
 
-        // Now fill in times beyond parameters.prediction indices
-        if ( max_pred_i + parameters.Tp < N_time ) {
-            // All prediction times are available in time, get the rest
-            for ( int i = 0; i < parameters.Tp; i++ ) {
-                timeOut[ N_row + i ] = data.Time()[ max_pred_i + i + 1 ];
+    if ( TpPositive ) {
+        if ( max_pred_i - embedShift + parameters.Tp < N_time ) {
+            // All times are present in allTime
+            for ( size_t i = 0; i < N_row + TpMagnitude; i++ ) {
+                int t_i = min_pred_i + i - embedShift;
+                timeOut[ i ] = allTime[ t_i ];
             }
         }
         else {
             // Tp introduces time values beyond the range of time
             bool timeFormatWarningPrinted = false;
 
+            // Times need to be generated beyond allTime
+            // First, fill in times that are in allTime
+            for ( size_t i = 0; i < N_row; i++ ) {
+                int t_i = min_pred_i + i - embedShift;
+                timeOut[ i ] = allTime[ t_i ];
+            }
+
+            // Now, generate future times
             // Try to parse the last time vector string as a date or datetime
             // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
             datetime_info dtinfo = ParseDatetime( data.Time()[ max_pred_i ] );
 
             for ( int i = 0; i < parameters.Tp; i++ ) {
                 std::stringstream tss;
-            
+
                 if ( dtinfo.unrecognized_fmt ) {
                     // Numeric so add Tp
-                    tss << std::stod( data.Time()[ max_pred_i ] ) + i + 1;
+                    double time_delta = std::stof( allTime[ 1 ] ) -
+                                        std::stof( allTime[ 0 ] );
+
+                    double newTime = std::stof( allTime[ max_pred_i ] ) +
+                                     ( i + 1 - embedShift ) * time_delta;
+                    tss << newTime;
                 }
                 else {
                     int time_delta = i + 1;
@@ -299,40 +315,41 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
             }
         }
     }
-    // Negative Tp -----------------------------------------------------
-    else {
-        // Fill in times guaranteed to be in parameters.prediction indices
-        for ( size_t i = 0; i < N_row; i++ ) {
-            size_t pred_i = parameters.prediction[ i ];
-            if ( pred_i < N_time ) {
-                // parameters.Tp is negative, start at timeOut[0 - parameters.Tp]
-                // timeOut is shifted forward to accomodate the preceeding Tp
-                timeOut[ i + Tp_magnitude ] = data.Time()[ pred_i ];
-            }
-        }
-
-        // Now fill in times before parameters.prediction indices
-        if ( (int) min_pred_i + parameters.Tp >= 0 ) {
-            // All prediction times are available in time, get the rest
-            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
-                timeOut[ i ] = data.Time()[ parameters.prediction[ i ] -
-                                            Tp_magnitude ];
+    else { // Tp Negative
+        if ( int( min_pred_i ) - embedShift + parameters.Tp >= 0 ) {
+            // All times are present in allTime
+            for ( size_t i = 0; i < N_row + TpMagnitude; i++ ) {
+                int t_i = min_pred_i + i + parameters.Tp - embedShift;
+                timeOut[ i ] = allTime[ t_i ];
             }
         }
         else {
             // Tp introduces time values before the range of time
             bool timeFormatWarningPrinted = false;
-            
+
+            // Times need to be generated before allTime
+            // First, fill in times that are in allTime
+            for ( size_t i = 0; i < N_row; i++ ) {
+                int t_i = min_pred_i + i - embedShift;
+                timeOut[ i + TpMagnitude ] = allTime[ t_i ];
+            }
+
+            // Now, generate past times
             // Try to parse the first time vector string as a date or datetime
             // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
             datetime_info dtinfo = ParseDatetime( data.Time()[ 0 ] );
 
-            for ( size_t i = 0; i < Tp_magnitude; i++ ) {
+            for ( int i = (int) TpMagnitude; i > 0; i-- ) {
                 std::stringstream tss;
-            
+
                 if ( dtinfo.unrecognized_fmt ) {
-                    // Numeric so subtract i Tp
-                    tss << std::stod( data.Time()[Tp_magnitude - 1] ) - (i + 1);
+                    // Numeric so subtract i * Tp
+                    double time_delta = std::stof( allTime[ 1 ] ) -
+                                        std::stof( allTime[ 0 ] );
+
+                    double newTime = std::stof( allTime[ min_pred_i ] ) -
+                                     ( i + embedShift ) * time_delta;
+                    tss << newTime;
                 }
                 else {
                     int time_delta = i - 1;
@@ -360,10 +377,10 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
                         }
                     }
                 } // else not dtinfo.unrecognized_fmt
-                
-                timeOut[ i ] = tss.str();
+
+                timeOut[ (int) TpMagnitude - i ] = tss.str();
 
             } // for ( size_t i = 0; i < Tp_magnitude; i++ ) 
-        } // else Tp introduces time values before the range of time
-    } // else Negative Tp ------------------------------------------------
+        }
+    } // Tp Negative
 }

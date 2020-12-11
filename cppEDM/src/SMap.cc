@@ -17,11 +17,11 @@ SMapClass::SMapClass (
 // Project : Polymorphic implementation
 //----------------------------------------------------------------
 void SMapClass::Project ( Solver solver ) {
-    
+
     PrepareEmbedding();
-    
+
     Distances(); // all pred : lib vector distances into allDistances
-    
+
     FindNeighbors();
 
     SMap( solver );
@@ -39,41 +39,55 @@ void SMapClass::SMap ( Solver solver ) {
     // Allocate output vectors to populate EDM class projections DataFrame.
     // Must be after FindNeighbors()
     size_t Npred = knn_neighbors.NRows();
-    
+
     predictions       = std::valarray< double > ( 0., Npred );
     const_predictions = std::valarray< double > ( 0., Npred );
     variance          = std::valarray< double > ( 0., Npred );
-    
+
     // Init coefficients to NAN ?
     // Allocate +Tp rows.  Coefficients/nan will be shifted in Project()
     coefficients = DataFrame< double >( Npred + abs( parameters.Tp ),
                                         parameters.E + 1 );
-    
+
     // Process each prediction row in neighbors : distances
     for ( size_t row = 0; row < Npred; row++ ) {
-        
-        double D_avg = knn_distances.Row( row ).sum() / parameters.knn;
 
-        // Compute weight vector w
-        std::valarray< double > w = std::valarray< double >( parameters.knn );
+        size_t knn = knnSmap[ row ]; // knn is variable...
+
+        // Average distance for knn
+        double Dsum = 0;
+        for ( size_t i = 0; i < knn_distances.Row( row ).size(); i++ ) {
+            if ( std::isnan( knn_distances( row, i ) ) ) {
+                break; // Presume first nan is contiguous at end
+            }
+            Dsum += knn_distances( row, i );
+        }
+        double Davg = Dsum / knn;
+
+        // Weight vector w
+        std::valarray< double > w = std::valarray< double >( knn );
         if ( parameters.theta > 0 ) {
-            w = std::exp( (-parameters.theta / D_avg) * knn_distances.Row(row) );
+            double Dscale = parameters.theta / Davg;
+            for ( size_t k = 0; k < knn; k++ ) {
+                w[ k ] = std::exp( -Dscale * knn_distances( row, k ) );
+            }
         }
         else {
-            w = std::valarray< double >( 1, parameters.knn );
+            w = std::valarray< double >( 1, knn );
         }
 
-        DataFrame< double > A = DataFrame< double >( parameters.knn,
-                                                     parameters.E + 1 );
-        std::valarray< double > B = std::valarray< double >( parameters.knn );
+        // Allocate work space for solver, and target (B_noWeight)
+        DataFrame< double > A = DataFrame< double >( knn, parameters.E + 1 );
+        std::valarray< double > B          = std::valarray< double >( knn );
+        std::valarray< double > B_noWeight = std::valarray< double >( knn );
 
         // Populate matrix A (exp weighted future prediction), and
         // vector B (target BC's) for this row (observation).
         int    libRow;
         size_t libRowBase;
-        int    targetLibRowOffset = parameters.Tp - targetOffset;
+        int    targetLibRowOffset = parameters.Tp - embedShift;
 
-        for ( int k = 0; k < parameters.knn; k++ ) {
+        for ( size_t k = 0; k < knn; k++ ) {
             libRowBase = knn_neighbors( row, k );
             libRow     = libRowBase + targetLibRowOffset;
             
@@ -89,20 +103,22 @@ void SMapClass::SMap ( Solver solver ) {
             //       matrix A has E+1 columns, while the embedding has E.
             //---------------------------------------------------------------
             A( k, 0 ) = w[ k ]; // Intercept bias terms in column 0 (weighted)
-            
+
             for ( int j = 1; j < parameters.E + 1; j++ ) {
                 A( k, j ) = w[ k ] * embedding( libRowBase, j - 1 );
             }
         }
 
-        B = w * B; // Weighted target vector
+        B_noWeight = B; // Copy target vector for "variance" estimate
+
+        B = w * B;      // Weight target/boundary condition vector for solver
 
         // Estimate linear mapping of predictions A onto target B
         std::valarray < double > C = solver( A, B );
 
         // Prediction is local linear projection
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term
-        
+
         for ( int e = 1; e < parameters.E + 1; e++ ) {
             prediction = prediction +
                          C[ e ] * embedding( parameters.prediction[ row ], e-1 );
@@ -113,18 +129,19 @@ void SMapClass::SMap ( Solver solver ) {
 
         // "Variance" estimate assuming weights are probabilities
         std::valarray< double > deltaSqr =
-            std::pow( B - predictions[ row ], 2);
+            std::pow( B_noWeight - predictions[ row ], 2);
+
         variance[ row ] = ( w * deltaSqr ).sum() / w.sum();
-        
+
     } // for ( row = 0; row < Npred; row++ )
-    
+
     // non "predictions" X(t+1) = X(t) if const_predict specified
     const_predictions = std::valarray< double >( 0., Npred );
     if ( parameters.const_predict ) {
         std::slice pred_slice =
             std::slice( parameters.prediction[ 0 ],
                         parameters.prediction.size(), 1 );
-        
+
         const_predictions = target[ pred_slice ];
     }
 }
@@ -146,7 +163,7 @@ void SMapClass::WriteOutput () {
     std::vector<std::string> coefNames;
     if ( parameters.columnNames.size() and parameters.targetName.size() ) {
         coefNames.push_back( "C0" );
-        
+
         if ( parameters.embedded ) {
             for ( auto colName : parameters.columnNames ) {
                 std::stringstream coefName;
@@ -176,7 +193,7 @@ void SMapClass::WriteOutput () {
     // Create coefficient column vector with Tp nan rows at the
     // beginning/end of coefficients as in FormatOutput()
     std::valarray< double > coefColumnVec( NAN, coefficients.NRows() );
-    
+
     // Copy/shift coefficients vectors
     std::slice slice_in = std::slice( 0, knn_neighbors.NRows(), 1 );
     std::slice slice_out;
@@ -190,7 +207,7 @@ void SMapClass::WriteOutput () {
         coefColumnVec[ slice_out ] = coefficients.Column( col )[ slice_in ];
         coefficients.WriteColumn( col, coefColumnVec );
     }
-    
+
     if ( parameters.predictOutputFile.size() ) {
         projection.WriteData( parameters.pathOut,
                               parameters.predictOutputFile );
@@ -220,7 +237,7 @@ std::valarray < double > SVD( DataFrame    < double > A,
                     a,             // A
                     b,             // b
                     1.E-9 );       // rcond
-    
+
 #ifdef DEBUG_ALL
     std::cout << "SVD------------------------\n";
     std::cout << "A ----------\n";
@@ -260,7 +277,7 @@ std::valarray < double > SVD( DataFrame    < double > A,
 // DOUBLE PRECISION = REAL*8 = c++ double
 //-------------------------------------------------------------------------
 extern "C" {
-    
+
     void dgelss_( int    *M,
                   int    *N,
                   int    *NRHS,
@@ -298,7 +315,7 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
     // Workspace and info variables:
     // MSVC BS: Have to use static const int size, or new
     int *iwork = new int[ 8 * N_SingularValues ];
-    
+
     double workSize = 0;  // To query optimal work size
     int    lwork    = -1; // To query optimal work size
     int    info     = 0;  // return code
@@ -312,23 +329,23 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
         std::cout << a[i] << " ";
     } std::cout << std::endl;
 #endif
-    
+
     // Call dgelss with lwork = -1 to query optimal workspace size:
     dgelss_( &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond,
              &rank, &workSize, &lwork, &info );
-    
+
     if ( info ) {
         throw std::runtime_error( "Lapack_SVD(): dgelss failed on query.\n" );
     }
-    
+
 #ifdef DEBUG_ALL
     std::cout << "Optimal work size is " << workSize << std::endl;
 #endif
-    
+
     // Optimal workspace size is returned in workSize.
     // MSVC BS: Have to use static const int size, or new
     double *work = new double[ (size_t) workSize ];
-    
+
     lwork = (int) workSize;
 
     // Call dgelss for SVD solution using lwork workSize:
@@ -352,6 +369,6 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
     delete[] s;
     delete[] work;
     delete[] iwork;
-    
+
     return C;
 }

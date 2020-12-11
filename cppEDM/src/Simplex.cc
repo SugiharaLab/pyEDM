@@ -81,7 +81,7 @@ void SimplexClass::Simplex () {
 
         // target library vector, one element for each knn
         std::valarray< double > libTarget( 0., parameters.knn );
-        int targetLibRowOffset = parameters.Tp - targetOffset;
+        int targetLibRowOffset = parameters.Tp - embedShift;
         for ( int k = 0; k < parameters.knn; k++ ) {
             int libRow = knn_neighbors( row, k ) + targetLibRowOffset;
             libTarget[ k ] = target[ libRow ];
@@ -98,14 +98,15 @@ void SimplexClass::Simplex () {
                     rowTiePairs = tiePairs[ row ];
 
                 size_t tieFirstIdx = tieFirstIndex[ row ];
-                size_t numTies     = rowTiePairs.size();
+                size_t numTies     = ( parameters.knn - 1 ) - tieFirstIdx +
+                                     rowTiePairs.size();
                 size_t knnSize     = tieFirstIdx + numTies;
                 size_t tiesFound   = 0;
 
                 if ( (int) knnSize > parameters.knn ) {
 
                     double tieFactor =
-                        double( numTies + parameters.knn - knnSize )/
+                        double( numTies + parameters.knn - knnSize ) /
                         double( numTies );
 
                     double tieWeight = *( end( weights ) - 1 );
@@ -115,8 +116,8 @@ void SimplexClass::Simplex () {
                     std::valarray< double > weightsCopy  ( weights );
 
                     // resize libTarget & weights : destroys contents, init 0
-                    libTarget.resize( (size_t) parameters.knn + knnSize, 0. );
-                    weights.resize  ( (size_t) parameters.knn + knnSize, 0. );
+                    libTarget.resize( (size_t) knnSize, 0. );
+                    weights.resize  ( (size_t) knnSize, 0. );
 
                     // Copy original knn libTarget & weights values
                     libTarget[std::slice(0, parameters.knn, 1)] = libTargetCopy;
@@ -124,7 +125,7 @@ void SimplexClass::Simplex () {
 
                     // Copy expanded nn target values
                     size_t p = 1;
-                    for ( size_t k = tieFirstIdx + 1; k < knnSize; k++ ) {
+                    for ( size_t k = parameters.knn; k < knnSize; k++ ) {
 
                         if ( p >= rowTiePairs.size() ) {
                             std::string errMsg("Simplex(): Tie index error.\n");
