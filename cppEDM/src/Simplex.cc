@@ -164,7 +164,6 @@ void SimplexClass::Simplex () {
         std::valarray< double > deltaSqr =
             std::pow( libTarget - predictions[ row ], 2 );
         variance[ row ] = ( weights * deltaSqr ).sum() / weights.sum();
-
     } // for ( row = 0; row < Npred; row++ )
 
     // non "predictions" X(t+1) = X(t) if const_predict specified
