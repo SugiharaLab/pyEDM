@@ -38,11 +38,8 @@ void EDM::CheckDataRows( std::string call )
 {
     // parameters.prediction & library have been zero-offset in Validate()
     // to convert from user specified data row to array indicies
-    size_t prediction_max_i =
-        parameters.prediction[ parameters.prediction.size() - 1 ];
-
-    size_t library_max_i =
-        parameters.library[ parameters.library.size() - 1 ];
+    size_t prediction_max_i = parameters.prediction.back();
+    size_t library_max_i    = parameters.library.back();
 
     if ( not parameters.embedded ) {
         if ( parameters.E < 1 ) {

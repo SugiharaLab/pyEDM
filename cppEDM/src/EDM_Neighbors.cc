@@ -189,19 +189,6 @@ void EDM::FindNeighbors() {
                 }
             }
 
-            // If disjoint lib, exclude nn in disjointLibraryRows
-            if ( parameters.disjointLibrary ) {
-                // Already checked for global ( < 0, > max_lib_index ) bounds
-                // disjointLibraryRows setup in Parameters.cc Validate() 
-                auto libi = find( parameters.disjointLibraryRows.begin(),
-                                  parameters.disjointLibraryRows.end(),
-                                  libRowTp );
-
-                if ( libi != parameters.disjointLibraryRows.end() ) {
-                    continue; // libRowTp in disjointLibraryRows keep looking
-                }
-            }
-
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
                 int delta_i = std::abs( (int) predictionRow - (int) libRow );
