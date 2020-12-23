@@ -105,8 +105,8 @@ Parameters::Parameters(
 Parameters::~Parameters() {}
 
 //----------------------------------------------------------------
-// Index offsets, generate library and prediction indices,
-// and parameter validation
+// Generate library and prediction indices.
+// Parameter validation and initialization.
 //----------------------------------------------------------------
 void Parameters::Validate() {
 
@@ -186,6 +186,10 @@ void Parameters::Validate() {
 
     //--------------------------------------------------------------------
     // CCM librarySizes
+    //   1) 3 arguments : start stop increment
+    //      if increment < stop generate the library sequence.
+    //      if increment > stop presume list of 3 library sizes.
+    //   2) Otherwise: "x y ..." : list of library sizes.
     //--------------------------------------------------------------------
     if ( libSizes_str.size() > 0 ) {
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
@@ -202,9 +206,9 @@ void Parameters::Validate() {
             increment = std::stoi( libsize_vec[2] );
 
             // However, it might just be 3 library sizes...
-            // If increment < stop, then presume 3 sequence arguments
+            // If increment < stop, presume start : stop : increment
             if ( increment < stop ) {
-                libSizeSequence = true;
+                libSizeSequence = true; // Generate the library sizes
             }
         }
 
@@ -262,8 +266,8 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------------
-    // Simplex: knn not specified: knn set to E+1
-    //    embedded true : E set to number columns
+    // Simplex: embedded true     : E set to number columns
+    //          knn not specified : knn set to E+1
     //--------------------------------------------------------------------
     if ( method == Method::Simplex or method == Method::CCM ) {
 
@@ -300,8 +304,9 @@ void Parameters::Validate() {
         }
     }
     //--------------------------------------------------------------------
-    // SMap and knn not specified: knn set to library.size()
+    // SMap
     // embedded true : E set to size( columns ) for output processing
+    // knn check deferred until after library is created
     //--------------------------------------------------------------------
     else if ( method == Method::SMap ) {
         if ( embedded and columnNames.size() > 1 ) {
@@ -312,8 +317,6 @@ void Parameters::Validate() {
                 E = columnNames.size();
             }
         }
-
-        // SMap knn check deferred until after library is created
 
         if ( not embedded and columnNames.size() > 1 ) {
             std::stringstream errMsg( "Parameters::Validate(): "
@@ -341,7 +344,7 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------
-    // Generate library indices: Apply zero-offset
+    // Generate library
     //--------------------------------------------------------------
     if ( lib_str.size() ) {
         // Parse lib_str into vector of strings
@@ -389,14 +392,17 @@ void Parameters::Validate() {
 
         bool disjointLibrary = libPairs.size() > 1 ? true : false;
 
+        int shift = E > 2 ? E - 2 : 0; // embedding and 0-offset shift
+
         if ( Tp >= 0 ) {
             // Multiple lib segments if libPairs.size() > 1
             for ( size_t i = 0; i < libPairs.size() - 1; i++ ) {
                 // Add rows for library segments, disallowing vectors
-                // in the "gap" accomodating E and Tp
+                // in a disjointLibrary "gap" accomodating E and Tp
                 std::pair< size_t, size_t > pair = libPairs[ i ];
 
                 int stop = (int) pair.second - (E-1) - Tp + 1;
+                if ( not embedded ) { stop = stop + shift; } // embedding shift
 
                 for ( int j = pair.first; j <= stop; j++ ) {
                     library.push_back( j - 1 ); // apply zero-offset
@@ -407,7 +413,9 @@ void Parameters::Validate() {
             std::pair< size_t, size_t > pair = libPairs.back();
 
             int start = pair.first;
-            if ( not embedded and disjointLibrary ) { start += 1; }
+            if ( not embedded and disjointLibrary ) {
+                start = start + 1 + shift; // add embedding shift
+            }
 
             for ( size_t j = start; j <= pair.second; j++ ) {
                 library.push_back( j - 1 ); // apply zero-offset
@@ -418,10 +426,9 @@ void Parameters::Validate() {
             for ( size_t i = 0; i < libPairs.size() - 1; i++ ) {
                 // Add rows for library segments, disallowing vectors
                 // in the "gap" accomodating E and Tp
-
                 std::pair< size_t, size_t > pair = libPairs[ i ];
 
-                int stop = (int) pair.second + Tp + 1;
+                int stop = (int) pair.second;
 
                 for ( int j = pair.first; j <= stop; j++ ) {
                     library.push_back( j - 1 ); // apply zero-offset
@@ -431,9 +438,13 @@ void Parameters::Validate() {
             // The last (or only) library segment
             std::pair< size_t, size_t > pair = libPairs.back();
 
-            int start = embedded ? pair.first : pair.first + 1;
+            int start = pair.first + Tp;
 
-            for ( int j = start - (Tp + 1); j <= (int) pair.second; j++ ) {
+            if ( not embedded and disjointLibrary ) {
+                start = start + 1 + shift; // add embedding shift
+            }
+
+            for ( size_t j = start - Tp; j <= pair.second; j++ ) {
                 library.push_back( j - 1 ); // apply zero-offset
             }
         }
@@ -464,7 +475,7 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------
-    // Generate prediction indices: Apply zero-offset
+    // Generate prediction
     //--------------------------------------------------------------
     if ( pred_str.size() ) {
         // Parse pred_str into vector of strings
@@ -538,6 +549,10 @@ void Parameters::Validate() {
         }
     }
 
+    //--------------------------------------------------------------
+    // Validate library & prediction
+    // Set SMap knn default based on E and library size
+    //--------------------------------------------------------------
     if ( method == Method::Simplex or method == Method::SMap ) {
         if ( not library.size() ) {
             std::string errMsg( "Parameters::Validate(): "
