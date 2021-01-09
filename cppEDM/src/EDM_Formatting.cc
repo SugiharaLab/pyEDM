@@ -79,8 +79,9 @@ void EDM::FormatOutput() {
     size_t N_time       = data.Time().size(); // Used here for data.time bool
     size_t N_row        = parameters.prediction.size();
     size_t Tp_magnitude = abs( parameters.Tp );
+    size_t outSize      = N_row + Tp_magnitude;
 
-    std::vector< std::string > timeOut( N_row + Tp_magnitude );
+    std::vector< std::string > timeOut( outSize );
 
     // Populate timeOut vector with strings for output
     if ( N_time ) {
@@ -88,78 +89,46 @@ void EDM::FormatOutput() {
     }
 
     //----------------------------------------------------
-    // Observations: Insert data; add Tp nan at end/start
+    // Observations: Insert target data in observations
     //----------------------------------------------------
-    std::valarray< double > observations( N_row + Tp_magnitude );
+    std::valarray< double > observations( NAN, outSize );
 
-    if ( parameters.Tp > -1 ) {  // Positive Tp ---------------------------
-        std::slice pred_i = std::slice( parameters.prediction[0] - embedShift,
-                                        N_row + Tp_magnitude, 1 );
+    int startObservations = 0;
+    int startTarget;
 
-        observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
-            ( std::valarray< double > ) target[ pred_i ];
-
-        // If Tp exceeds data, assign nan at end
-        if (parameters.prediction.back() + 1 + parameters.Tp >= target.size()) {
-            for ( size_t i = target.size() - parameters.prediction[0]
-                             + embedShift;
-                         i < N_row + Tp_magnitude; i++ ) {
-                observations[ i ] = NAN;
-            }
-        }
+    if ( parameters.Tp > -1 ) { // Positive Tp
+        startTarget = parameters.prediction[ 0 ] - embedShift;
     }
-    else {  // Negative Tp ------------------------------------------------
-        std::slice pred_i;
+    else {                      // Negative Tp
+        startTarget = parameters.prediction[ 0 ] - embedShift - Tp_magnitude;
+    }
+    if ( startTarget < 0 ) {
+        startObservations = std::abs( startTarget );
+        startTarget = 0;
+    }
 
-        if ( parameters.prediction[ 0 ] >= Tp_magnitude ) {
-            // All observations are available in the data
-            pred_i = std::slice( parameters.prediction[ 0 ] -
-                                 embedShift - Tp_magnitude,
-                                 N_row + Tp_magnitude, 1 );
-
-            observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
-                ( std::valarray< double > ) target[ pred_i ];
-        }
-        else {
-            // Edge case where -Tp preceeds available record pred
-            pred_i = std::slice( parameters.prediction[ 0 ] -
-                                 embedShift - Tp_magnitude,
-                                 N_row + Tp_magnitude, 1 );
-
-            observations[ std::slice( 0, N_row + Tp_magnitude, 1 ) ] =
-                ( std::valarray< double > ) target[ pred_i ];
-
-            // Leading NA's
-            int end_na = (int)( Tp_magnitude - parameters.prediction[ 0 ] ) +
-                         embedShift;
-
-            for ( int i = 0; i < end_na; i++ ) {
-                observations[ i ] = NAN;
-            }
-        }
+    size_t t = startTarget;
+    for ( size_t o = startObservations; o < outSize; o++ ) {
+        if ( t < target.size() ) {
+            observations[ o ] = target[ t ];
+        } else { break; }
+        t++;
     }
 
     //---------------------------------------------------------------------
-    // Predictions & variance: Assign values; insert Tp nan at start/end
+    // Predictions & variance
     //---------------------------------------------------------------------
-    std::valarray< double > predictionsOut     ( N_row + Tp_magnitude );
-    std::valarray< double > constPredictionsOut( N_row + Tp_magnitude );
-    std::valarray< double > varianceOut        ( N_row + Tp_magnitude );
+    std::valarray< double > predictionsOut     ( NAN, outSize );
+    std::valarray< double > constPredictionsOut( NAN, outSize );
+    std::valarray< double > varianceOut        ( NAN, outSize );
 
     if ( parameters.Tp > -1 ) {  // Positive Tp ---------------------------
         std::slice predOut_i = std::slice( parameters.Tp, N_row, 1 );
 
-        for ( int i = 0; i < parameters.Tp; i++ ) {
-            predictionsOut[ i ] = NAN;  // assign nan at start
-            varianceOut   [ i ] = NAN;  // assign nan at start
-        }
         predictionsOut[ predOut_i ] = predictions;
         varianceOut   [ predOut_i ] = variance;
 
         if ( parameters.const_predict ) {
-            for ( int i = 0; i < parameters.Tp; i++ ) {
-                constPredictionsOut[ i ] = NAN;  // assign nan at start
-            }
             constPredictionsOut[ predOut_i  ] = const_predictions;
         }
     }
@@ -170,17 +139,8 @@ void EDM::FormatOutput() {
         predictionsOut[ predOut_i ] = predictions[ predIn_i ];
         varianceOut   [ predOut_i ] = variance   [ predIn_i ];
 
-        for ( size_t i = N_row; i < N_row + Tp_magnitude; i++ ) {
-            predictionsOut[ i ] = NAN;  // assign nan at end
-            varianceOut   [ i ] = NAN;  // assign nan at end
-        } 
-
         if ( parameters.const_predict ) {
             constPredictionsOut[ predOut_i ] = const_predictions[ predIn_i ];
-
-            for ( size_t i = N_row; i < N_row + Tp_magnitude; i++ ) {
-                constPredictionsOut[ i ] = NAN;  // assign nan at end
-            }
         }
     }
 
