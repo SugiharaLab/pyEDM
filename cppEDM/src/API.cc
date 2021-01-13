@@ -520,13 +520,17 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                            bool        verbose,
                            unsigned    nThreads )
 {
+    // Note: Method::Simplex & embedded = false
+    //       Parameters constructor calls Validate()
+    //       If embedded = true: Validate() will set E to number of columns
+    //       We need E to pass to PrepareEmbedding() : EmbedData()
     Parameters parameters = Parameters( Method::Simplex,
                                         "",           // pathIn
                                         "",           // dataFile
                                         pathOut,      // 
                                         predictFile,  // 
                                         lib,          // lib_str
-                                        pred    ,     // pred_str
+                                        pred,         // pred_str
                                         E,            // 
                                         Tp,           // 
                                         knn,          // 
@@ -535,7 +539,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         exclusionRadius,
                                         columns,      // 
                                         target,       // 
-                                        true,         // embedded true
+                                        false,        // embedded false
                                         false,        // const_predict
                                         verbose,      // 
                                         "",           // SmapFile

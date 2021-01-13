@@ -82,9 +82,7 @@ void MultiviewClass::Project( unsigned nThreads ) {
 
     CheckParameters();
 
-    // Set embedded false so E-dimensional embedding is computed
-    parameters.embedded = false;
-
+    // Note: embedded false so E-dimensional embedding is computed
     PrepareEmbedding(); // EmbedData(). target, data, lib/pred adjust
 
     SetupParameters();  // Requires valid embedding
