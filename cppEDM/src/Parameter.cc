@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 7, 4, "2021-01-09" )
+    version          ( 1, 7, 5, "2021-01-13" )
 {
     // Constructor code
     if ( method != Method::None ) {
