@@ -10,18 +10,15 @@ namespace EDM_Neighbors_Lock {
 //   0) CheckDataRows()
 //   1) Extract or Embed() data into embedding
 //   2) Get target vector
-//   3) RemovePartialData() :
+//   3) AdjustLibPred() :
 //      Adjust parameters.library and parameters.prediction indices
 //
 // NOTE: time column is not returned in the embedding dataBlock.
 //
 // NOTE: If data is embedded by Embed(), the returned dataBlock
-//       has tau * (E-1) fewer rows than data. Since data is
-//       included in the returned DataEmbedNN struct, the first
-//       (or last) tau * (E-1) data rows are deleted to match
-//       dataBlock.
+//       has tau * (E-1) rows with partial data vectors. 
 //
-// NOTE: If rows are deleted, then the library and prediction
+// NOTE: If data is embedded, then the library and prediction
 //       vectors in Parameters are updated to reflect this.
 //----------------------------------------------------------------
 void EDM::PrepareEmbedding( bool checkDataRows ) {
@@ -47,7 +44,7 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
     }
     else {
         // embedded = false: Create time-delay embedding via EmbedData()
-        // embedding will have tau * (E-1) fewer rows than data
+        // tau * (E-1) rows will be partial vectors
         EmbedData();
     }
 
@@ -57,21 +54,11 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
 
     //------------------------------------------------------------
     // embedded = false: Embed() was called on data
-    //   Remove data & target rows as needed to match embedding
-    //   Adjust parameters.library and parameters.prediction indices
+    // Adjust parameters.library and parameters.prediction indices
     //------------------------------------------------------------
     if ( not parameters.embedded ) {
-        // 3) RemovePartialData()
-        // Delete data top or bottom rows of partial embedding data
-        if ( not data.PartialDataRowsDeleted() ) {
-            std::lock_guard<std::mutex> lck( EDM_Neighbors_Lock::mtx );
-            RemovePartialData(); // Not thread safe
-        }
-
-        // Check boundaries since rows were removed
-        if ( checkDataRows ) {
-            CheckDataRows( "PrepareEmbedding: Embedded data" );
-        }
+        // 3) AdjustLibPred()
+        parameters.AdjustLibPred(); // JP still needed?
     }
 }
 

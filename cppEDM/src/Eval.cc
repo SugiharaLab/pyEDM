@@ -214,10 +214,8 @@ void EmbedThread( EDM_Eval::WorkQueue & workQ,
         // WorkQueue stores E
         int E = workQ[ i ];
 
-        // Simplex() -> Embed() -> DeletePartialDataRows()
-        // In a multthreaded application we need to pass a unique copy of
-        // the data so that DeletePartialDataRows() is not recursively
-        // applied to the same data frame.
+        // JP : Remove ??
+        // In a multithreaded application pass a unique copy of the data.
         DataFrame< double > localData( data );
 
         try {
@@ -400,9 +398,8 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
         // WorkQueue stores Tp
         int Tp = workQ[ i ];
 
-        // In a multthreaded application we need to pass a unique copy of
-        // the data so that DeletePartialDataRows() is not recursively
-        // applied to the same data frame.
+        // JP : Remove ??
+        // In a multithreaded application pass a unique copy of the data
         DataFrame< double > localData( data );
 
         try {
@@ -619,9 +616,8 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
 
         double theta = ThetaValues[ workQ[ i ] ];  
 
-        // In a multthreaded application we need to pass a unique copy of
-        // the data so that DeletePartialDataRows() is not recursively
-        // applied to the same data frame.
+        // JP : Remove ??
+        // In a multithreaded application pass a unique copy of the data
         DataFrame< double > localData( data );
 
         try {

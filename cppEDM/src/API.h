@@ -36,7 +36,8 @@ DataFrame< double > Embed( DataFrame< double > & dataFrame,
 DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
                                int                      E,
                                int                      tau,
-                               std::vector<std::string> columnNames );
+                               std::vector<std::string> columnNames,
+                               bool                     deletePartial = false );
 
 DataFrame< double > Simplex( std::string pathIn          = "./data/",
                              std::string dataFile        = "",

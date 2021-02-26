@@ -14,7 +14,7 @@ py::dict Embed_pybind( std::string path,
                        bool        verbose ) {
 
     DataFrame< double > embedded;
-    
+
     if ( dataFile.size() ) {
         // dataFile specified, ignore df.dataList
         embedded = Embed( path,
@@ -26,7 +26,7 @@ py::dict Embed_pybind( std::string path,
     }
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
-        
+
         embedded = Embed( dataFrame,
                           E,
                           tau,
@@ -39,7 +39,7 @@ py::dict Embed_pybind( std::string path,
 
     DF       dfout = DataFrameToDF( embedded );
     py::dict D     = DFtoDict( dfout );
-    
+
     return D;
 }
 
@@ -50,17 +50,18 @@ py::dict MakeBlock_pybind( DF                       dfin,
                            int                      E,
                            int                      tau,
                            std::vector<std::string> columnNames,
-                           bool                     verbose ) {
-    
+                           bool                     deletePartial ) {
+
     DataFrame< double > dataFrame = DFToDataFrame( dfin );
 
     DataFrame< double > block = MakeBlock( dataFrame,
                                            E,
                                            tau,
-                                           columnNames );
+                                           columnNames,
+                                           deletePartial );
 
     DF       df = DataFrameToDF( block );
     py::dict D  = DFtoDict( df );
-    
+
     return D;
 }

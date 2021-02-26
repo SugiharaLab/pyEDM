@@ -41,13 +41,13 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("path")   = "",
                py::arg("file")   = "",
                py::arg("noTime") = false );
-    
+
     pyMod.def( "MakeBlock", &MakeBlock_pybind,
-               py::arg("pyInput")     = DF(),
-               py::arg("E")           = 0,
-               py::arg("tau")         = 0,
-               py::arg("columnNames") = std::vector<std::string>(),
-               py::arg("verbose")     = false );
+               py::arg("pyInput")       = DF(),
+               py::arg("E")             = 0,
+               py::arg("tau")           = 0,
+               py::arg("columnNames")   = std::vector<std::string>(),
+               py::arg("deletePartial") = false );
 
     //-------------------------------------------------------------
     // In cppEDM, these API's have two call signatures:
