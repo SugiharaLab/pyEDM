@@ -50,13 +50,15 @@ DataFrame< double > Embed( DataFrame< double > & dataFrameIn,
 
 //------------------------------------------------------------------------
 // MakeBlock from dataFrame :: API function
-// Ignores the first (or last) tau * (E-1) dataFrame rows of partial data.
+// First (or last) tau * (E-1) dataFrame rows have partial data,
+// deletePartial controls whether or not they are returned.
 // Does not validate parameters or columns, use EmbedData()
 //------------------------------------------------------------------------
 DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
                                int                      E,
                                int                      tau,
-                               std::vector<std::string> columnNames )
+                               std::vector<std::string> columnNames,
+                               bool                     deletePartial )
 {
     if ( columnNames.size() != dataFrame.NColumns() ) {
         std::stringstream errMsg;
@@ -72,9 +74,10 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
         throw std::runtime_error( errMsg.str() );
     }
 
-    size_t NRows    = dataFrame.NRows();        // number of input rows
-    size_t NColOut  = dataFrame.NColumns() * E; // number of output columns
-    size_t NPartial = abs( tau ) * (E-1);       // rows to shift & delete
+    size_t NDataRows = dataFrame.NRows();        // number of input rows
+    size_t NPartial  = abs( tau ) * (E-1);       // rows of partial data
+    size_t NRowOut;                              // number of output rows
+    size_t NColOut   = dataFrame.NColumns() * E; // number of output columns
 
     // Create embedded data frame column names X(t-0) X(t-1)...
     std::vector< std::string > newColumnNames( NColOut );
@@ -93,19 +96,42 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
         }
     }
 
-    // Ouput data frame with tau * E-1 fewer rows
-    DataFrame< double > embedding( NRows - NPartial, NColOut, newColumnNames );
+    // Number of rows of output data frame
+    if ( deletePartial ) {
+        if ( NPartial >= NDataRows ) {
+            std::stringstream errMsg;
+            errMsg << "MakeBlock(): Number of data rows " << NDataRows
+                   << " not sufficient for removal of "   << NPartial
+                   << " rows [tau*(E-1)] of partial embedding vectors.\n" ;
+            throw std::runtime_error( errMsg.str() );
+        }
+        NRowOut = NDataRows - NPartial;
+    }
+    else {
+        NRowOut = NDataRows;
+    }
+
+    // Ouput data frame
+    DataFrame< double > embedding( NRowOut, NColOut, newColumnNames );
 
     // To keep track of where to insert column in new data frame
     size_t colCount = 0;
 
-    // Slice to ignore rows with partial data
-    std::slice slice_i;
-    if ( tau < 0 ) {
-        slice_i = std::slice( NPartial, NRows - NPartial, 1 );
+    std::slice slice_i;   // slice to write data rows
+    std::slice slice_NA;  // slice for partial data
+    std::valarray< double > rowNan; // NAN for partial data if not deletePartial
+    
+    if ( deletePartial ) {
+        if ( tau < 0 ) {
+            slice_i = std::slice( NPartial, NDataRows - NPartial, 1 );
+        }
+        else {
+            slice_i = std::slice( 0, NDataRows - NPartial, 1 );
+        }
     }
     else {
-        slice_i = std::slice( 0, NRows - NPartial, 1 );
+        slice_i = std::slice( 0, NDataRows, 1 );
+        rowNan  = std::valarray< double >( NAN, NRowOut );
     }
 
     // Shift column data and write to embedding data frame
@@ -119,6 +145,16 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
             // shifted left n spaces (or right if n is negative).
             std::valarray< double > tmp = column.shift( e * tau );
 
+            if ( not deletePartial ) { // replace shift 0's with NaN
+                if ( tau < 0 ) {
+                    slice_NA = std::slice( 0, e, 1 );
+                }
+                else {
+                    slice_NA = std::slice( NDataRows - e, e, 1 );
+                }
+                tmp[ slice_NA ] = rowNan[ slice_NA ];
+            }
+            
             // Write shifted columns to the output embedding DataFrame
             embedding.WriteColumn( colCount, tmp[ slice_i ] );
             

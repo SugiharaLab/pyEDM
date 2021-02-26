@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 7, 5, "2021-01-13" )
+    version          ( 1, 8, 0, "2021-02-27" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -123,7 +123,7 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
 
     //--------------------------------------------------------------
-    // Columns
+    // columns
     // If columns are purely integer, set vector<size_t> columnIndex
     // Otherwise fill in vector<string> columnNames
     //--------------------------------------------------------------
@@ -303,6 +303,7 @@ void Parameters::Validate() {
             throw std::runtime_error( errMsg.str() );
         }
     }
+
     //--------------------------------------------------------------------
     // SMap
     // embedded true : E set to size( columns ) for output processing
@@ -390,61 +391,33 @@ void Parameters::Validate() {
         // Create library of indices
         library = std::vector< size_t >(); // Per thread
 
-        bool disjointLibrary = libPairs.size() > 1 ? true : false;
+        int NPartial = abs( tau ) * (E - 1); // embedding shift
 
-        int shift = E > 2 ? E - 2 : 0; // embedding and 0-offset shift
-
-        if ( Tp >= 0 ) {
-            // Multiple lib segments if libPairs.size() > 1
-            for ( size_t i = 0; i < libPairs.size() - 1; i++ ) {
-                // Add rows for library segments, disallowing vectors
-                // in a disjointLibrary "gap" accomodating E and Tp
-                std::pair< size_t, size_t > pair = libPairs[ i ];
-
-                int stop = (int) pair.second - (E-1) - Tp + 1;
-                if ( not embedded ) { stop = stop + shift; } // embedding shift
-
-                for ( int j = pair.first; j <= stop; j++ ) {
-                    library.push_back( j - 1 ); // apply zero-offset
-                }
-            }
-
-            // The last (or only) library segment
-            std::pair< size_t, size_t > pair = libPairs.back();
-
+        // Loop over each lib pair
+        // Add rows for library segments, disallowing vectors
+        // in disjoint library "gap" accomodating embedding and Tp
+        for ( size_t i = 0; i < libPairs.size(); i++ ) {
+            std::pair< size_t, size_t > pair = libPairs[ i ];
             int start = pair.first;
-            if ( not embedded and disjointLibrary ) {
-                start = start + 1 + shift; // add embedding shift
+            int stop  = pair.second;
+
+            if ( tau < 0 ) {
+                if ( not embedded ) { start = start + NPartial; }
+            }
+            else {
+                if ( not embedded ) { stop  = stop - NPartial;  }
             }
 
-            for ( size_t j = start; j <= pair.second; j++ ) {
-                library.push_back( j - 1 ); // apply zero-offset
+            if ( Tp < 0 ) {
+                start = std::max( start, start + abs( Tp ) - 1 );
             }
-        }
-        else {  // Negative Tp
-            // Multiple lib segments if libPairs.size() > 1
-            for ( size_t i = 0; i < libPairs.size() - 1; i++ ) {
-                // Add rows for library segments, disallowing vectors
-                // in the "gap" accomodating E and Tp
-                std::pair< size_t, size_t > pair = libPairs[ i ];
-
-                int stop = (int) pair.second;
-
-                for ( int j = pair.first; j <= stop; j++ ) {
-                    library.push_back( j - 1 ); // apply zero-offset
+            else {
+                if ( i != libPairs.size() - 1 ) {
+                    stop = stop - Tp;
                 }
             }
 
-            // The last (or only) library segment
-            std::pair< size_t, size_t > pair = libPairs.back();
-
-            int start = pair.first + Tp;
-
-            if ( not embedded and disjointLibrary ) {
-                start = start + 1 + shift; // add embedding shift
-            }
-
-            for ( size_t j = start - Tp; j <= pair.second; j++ ) {
+            for ( int j = start; j <= stop; j++ ) {
                 library.push_back( j - 1 ); // apply zero-offset
             }
         }
@@ -599,11 +572,10 @@ void Parameters::Validate() {
 
 }
 
-//------------------------------------------------------------
-// Adjust lib/pred concordant with Embed() removal of tau(E-1)
-// rows, and DeletePartialDataRow()
-//------------------------------------------------------------
-void Parameters::DeleteLibPred() {
+//---------------------------------------------------------------
+// Adjust lib/pred concordant with Embed() tau(E-1) partial rows
+//---------------------------------------------------------------
+void Parameters::AdjustLibPred() {
 
     size_t shift          = abs( tau ) * ( E - 1 );
     size_t library_len    = library.size();
@@ -611,23 +583,25 @@ void Parameters::DeleteLibPred() {
 
     // If [0, 1, ... shift]  (negative tau) or
     // [N-shift, ... N-1, N] (positive tau) are in library or prediction
-    // those rows were deleted, delete these index elements.
+    // delete these index elements.
+    
     // First, create vectors of indices to delete.
     std::vector< size_t > deleted_pred_elements( shift, 0 );
     std::vector< size_t > deleted_lib_elements ( shift, 0 );
 
-    if ( tau < 0 ) {
-        std::iota(deleted_pred_elements.begin(), deleted_pred_elements.end(),0);
-        std::iota(deleted_lib_elements.begin(),  deleted_lib_elements.end(), 0);
-    }
-    else {
-        std::iota( deleted_pred_elements.begin(),
-                   deleted_pred_elements.end(), prediction_len - shift );
-        std::iota( deleted_lib_elements.begin(),
-                   deleted_lib_elements.end(), library_len - shift );
-    }
+    int predStart = 0;
+    int libStart  = 0;
 
-    // Now that we have the indices that could have been deleted,
+    if ( tau > 0 ) {
+        predStart = std::max( 0, (int) prediction_len - (int) shift );
+        libStart  = std::max( 0, (int) library_len    - (int) shift );
+    }
+    std::iota( deleted_pred_elements.begin(),
+               deleted_pred_elements.end(), predStart );
+    std::iota( deleted_lib_elements.begin(),
+               deleted_lib_elements.end(),  libStart  );
+
+    // Now that we have the indices of partial embedding vectors,
     // check to see if any are in lib and pred
     bool deleteLibIndex = false;
     std::vector< size_t >::iterator it;
@@ -677,20 +651,6 @@ void Parameters::DeleteLibPred() {
             }
         }
     }
-
-    // Now offset all values by shift so that vectors indices
-    // in library and prediction refer to the same data rows
-    // before the deletion/shift.
-    if ( tau < 0 ) {
-        for ( auto li = library.begin(); li != library.end(); li++ ) {
-            *li = *li - shift;
-        }
-
-        for ( auto pi = prediction.begin(); pi != prediction.end(); pi++ ) {
-            *pi = *pi - shift;
-        }
-    }
-    // tau > 0  : Forward shifting: no adjustment needed from origin
 
     return;
 }

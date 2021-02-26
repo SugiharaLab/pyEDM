@@ -125,17 +125,31 @@ void CrossMap( SimplexClass   & S,
         throw std::runtime_error( errMsg.str() );
     }
 
-    int shift = abs( S.parameters.tau ) * ( S.parameters.E - 1 );
+    int NPartial = abs( S.parameters.tau ) * ( S.parameters.E - 1 );
 
-    if ( shift >= (int) S.data.NRows() ) {
+    if ( NPartial >= (int) S.data.NRows() ) {
         std::lock_guard<std::mutex> lck( EDM_CCM_Lock::mtx );
         std::stringstream errMsg;
         errMsg << "CrossMap(): Number of data rows " << S.data.NRows()
-               << " is not sufficient for tau*(E-1) = " << shift << ".\n";
+               << " is not sufficient for embedding tau*(E-1) = "
+               << NPartial << " rows.\n";
         throw std::runtime_error( errMsg.str() );
     }
 
-    size_t N_row = S.embedding.NRows();
+    // Note that the embedding has NPartial invalid rows
+    // since the partial data vectors were not removed.
+    size_t N_row = S.embedding.NRows() - NPartial;
+    int    libStart;
+    int    libStop;
+
+    if ( S.parameters.tau > 0 ) {
+        libStart = NPartial;
+        libStop  = S.embedding.NRows() - 1;
+    }
+    else {
+        libStart = 0;
+        libStop  = S.embedding.NRows() - NPartial - 1;
+    }
 
     //-----------------------------------------------------------------
     // Set number of samples
@@ -177,8 +191,8 @@ void CrossMap( SimplexClass   & S,
 
         size_t libSize = S.parameters.librarySizes[ libSize_i ];
 
-        // Create random RNG sampler for this libSize out of N_row
-        std::uniform_int_distribution< size_t > distribution( 0, N_row - 1 );
+        // Create RNG sampler for this libSize out of N_row
+        std::uniform_int_distribution< size_t > distribution(libStart, libStop);
 
 #ifdef DEBUG_ALL
         {
@@ -242,7 +256,7 @@ void CrossMap( SimplexClass   & S,
                 if ( libSize >= N_row ) {
                     // library size exceeded, back down
                     lib_i.resize( N_row );
-                    std::iota( lib_i.begin(), lib_i.end(), 0 );
+                    std::iota( lib_i.begin(), lib_i.end(), libStart );
                     libSize = N_row;
 
                     if ( S.parameters.verbose ) {
@@ -256,16 +270,17 @@ void CrossMap( SimplexClass   & S,
                 else {
                     // Contiguous blocks up to N_rows = maxSamples
                     if ( n + libSize < N_row ) {
-                        std::iota( lib_i.begin(), lib_i.end(), n );
+                        std::iota( lib_i.begin(), lib_i.end(), n + libStart );
                     }
                     else {
                         // n + libSize > N_row, wrap around to data origin
                         std::vector< size_t > lib_start( N_row - n );
-                        std::iota( lib_start.begin(), lib_start.end(), n );
+                        std::iota( lib_start.begin(), lib_start.end(),
+                                   n + libStart );
 
-                        size_t max_i = std::min( libSize-(N_row - n), N_row );
+                        size_t max_i = std::min( libSize - (N_row - n), N_row );
                         std::vector< size_t > lib_wrap( max_i );
-                        std::iota( lib_wrap.begin(), lib_wrap.end(), 0 );
+                        std::iota( lib_wrap.begin(), lib_wrap.end(), libStart );
 
                         // Build new lib_i
                         lib_i = std::vector< size_t > ( lib_start );

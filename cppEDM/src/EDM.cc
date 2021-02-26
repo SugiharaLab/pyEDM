@@ -3,7 +3,7 @@
 
 // Declared in API.h
 extern DataFrame< double > MakeBlock( DataFrame< double > &, int, int,
-                                      std::vector< std::string > );
+                                      std::vector< std::string >, bool );
 
 //----------------------------------------------------------------
 // Constructors
@@ -38,8 +38,6 @@ void EDM::GetTarget() {
 // Implemented as a wrapper for API MakeBlock()
 // Note: dataFrame must have the columnNameToIndex map
 //
-// NOTE: Truncates data by tau * (E-1) rows to remove
-//       nan values (partial data rows)
 // NOTE: The returned data block does NOT have the time column
 //----------------------------------------------------------------
 void EDM::EmbedData() {
@@ -96,6 +94,7 @@ void EDM::EmbedData() {
         dataFrame = data.DataFrameFromColumnIndex( parameters.columnIndex );
     }
 
+    // deletePartial = false
     embedding = MakeBlock( std::ref( dataFrame ), parameters.E,
-                           parameters.tau, colNames );
+                           parameters.tau, colNames, false );
 }

@@ -3,35 +3,6 @@
 #include "DateTime.h"
 
 //----------------------------------------------------------
-// Clip data rows to match the embedding
-//----------------------------------------------------------
-void EDM::RemovePartialData()
-{
-    // NOTE : Not thread safe : Call needs mutex wrap
-
-    if ( data.PartialDataRowsDeleted() ) {
-        std::cout << "RemovePartialData(): Partial data rows have "
-            "already been deleted." << std::endl;
-        return;
-    }
-
-    data.PartialDataRowsDeleted() = true;
-
-    int shift = abs( parameters.tau ) * ( parameters.E - 1 );
-
-    // Delete data rows corresponding to embedding partial data rows
-    data.DeletePartialDataRows( shift, parameters.tau );
-
-    // Set embedShift since target is not resized from original data
-    embedShift = parameters.tau * ( parameters.E - 1 );
-
-    // Adjust parameters.library and parameters.prediction vectors of indices
-    if ( shift > 0 ) {
-        parameters.DeleteLibPred();
-    }
-}
-
-//----------------------------------------------------------
 // Validate dataFrameIn rows against lib and pred indices
 //----------------------------------------------------------
 void EDM::CheckDataRows( std::string call )

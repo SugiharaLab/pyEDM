@@ -111,7 +111,7 @@ public: // No need for protected or private
     ~Parameters();
 
     void Validate();      // Parameter validation and index offsets
-    void DeleteLibPred(); // Adjust for embedding
+    void AdjustLibPred(); // Adjust for embedding
     void PrintIndices( std::vector< size_t > library,
                        std::vector< size_t > prediction );
 };
