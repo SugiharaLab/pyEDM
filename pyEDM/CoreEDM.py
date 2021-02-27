@@ -11,12 +11,12 @@ import pyEDM.AuxFunc
 # 
 #------------------------------------------------------------------------
 def MakeBlock( dataFrame,
-               E           = 0, 
-               tau         = -1,
-               columnNames = "",
-               verbose     = False ):
+               E             = 0, 
+               tau           = -1,
+               columnNames   = [],
+               deletePartial = False ):
     '''Takens time-delay embedding on columnNames in Pandas DataFrame.
-       Truncates the timeseries by tau * (E-1) rows.'''
+       NaN will be present in tau * (E-1) rows if deletePartial False.'''
 
     if not isinstance( dataFrame, DataFrame ) :
         raise Exception( "MakeBlock(): dataFrame is not a Pandas DataFrame." )
@@ -28,7 +28,7 @@ def MakeBlock( dataFrame,
                              E, 
                              tau,
                              columnNames,
-                             verbose )
+                             deletePartial )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
