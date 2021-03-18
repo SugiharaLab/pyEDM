@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 8, 0, "2021-02-27" )
+    version          ( 1, 8, 1, "2021-03-18" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -296,10 +296,10 @@ void Parameters::Validate() {
             }
         }
 
-        if ( knn < E + 1 ) {
+        if ( knn < 1 ) {
             std::stringstream errMsg;
-            errMsg << "Parameters::Validate(): Simplex knn of " << knn
-                   << " is less than E+1 = " << E + 1 << std::endl;
+            errMsg << "Parameters::Validate(): Simplex knn less than 1."
+                   << std::endl;
             throw std::runtime_error( errMsg.str() );
         }
     }
