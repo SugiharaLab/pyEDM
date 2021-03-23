@@ -71,9 +71,11 @@ steps:
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - bash: |
-        python -m pip install --upgrade pip
-        python -m pip install cibuildwheel==1.1.0 --user
-        python -m cibuildwheel --output-dir wheelhouse .
+        python -m pip install cibuildwheel==1.10.0
+        pip install -r requirements.txt
+        pip install --upgrade wheel
+        pip install --upgrade setuptools
+        python -m cibuildwheel --output-dir wheelhouse
   displayName: manylinux build
   condition: eq( variables['Agent.OS'], 'Linux' )
 
@@ -113,3 +115,4 @@ steps:
 - task: PublishBuildArtifacts@1
   inputs: {pathtoPublish: 'wheelhouse'}
   condition: eq( variables['Agent.OS'], 'Linux' )
+
