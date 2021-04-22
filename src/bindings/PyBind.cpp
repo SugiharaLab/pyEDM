@@ -80,6 +80,10 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("exclusionRadius") = 0,
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
+               py::arg("embeddingAssignments") 
+                                      = std::vector<std::vector<size_t>>(),
+               py::arg("conditionalEmbeddings")
+                                      = std::vector<std::vector<bool>>(),
                py::arg("embedded")    = false,
                py::arg("const_pred")  = false,
                py::arg("verbose")     = false );
@@ -100,6 +104,10 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("exclusionRadius") = 0,
                py::arg("columns")     = std::string(""),
                py::arg("target")      = std::string(""),
+               py::arg("embeddingAssignments") 
+                                      = std::vector<std::vector<size_t>>(),
+               py::arg("conditionalEmbeddings")
+                                      = std::vector<std::vector<bool>>(),
                py::arg("smapFile")    = std::string(""),
                py::arg("derivatives") = std::string(""),
                py::arg("solver")      = false,
@@ -122,6 +130,10 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("tau")             = 1,
                py::arg("columns")         = std::string(""),
                py::arg("target")          = std::string(""),
+               py::arg("embeddingAssignments") 
+                                      = std::vector<std::vector<size_t>>(),
+               py::arg("conditionalEmbeddings")
+                                      = std::vector<std::vector<bool>>(),
                py::arg("multiview")       = 0,
                py::arg("exclusionRadius") = 0,
                py::arg("trainLib")        = true,
@@ -143,6 +155,10 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("columns")         = std::string(""),
                py::arg("target")          = std::string(""),
                py::arg("libSizes")        = std::string(""),
+               py::arg("embeddingAssignments") 
+                                      = std::vector<std::vector<size_t>>(),
+               py::arg("conditionalEmbeddings")
+                                      = std::vector<std::vector<bool>>(),
                py::arg("sample")          = 0,
                py::arg("random")          = true,
                py::arg("replacement")     = false,

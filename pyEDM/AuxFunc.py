@@ -4,6 +4,7 @@
 import pkg_resources
 
 from pandas            import DataFrame
+from numpy             import zeros, ones, arange
 from matplotlib.pyplot import show, axhline
 
 import pyBindEDM
@@ -227,3 +228,41 @@ def NotStringIterable( obj ):
         else :
             return True
     return False
+
+#------------------------------------------------------------------------
+# Formats a set of conditionals to produce a conditional embedding.
+#
+# conditionals : A list of tuples (domain,range), range specifies a set of valid 
+#                library rows to use when predicting on the set of rows domain.
+#                Both take the format of a Pandas DataFrame of booleans as
+#                produced by a filter operator on a DataFrame, such as df["x"]<2
+# return       : Embedding assignment and design lists as used in cppEDM's CE
+#------------------------------------------------------------------------
+def FormatConditionalEmbeddings( num_rows, conditionalEmbeddings ):
+
+    indices = arange(num_rows)
+
+    # Make sure conditionals in format [(d1,r1),(d2,r2),...]
+    for conditionalEmbedding in conditionalEmbeddings:
+        assert len(conditionalEmbedding)==2,"Conditional embeddings should be"+\
+                                     "specified in format [(d1,r1),(d2,r2),...]"
+    # Assignment list for each row
+    assignments = zeros( (num_rows,1) ).astype(int).tolist()
+
+    # Default embedding (all rows valid library)
+    embeddings = [ones(num_rows).astype(bool) ]
+
+    # Add conditional embeddings to embeddings list and update assignment list
+
+    for domain,range_ in conditionalEmbeddings:
+
+        # Reduce potentially multi-dim filter to single dim with logical AND
+        domain = DataFrame(domain).all(axis=1)
+        range_ = DataFrame(range_).all(axis=1)
+
+        embeddings.append( range_.tolist() )
+
+        for row in indices[domain]:
+            assignments[row].append( len(embeddings)-1 )
+
+    return (assignments,embeddings)

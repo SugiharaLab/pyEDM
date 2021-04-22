@@ -206,7 +206,8 @@ setup(
     ext_modules      = Extension_modules,
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
-    install_requires = ['pybind11>=2.3', 'pandas>=0.20.3', 'matplotlib>=2.2'],
+    install_requires = ['pybind11>=2.3', 'pandas>=0.20.3', 'numpy',
+                        'matplotlib>=2.2'],
     python_requires  = '>=3',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
     zip_safe         = False,

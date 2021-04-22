@@ -45,6 +45,11 @@ public: // No need for protected or private
     bool        const_predict;     // true to compute non "predictor" stats
     bool        verbose;
 
+                                   // maps row to conditional embedding index
+    std::vector< std::vector<size_t> > embeddingAssignments;
+                                   // list of conditional embeddings
+    std::vector< std::vector<bool> > conditionalEmbeddings;
+
     std::string SmapOutputFile;    //
     std::string blockOutputFile;   // Embed() output file
 
@@ -92,6 +97,12 @@ public: // No need for protected or private
         bool        const_predict     = false,
         bool        verbose           = false,
 
+
+        std::vector< std::vector<size_t> > 
+                     embeddingAssignments = std::vector< std::vector<size_t> >(),
+        std::vector< std::vector<bool> > conditionalEmbeddings = std::vector< 
+                                                          std::vector<bool> >(),
+
         std::string SmapOutputFile    = "",
         std::string blockOutputFile   = "",        
 
@@ -106,6 +117,7 @@ public: // No need for protected or private
         bool        replacement       = false,
         unsigned    seed              = 0,  // 0: Generate random seed in CCM
         bool        includeData       = false
+
     );
 
     ~Parameters();

@@ -41,6 +41,39 @@ void EDM::CheckDataRows( std::string call )
 }
 
 //----------------------------------------------------------
+// Validate conditional embeddings
+//----------------------------------------------------------
+void EDM::CheckConditionalEmbeddings( std::string call )
+{
+
+    size_t library_max_i = parameters.library.back();
+
+    // The embedding assignment should have data.NRows()
+    if ( parameters.embeddingAssignments.size() < data.NRows() ){
+        std::stringstream errMsg;
+        errMsg << "CheckConditionalEmbeddings(): " << call
+               << ": The number of elements in the embedding assignment" 
+               << parameters.embeddingAssignments.size() 
+               << " is less than the number of data rows "
+               << data.NRows();
+        throw std::runtime_error( errMsg.str() );
+    }
+
+    // Each embedding should have size at least equal to the library 
+    for ( auto embedding : parameters.conditionalEmbeddings ) {
+        if ( embedding.size() < library_max_i ) {
+            std::stringstream errMsg;
+            errMsg << "CheckConditionalEmbeddings(): " << call
+                   << ": A specified conditional embedding of length " 
+                   << embedding.size() 
+                   << " is less than the maximum library index "
+                   << library_max_i;
+            throw std::runtime_error( errMsg.str() );
+        }
+    }
+}
+
+//----------------------------------------------------------
 // Common code for Simplex and Smap output generation
 //----------------------------------------------------------
 void EDM::FormatOutput() {

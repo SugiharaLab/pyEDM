@@ -95,7 +95,9 @@ def Simplex( pathIn       = "./",
              embedded     = False,
              verbose      = False,
              const_pred   = False,
-             showPlot     = False ):
+             showPlot     = False,
+             conditionalEmbeddings = []
+             ):
     '''Simplex prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
@@ -107,6 +109,10 @@ def Simplex( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "Simplex(): Invalid data input." )
+
+    # Map conditional embeddings from bool conditionals to cppEDM CE structure
+    embeddingAssignments, embeddings = pyEDM.AuxFunc.FormatConditionalEmbeddings(
+                                 len(DF.dataList[0][1]), conditionalEmbeddings )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -124,13 +130,15 @@ def Simplex( pathIn       = "./",
                            predictFile,
                            lib,
                            pred,
-                           E, 
+                           E,
                            Tp,
                            knn,
                            tau,
                            exclusionRadius,
                            columns,
-                           target, 
+                           target,
+                           embeddingAssignments,
+                           embeddings,
                            embedded,
                            const_pred,
                            verbose  )
@@ -166,7 +174,9 @@ def SMap( pathIn       = "./",
           embedded     = False,
           verbose      = False,
           const_pred   = False,
-          showPlot     = False ):
+          showPlot     = False,
+          conditionalEmbeddings = []
+          ):
     '''S-Map prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
@@ -178,6 +188,10 @@ def SMap( pathIn       = "./",
         DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
     else :
         raise Exception( "SMap(): Invalid data input." )
+
+    # Map conditional embeddings from bool conditionals to cppEDM CE structure
+    embeddingAssignments, embeddings = pyEDM.AuxFunc.FormatConditionalEmbeddings(
+                                 len(DF.dataList[0][1]), conditionalEmbeddings )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -215,6 +229,8 @@ def SMap( pathIn       = "./",
                         smapFile,
                         jacobians,
                         solver,
+                        embeddingAssignments,
+                        embeddings,
                         embedded,
                         const_pred,
                         verbose  )
@@ -253,7 +269,9 @@ def Multiview( pathIn          = "./",
                excludeTarget   = False,
                verbose         = False,
                numThreads      = 4,
-               showPlot        = False ):
+               showPlot        = False,
+               conditionalEmbeddings = []
+               ):
     '''Multiview prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
@@ -274,6 +292,10 @@ def Multiview( pathIn          = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
+    # Map conditional embeddings from bool conditionals to cppEDM CE structure
+    embeddingAssignments, embeddings = pyEDM.AuxFunc.FormatConditionalEmbeddings(
+                                 len(DF.dataList[0][1]), conditionalEmbeddings )
+
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "View" : < vector< string >, "Predictions" : {} }
     D = pyBindEDM.Multiview( pathIn,
@@ -290,6 +312,8 @@ def Multiview( pathIn          = "./",
                              tau,
                              columns,
                              target,
+                             embeddingAssignments,
+                             embeddings,
                              multiview,
                              exclusionRadius,
                              trainLib,
@@ -329,7 +353,9 @@ def CCM( pathIn           = "./",
          seed             = 0,
          includeData      = False,
          verbose          = False,
-         showPlot         = False ) :
+         showPlot         = False,
+         conditionalEmbeddings = []
+         ) :
     '''Convergent Cross Mapping on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for CCM()
@@ -346,6 +372,10 @@ def CCM( pathIn           = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
+    # Map conditional embeddings from bool conditionals to cppEDM CE structure
+    embeddingAssignments, embeddings = pyEDM.AuxFunc.FormatConditionalEmbeddings(
+                                 len(DF.dataList[0][1]), conditionalEmbeddings )
+
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
                        dataFile,
@@ -360,6 +390,8 @@ def CCM( pathIn           = "./",
                        columns,
                        target,
                        libSizes,
+                       embeddingAssignments,
+                       embeddings,
                        sample,
                        random,
                        replacement,

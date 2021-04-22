@@ -29,6 +29,9 @@ Parameters::Parameters(
     bool        const_predict,
     bool        verbose,
 
+    std::vector< std::vector<size_t> > embeddingAssignments,
+    std::vector< std::vector<bool> > conditionalEmbeddings,
+
     std::string SmapOutputFile,
     std::string blockOutputFile,
 
@@ -39,6 +42,7 @@ Parameters::Parameters(
 
     std::string libSizes_str,
     int         subSamples,
+
     bool        randomLib,
     bool        replacement,
     unsigned    seed,
@@ -68,6 +72,9 @@ Parameters::Parameters(
     embedded         ( embedded ),
     const_predict    ( const_predict ),
     verbose          ( verbose ),
+
+    embeddingAssignments  (embeddingAssignments),
+    conditionalEmbeddings (conditionalEmbeddings),
 
     SmapOutputFile   ( SmapOutputFile ),
     blockOutputFile  ( blockOutputFile ),
@@ -563,6 +570,25 @@ void Parameters::Validate() {
         }
         if ( not prediction.size() ) {
             prediction = std::vector<size_t>( 1, 0 );
+        }
+    }
+
+    //---------------------------------------------------------------
+    // Embedding assignments should not exceed number of embeddings
+    //---------------------------------------------------------------
+    for ( size_t i = 0; i < embeddingAssignments.size(); i++ ) {
+        for ( size_t embeddingIdx : embeddingAssignments[i] ) {
+
+            if ( embeddingIdx > conditionalEmbeddings.size() ) {
+                std::stringstream errMsg;
+                errMsg<< "Parameters::Validate(): "
+                      << "Embedding assignment of " << embeddingIdx
+                      << " at index " << i
+                      << " exceeds than the number of conditional embeddings "
+                      << conditionalEmbeddings.size()
+                      << ".\n";
+                throw std::runtime_error( errMsg.str() );
+            }
         }
     }
 

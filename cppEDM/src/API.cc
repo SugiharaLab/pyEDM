@@ -1,4 +1,3 @@
-
 //----------------------------------------------------------------
 // Functions implemented here:
 //     Embed(), MakeBlock(), Simplex(), SMap(), CCM(), Multiview()
@@ -227,13 +226,109 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                            bool        const_predict,
                            bool        verbose )
 {
+
+    // Pass to CE Simplex
+    DataFrame< double > simplexProjection = Simplex( std::ref( DF ),
+                                                     pathOut,
+                                                     predictFile,
+                                                     lib,
+                                                     pred,
+                                                     E,
+                                                     Tp,
+                                                     knn,
+                                                     tau,
+                                                     exclusionRadius,
+                                                     colNames,
+                                                     targetName,
+                             std::vector<std::vector<size_t>>(),//CE assignments
+                             std::vector<std::vector<bool>>(), // CE embeddings
+                                                     embedded,
+                                                     const_predict,
+                                                     verbose );
+
+    return simplexProjection;
+}
+//----------------------------------------------------------------------
+// Simplex with path/file input and conditional embedding
+//----------------------------------------------------------------------
+DataFrame< double > Simplex( std::string pathIn,
+                             std::string dataFile,
+                             std::string pathOut,
+                             std::string predictFile,
+                             std::string lib,
+                             std::string pred,
+                             int         E,
+                             int         Tp,
+                             int         knn,
+                             int         tau,
+                             int         exclusionRadius,
+                             std::string colNames,
+                             std::string targetName,
+                             std::vector< std::vector<size_t> > 
+                                                        embeddingAssignments,
+                             std::vector< std::vector<bool> > embeddings,
+                             bool        embedded,
+                             bool        const_predict,
+                             bool        verbose )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > DF( pathIn, dataFile );
+
+    // Pass data frame to Simplex 
+    DataFrame< double > simplexProjection = Simplex( std::ref( DF ),
+                                                     pathOut,
+                                                     predictFile,
+                                                     lib,
+                                                     pred,
+                                                     E,
+                                                     Tp,
+                                                     knn,
+                                                     tau,
+                                                     exclusionRadius,
+                                                     colNames,
+                                                     targetName,
+                                                     embeddingAssignments,
+                                                     embeddings,
+                                                     embedded,
+                                                     const_predict,
+                                                     verbose );
+
+    return simplexProjection;
+}
+
+//----------------------------------------------------------------------
+// Simplex with DataFrame input and conditional embedding
+//----------------------------------------------------------------------
+DataFrame<double> Simplex( DataFrame< double > & DF,
+                           std::string pathOut,
+                           std::string predictFile,
+                           std::string lib,
+                           std::string pred,
+                           int         E,
+                           int         Tp,
+                           int         knn,
+                           int         tau,
+                           int         exclusionRadius,
+                           std::string colNames,
+                           std::string targetName,
+                           std::vector< std::vector<size_t> > 
+                                                        embeddingAssignments,
+                           std::vector< std::vector<bool> > embeddings,
+                           bool        embedded,
+                           bool        const_predict,
+                           bool        verbose )
+{
     // Instantiate Parameters
     Parameters parameters = Parameters( Method::Simplex, "", "",
                                         pathOut, predictFile,
                                         lib, pred, E, Tp, knn, tau, 0,
                                         exclusionRadius,
                                         colNames, targetName, embedded,
-                                        const_predict, verbose );
+                                        const_predict, verbose,
+                                        embeddingAssignments, embeddings
+                                         );  
+
+
     
     // Instantiate EDM::SimplexClass object
     SimplexClass SimplexModel = SimplexClass( DF, std::ref( parameters ) );
@@ -242,7 +337,6 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
 
     return SimplexModel.projection;
 }
-
 //----------------------------------------------------------------------------
 // 1) SMap with path/file input
 //    Default SVD (LAPACK) assigned in SMap() overload 2)
@@ -307,7 +401,7 @@ SMapValues SMap( DataFrame< double > & DF,
                                   lib, pred, E, Tp, knn, tau, theta, 
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives,
-                                  & SVD, // LAPACK SVD default
+                                  & SVD, // LAPACK SVD default 
                                   embedded, const_predict, verbose);
 
     return SMapOutput;
@@ -375,13 +469,173 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        verbose )
 {
     if ( derivatives.size() ) {} // -Wunused-parameter
+
+    // Call overload 8) with DataFrame, solver object, and conditional emb.
+    SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
+                                  lib, pred, E, Tp, knn, tau, theta,
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives, 
+                                  solver, 
+                             std::vector<std::vector<size_t>>(),//CE assignments
+                             std::vector<std::vector<bool>>(), // CE embeddings
+                                  embedded, const_predict, verbose );
+    return SMapOutput;
+}
+//----------------------------------------------------------------------------
+// 5) SMap with path/file input and conditional embeddings
+//    Default SVD (LAPACK) assigned in SMap() overload 2)
+//----------------------------------------------------------------------------
+SMapValues SMap( std::string pathIn,
+                 std::string dataFile,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::vector< std::vector<size_t> > embeddingAssignments,
+                 std::vector<std::vector<bool>> conditionalEmbeddings,
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > DF( pathIn, dataFile );
+
+    // Call overload 6) with DataFrame
+    SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
+                                  lib, pred, E, Tp, knn, tau, theta,
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives, 
+                                  embeddingAssignments,conditionalEmbeddings,
+                                  embedded, const_predict, verbose );
+    return SMapOutput;
+}
+
+//----------------------------------------------------------------------------
+// 6) SMap with DataFrame and conditional embeddings
+//    Default SVD (LAPACK) assigned in Smap.cc overload 2)
+//----------------------------------------------------------------------------
+SMapValues SMap( DataFrame< double > & DF,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::vector< std::vector<size_t> > embeddingAssignments,
+                 std::vector<std::vector<bool>> conditionalEmbeddings,
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose )
+{
+    // Call overload 8) with default SVD function
+    SMapValues SMapOutput = SMap( DF, pathOut, predictFile,
+                                  lib, pred, E, Tp, knn, tau, theta, 
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives,
+                                  & SVD, // LAPACK SVD default 
+                                  embeddingAssignments,conditionalEmbeddings,
+                                  embedded, const_predict, verbose);
+
+    return SMapOutput;
+}
+
+//----------------------------------------------------------------------------
+// 7) Data path/file with external solver object and conditional embeddings
+//----------------------------------------------------------------------------
+SMapValues SMap( std::string pathIn,
+                 std::string dataFile,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::valarray< double > (*solver)(DataFrame < double >,
+                                               std::valarray < double >),
+                 std::vector< std::vector<size_t> > embeddingAssignments,
+                 std::vector<std::vector<bool>> conditionalEmbeddings,
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > DF( pathIn, dataFile );
+    
+    // Call overload 8) with DataFrame and solver object
+    SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
+                                  lib, pred, E, Tp, knn, tau, theta,
+                                  exclusionRadius,
+                                  columns, target, smapFile, derivatives, 
+                                  solver, 
+                                  embeddingAssignments,conditionalEmbeddings,
+                                  embedded, const_predict, verbose );
+    return SMapOutput;
+}
+
+//----------------------------------------------------------------------------
+// 8) DataFrame with external solver object and conditional embeddings
+//----------------------------------------------------------------------------
+SMapValues SMap( DataFrame< double > & DF,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred,
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 std::valarray< double > (*solver)(DataFrame < double >,
+                                               std::valarray < double >),
+                 std::vector< std::vector<size_t> > embeddingAssignments,
+                 std::vector<std::vector<bool>> conditionalEmbeddings,
+                 bool        embedded,
+                 bool        const_predict,
+                 bool        verbose )
+{
+    if ( derivatives.size() ) {} // -Wunused-parameter
     
     Parameters parameters = Parameters( Method::SMap, "", "",
                                         pathOut, predictFile,
                                         lib, pred, E, Tp, knn, tau, theta,
                                         exclusionRadius,
-                                        columns, target, embedded,
-                                        const_predict, verbose,
+                                        columns, target, 
+                                        embedded,
+                                        const_predict, 
+                                        verbose,
+                                        embeddingAssignments,
+                                        conditionalEmbeddings,
                                         smapFile );
     
     // Instantiate EDM::SMapClass object
@@ -395,7 +649,6 @@ SMapValues SMap( DataFrame< double > & DF,
 
     return values;    
 }
-
 //----------------------------------------------------------------------
 // CCM with path/file input
 //----------------------------------------------------------------------
@@ -451,6 +704,80 @@ CCMValues CCM( DataFrame< double > & DF,
                bool        includeData,
                bool        verbose )
 {
+
+    // Overload to CCM with conditional embeddings
+    CCMValues ccmValues = CCM( std::ref( DF ), pathOut, predictFile,
+                               E, Tp, knn, tau, exclusionRadius,
+                               colNames, targetName, libSizes_str,
+                             std::vector<std::vector<size_t>>(),//CE assignments
+                             std::vector<std::vector<bool>>(), // CE embeddings
+                               sample, random, replacement,
+                               seed, includeData, 
+                               verbose );
+    return ccmValues;
+}
+
+//----------------------------------------------------------------------
+// CCM with path/file input and conditional embeddings
+//----------------------------------------------------------------------
+CCMValues CCM( std::string pathIn,
+               std::string dataFile,
+               std::string pathOut,
+               std::string predictFile,
+               int         E,
+               int         Tp,
+               int         knn,
+               int         tau,
+               int         exclusionRadius,
+               std::string colNames,
+               std::string targetName,
+               std::string libSizes_str,
+               std::vector<std::vector<size_t>> embeddingAssignments,
+               std::vector<std::vector<bool>> conditionalEmbeddings,
+               int         sample,
+               bool        random,
+               bool        replacement,
+               unsigned    seed,
+               bool        includeData,
+               bool        verbose )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > DF( pathIn, dataFile );
+
+    CCMValues ccmValues = CCM( std::ref( DF ), pathOut, predictFile,
+                               E, Tp, knn, tau, exclusionRadius,
+                               colNames, targetName, libSizes_str,
+                               embeddingAssignments, conditionalEmbeddings,
+                               sample, random, replacement,
+                               seed, includeData, 
+                               verbose );
+
+    return ccmValues;
+}
+
+//----------------------------------------------------------------------
+// CCM with DataFrame input and conditional embeddings
+//----------------------------------------------------------------------
+CCMValues CCM( DataFrame< double > & DF,
+               std::string pathOut,
+               std::string predictFile,
+               int         E,
+               int         Tp,
+               int         knn,
+               int         tau,
+               int         exclusionRadius,
+               std::string colNames,
+               std::string targetName,
+               std::string libSizes_str,
+               std::vector<std::vector<size_t>> embeddingAssignments,
+               std::vector<std::vector<bool>> conditionalEmbeddings,
+               int         sample,
+               bool        random,
+               bool        replacement,
+               unsigned    seed,
+               bool        includeData,
+               bool        verbose )
+{
     // Set library and prediction indices to entire library (embedded)
     std::stringstream ss;
     ss << "1 " << DF.NRows();
@@ -473,6 +800,8 @@ CCMValues CCM( DataFrame< double > & DF,
                                         false,           // embedded
                                         false,           // const_predict
                                         verbose,         // 
+                                        embeddingAssignments, //
+                                        conditionalEmbeddings,//
                                         "",              // SmapFile
                                         "",              // blockFile
                                         0,               // multiviewEnsemble
@@ -498,6 +827,7 @@ CCMValues CCM( DataFrame< double > & DF,
 
     return values;    
 }
+
 
 //----------------------------------------------------------------------
 // Multiview with path/file input
@@ -556,6 +886,82 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                            bool        verbose,
                            unsigned    nThreads )
 {
+
+    // Multiview overload with conditional embeddings
+    MultiviewValues mvValues = Multiview( std::ref( DF ), pathOut, predictFile,
+                                          lib, pred, D, E, Tp, knn, tau,
+                                          columns, target, 
+                             std::vector<std::vector<size_t>>(),//CE assignments
+                             std::vector<std::vector<bool>>(),  // CE embeddings
+                                          multiview, exclusionRadius, trainLib,
+                                          excludeTarget, verbose, nThreads);
+
+    return mvValues;
+
+}
+//----------------------------------------------------------------------
+// Multiview with path/file input and conditional embeddings
+//----------------------------------------------------------------------
+MultiviewValues Multiview( std::string pathIn,
+                           std::string dataFile,
+                           std::string pathOut,
+                           std::string predictFile,
+                           std::string lib,
+                           std::string pred,
+                           int         D,
+                           int         E,
+                           int         Tp,
+                           int         knn,
+                           int         tau,
+                           std::string columns,
+                           std::string target,
+                           std::vector<std::vector<size_t>> embeddingAssignments,
+                           std::vector<std::vector<bool>> conditionalEmbeddings,
+                           int         multiview,
+                           int         exclusionRadius,
+                           bool        trainLib,
+                           bool        excludeTarget,
+                           bool        verbose,
+                           unsigned    nThreads )
+{
+    // DataFrame constructor loads data
+    DataFrame< double > DF( pathIn, dataFile );
+
+    MultiviewValues mvValues = Multiview( std::ref( DF ), pathOut, predictFile,
+                                          lib, pred, D, E, Tp, knn, tau,
+                                          columns, target, 
+                                          embeddingAssignments,
+                                          conditionalEmbeddings,
+                                          multiview, exclusionRadius, trainLib,
+                                          excludeTarget, verbose, nThreads);
+
+    return mvValues;
+}
+
+//----------------------------------------------------------------------
+// Multiview with DataFrame input and conditional embeddings
+//----------------------------------------------------------------------
+MultiviewValues Multiview( DataFrame< double > & DF,
+                           std::string pathOut,
+                           std::string predictFile,
+                           std::string lib,
+                           std::string pred,
+                           int         D,
+                           int         E,
+                           int         Tp,
+                           int         knn,
+                           int         tau,
+                           std::string columns,
+                           std::string target,
+                           std::vector<std::vector<size_t>> embeddingAssignments,
+                           std::vector<std::vector<bool>> conditionalEmbeddings,
+                           int         multiview,
+                           int         exclusionRadius,
+                           bool        trainLib,
+                           bool        excludeTarget,
+                           bool        verbose,
+                           unsigned    nThreads )
+{
     // Note: Method::Simplex & embedded = false
     //       Parameters constructor calls Validate()
     //       If embedded = true: Validate() will set E to number of columns
@@ -578,6 +984,8 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         false,        // embedded false
                                         false,        // const_predict
                                         verbose,      // 
+                                        embeddingAssignments,  //
+                                        conditionalEmbeddings, //
                                         "",           // SmapFile
                                         "",           // blockFile
                                         multiview,    // multiviewEnsemble,
