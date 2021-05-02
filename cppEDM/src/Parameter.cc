@@ -86,7 +86,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 8, 1, "2021-03-18" )
+    version          ( 1, 8, 2, "2021-05-02" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -136,7 +136,7 @@ void Parameters::Validate() {
 
         for ( auto ci = columns_vec.begin(); ci != columns_vec.end(); ++ci ) {
             onlyDigits = OnlyDigits( *ci, true );
-            
+
             if ( not onlyDigits ) { break; }
         }
 
@@ -171,7 +171,7 @@ void Parameters::Validate() {
         }
     }
 
-    //--------------------------------------------------------------------
+    //--------------------------------------------------------------
     // CCM sample not 0 if random is true
     //--------------------------------------------------------------
     if ( method == Method::CCM ) {
@@ -184,21 +184,21 @@ void Parameters::Validate() {
         }
     }
 
-    //--------------------------------------------------------------------
+    //--------------------------------------------------------------
     // CCM librarySizes
     //   1) 3 arguments : start stop increment
     //      if increment < stop generate the library sequence.
     //      if increment > stop presume list of 3 library sizes.
     //   2) Otherwise: "x y ..." : list of library sizes.
-    //--------------------------------------------------------------------
+    //--------------------------------------------------------------
     if ( libSizes_str.size() > 0 ) {
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
 
-        bool   libSizeSequence = false;
-        size_t start;
-        size_t stop;
-        size_t increment;
-        
+        bool libSizeSequence = false;
+        int  start;
+        int  stop;
+        int  increment;
+
         if ( libsize_vec.size() == 3 ) {
             // Presume ( start, stop, increment ) sequence arguments
             start     = std::stoi( libsize_vec[0] );
@@ -229,8 +229,6 @@ void Parameters::Validate() {
                 throw std::runtime_error( errMsg.str() );
             }
 
-            size_t N_lib = std::floor((stop-start)/increment + 1/increment) + 1;
-
             if ( (int) start < E ) {
                 std::stringstream errMsg;
                 errMsg << "Parameters::Validate(): "
@@ -244,6 +242,7 @@ void Parameters::Validate() {
             }
 
             // Allocate the librarySizes vector
+            int N_lib = ( stop - start ) / increment + 1;
             librarySizes = std::vector< size_t >( N_lib, 0 );
 
             // Fill in the sizes
@@ -584,7 +583,7 @@ void Parameters::AdjustLibPred() {
     // If [0, 1, ... shift]  (negative tau) or
     // [N-shift, ... N-1, N] (positive tau) are in library or prediction
     // delete these index elements.
-    
+
     // First, create vectors of indices to delete.
     std::vector< size_t > deleted_pred_elements( shift, 0 );
     std::vector< size_t > deleted_lib_elements ( shift, 0 );
@@ -631,7 +630,7 @@ void Parameters::AdjustLibPred() {
 
             std::vector< size_t >::iterator it;
             it = std::find( library.begin(), library.end(), *element );
-            
+
             if ( it != library.end() ) {
                 library.erase( it );
             }
