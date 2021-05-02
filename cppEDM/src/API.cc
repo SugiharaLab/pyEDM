@@ -86,10 +86,10 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
         for ( int e = 0; e < E; e++ ) {
             std::stringstream ss;
             if ( tau < 0 ) {
-                ss << columnNames[ col ] << "(t-" << e << ")";
+                ss << columnNames[ col ] << "(t-" << -tau * e << ")";
             }
             else {
-                ss << columnNames[ col ] << "(t+" << e << ")";
+                ss << columnNames[ col ] << "(t+" << tau * e << ")";
             }
             newColumnNames[ newCol_i ] = ss.str();
             newCol_i++;
@@ -146,11 +146,12 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
             std::valarray< double > tmp = column.shift( e * tau );
 
             if ( not deletePartial ) { // replace shift 0's with NaN
+                int N = e * abs( tau );
                 if ( tau < 0 ) {
-                    slice_NA = std::slice( 0, e, 1 );
+                    slice_NA = std::slice( 0, N, 1 );
                 }
                 else {
-                    slice_NA = std::slice( NDataRows - e, e, 1 );
+                    slice_NA = std::slice( NDataRows - N, N, 1 );
                 }
                 tmp[ slice_NA ] = rowNan[ slice_NA ];
             }

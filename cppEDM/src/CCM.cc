@@ -38,8 +38,8 @@ void CCMClass::Project () {
     // Compute all distances in SimplexClass objects
     // CrossMap() will take subsets of these for each library size
     // with calls to FindNeighbors(), Simplex() in CrossMap()
-    colToTarget.PrepareEmbedding(); // embedding, target, RemovePartialData()
-    targetToCol.PrepareEmbedding(); // embedding, target, RemovePartialData()
+    colToTarget.PrepareEmbedding(); // embedding, target
+    targetToCol.PrepareEmbedding(); // embedding, target
 
     colToTarget.Distances();        // allDistances, allLibRows
     targetToCol.Distances();        // allDistances, allLibRows
@@ -51,13 +51,13 @@ void CCMClass::Project () {
 }
 
 //----------------------------------------------------------------
-// CCM 
+// CCM
 // To accomodate two threads running forward & inverse mapping
 // CrossMap() is called with separate Simplex and CrossMapValues:
 //     SimpexClass colToTarget;  column to target mapping
 //     SimpexClass targetToCol;  target to column mapping
 // These fill the respective EDM object CrossMapValues structs:
-//     CrossMapValues colToTargetValues; 
+//     CrossMapValues colToTargetValues;
 //     CrossMapValues targetToColValues;
 //----------------------------------------------------------------
 void CCMClass::CCM () {
@@ -187,7 +187,8 @@ void CrossMap( SimplexClass   & S,
     // Loop for library sizes
     //----------------------------------------------------------
     for ( size_t libSize_i = 0;
-                 libSize_i < S.parameters.librarySizes.size(); libSize_i++ ) {
+                 libSize_i < S.parameters.librarySizes.size();
+                 libSize_i++ ) {
 
         size_t libSize = S.parameters.librarySizes[ libSize_i ];
 
@@ -228,10 +229,10 @@ void CrossMap( SimplexClass   & S,
                 else {
                     // Without replacement libSize elements from [0, N_row-1]
                     // NOTE: c++17 has the sample() function in <algorithm>
-                    if ( libSize >= N_row ) {
+                    if ( libSize > N_row ) {
                         std::stringstream errMsg;
-                        errMsg << "CrossMap(): libSize=" << libSize
-                               << " must be less than N_row=" << N_row
+                        errMsg << "CrossMap(): libSize = "       << libSize
+                               << " must be less than or equal " << N_row
                                << " for random sample without replacement.";
                         throw std::runtime_error( errMsg.str() );
                     }
@@ -312,9 +313,9 @@ void CrossMap( SimplexClass   & S,
             //----------------------------------------------------------
             Simplex_.allLibRows = 
                 S.allLibRows.DataFrameFromColumnIndex( lib_i );
-            
+
             Simplex_.allDistances =
-                S.allDistances.DataFrameFromColumnIndex( lib_i );            
+                S.allDistances.DataFrameFromColumnIndex( lib_i );
 
             //----------------------------------------------------------
             // Cross mapping
@@ -452,7 +453,7 @@ void CCMClass::FormatOutput () {
 }
 
 //----------------------------------------------------------------
-// 
+//
 //----------------------------------------------------------------
 void CCMClass::WriteOutput () {
     if ( parameters.predictOutputFile.size() ) {

@@ -67,7 +67,6 @@ public: // No need for private or protected
 
     // EDM_Formatting.cc
     void CheckDataRows( std::string call );
-    void RemovePartialData();
     void FormatOutput();
     void FillTimes( std::vector< std::string > & timeOut );
 
