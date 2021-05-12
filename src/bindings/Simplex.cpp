@@ -20,7 +20,8 @@ py::dict Simplex_pybind( std::string pathIn,
                          std::string target,
                          bool        embedded,
                          bool        const_predict,
-                         bool        verbose ) {
+                         bool        verbose,
+                         std::vector<bool> validLib ) {
 
     DataFrame< double > S;
     
@@ -41,7 +42,8 @@ py::dict Simplex_pybind( std::string pathIn,
                      target, 
                      embedded,
                      const_predict,
-                     verbose );
+                     verbose,
+                     validLib );
     }
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
@@ -60,7 +62,8 @@ py::dict Simplex_pybind( std::string pathIn,
                      target, 
                      embedded,
                      const_predict,
-                     verbose );
+                     verbose,
+                     validLib );
     }
     else {
         throw std::runtime_error( "Simplex_pybind(): Invalid input.\n" );

@@ -82,7 +82,9 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("target")      = std::string(""),
                py::arg("embedded")    = false,
                py::arg("const_pred")  = false,
-               py::arg("verbose")     = false );
+               py::arg("verbose")     = false,
+               py::arg("validLib")    = std::vector<bool>()
+            );
     
     pyMod.def( "SMap", &SMap_pybind,
                py::arg("pathIn")      = std::string("./"),
@@ -105,7 +107,9 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("solver")      = false,
                py::arg("embedded")    = false,
                py::arg("const_pred")  = false,
-               py::arg("verbose")     = false );
+               py::arg("verbose")     = false,
+               py::arg("validLib")    = std::vector<bool>()
+            );
 
     pyMod.def( "Multiview", &Multiview_pybind,
                py::arg("pathIn")          = std::string("./"),

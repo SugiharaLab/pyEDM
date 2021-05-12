@@ -39,6 +39,25 @@ void EDM::CheckDataRows( std::string call )
         throw std::runtime_error( errMsg.str() );
     }
 }
+//----------------------------------------------------------
+// Validate dataFrameIn rows against lib and pred indices
+//----------------------------------------------------------
+void EDM::CheckValidLib( std::string call )
+{
+
+    // validLib should have at last |lib| rows long. But for simplicity we will
+    // require validLib spans the entire dataset. Reduce this restriction later.
+    if ( parameters.validLib.size() < data.NRows() ){
+        std::stringstream errMsg;
+        errMsg << "CheckValidLib(): " << call
+               << ": The number of elements in validLib " 
+               << parameters.validLib.size()
+               << " is less than the number of data rows "
+               << data.NRows();
+        throw std::runtime_error( errMsg.str() );
+    }
+
+}
 
 //----------------------------------------------------------
 // Common code for Simplex and Smap output generation
