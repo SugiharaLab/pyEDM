@@ -95,7 +95,9 @@ def Simplex( pathIn       = "./",
              embedded     = False,
              verbose      = False,
              const_pred   = False,
-             showPlot     = False ):
+             showPlot     = False,
+             validLib     = None
+             ):
     '''Simplex prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
@@ -116,6 +118,9 @@ def Simplex( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
+    if validLib is None:
+        validLib = []
+
     # D is a Python dict from pybind11 < cppEDM Simplex 
     D = pyBindEDM.Simplex( pathIn,
                            dataFile,
@@ -133,7 +138,8 @@ def Simplex( pathIn       = "./",
                            target, 
                            embedded,
                            const_pred,
-                           verbose  )
+                           verbose,
+                           validLib )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
 
@@ -166,7 +172,9 @@ def SMap( pathIn       = "./",
           embedded     = False,
           verbose      = False,
           const_pred   = False,
-          showPlot     = False ):
+          showPlot     = False,
+          validLib     = None
+          ):
     '''S-Map prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
@@ -186,6 +194,10 @@ def SMap( pathIn       = "./",
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
+
+
+    if validLib is None:
+        validLib = []
 
     # Validate the solver if one was passed in
     if solver :
@@ -217,7 +229,8 @@ def SMap( pathIn       = "./",
                         solver,
                         embedded,
                         const_pred,
-                        verbose  )
+                        verbose,
+                        validLib)
 
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame
     df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame

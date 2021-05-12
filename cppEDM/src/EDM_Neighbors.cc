@@ -27,6 +27,11 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
         CheckDataRows( "PrepareEmbedding" );
     }
 
+    if ( parameters.validLib.size() ){
+        CheckDataRows( "PrepareEmbedding" );
+    }
+
+
     // 1) Extract or Embed() data into embedding
     if ( parameters.embedded ) {
         // data is a multivariable block, no embedding needed
@@ -181,6 +186,14 @@ void EDM::FindNeighbors() {
                 int delta_i = std::abs( (int) predictionRow - (int) libRow );
                 if ( delta_i <= parameters.exclusionRadius ) {
                     continue; // keep looking
+                }
+            }
+
+            // Conditional embedding : check row is valid lib if supplied
+            if ( parameters.validLib.size() ) {
+                if ( not parameters.validLib[ libRow] ) {
+                    std::cout<<"skipping row "<<libRow<<std::endl;
+                    continue;
                 }
             }
 

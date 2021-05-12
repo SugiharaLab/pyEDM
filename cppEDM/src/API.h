@@ -8,6 +8,11 @@
 #include "CCM.h"
 #include "Multiview.h"
 
+
+// CS: Note to ask JP: Set validLib parameter at bottom of existing signatures
+// to avoid bloated overloads, but semantically it belongs before verbose. Both
+// seem valid to me, but I understand if you opt for the latter.
+
 //-------------------------------------------------------------
 // API function declarations.
 //
@@ -54,7 +59,8 @@ DataFrame< double > Simplex( std::string pathIn          = "./data/",
                              std::string targetName      = "",
                              bool        embedded        = false,
                              bool        const_predict   = false,
-                             bool        verbose         = true );
+                             bool        verbose         = true,
+                             std::vector<bool> validLib  = std::vector<bool>() );
 
 DataFrame< double > Simplex( DataFrame< double > & dataFrameIn,
                              std::string pathOut         = "./",
@@ -70,7 +76,8 @@ DataFrame< double > Simplex( DataFrame< double > & dataFrameIn,
                              std::string targetName      = "",
                              bool        embedded        = false,
                              bool        const_predict   = false,
-                             bool        verbose         = true );
+                             bool        verbose         = true,
+                             std::vector<bool> validLib = std::vector<bool>());
 
 // SMap is a special case since it can be called with a function pointer
 // to the SVD solver. This is done so that interfaces such as pybind11
@@ -94,7 +101,8 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  std::string derivatives     = "",
                  bool        embedded        = false,
                  bool        const_predict   = false,
-                 bool        verbose         = true );
+                 bool        verbose         = true,
+                 std::vector<bool> validLib = std::vector<bool>() );
 
 // 2) DataFrame with default SVD (LAPACK) assigned in Smap.cc 2)
 SMapValues SMap( DataFrame< double > &dataFrameIn,
@@ -114,7 +122,8 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  std::string derivatives     = "",
                  bool        embedded        = false,
                  bool        const_predict   = false,
-                 bool        verbose         = true );
+                 bool        verbose         = true,
+                 std::vector<bool> validLib = std::vector<bool>() );
 
 // 3) Data path/file with external solver object, init to default SVD
 SMapValues SMap( std::string pathIn          = "./data/",
@@ -138,7 +147,9 @@ SMapValues SMap( std::string pathIn          = "./data/",
                       std::valarray < double >) = & SVD,
                  bool        embedded        = false,
                  bool        const_predict   = false,
-                 bool        verbose         = true );
+                 bool        verbose         = true,
+                 std::vector<bool> validLib = std::vector<bool>() );
+
 
 // 4) DataFrame with external solver object, init to default SVD
 SMapValues SMap( DataFrame< double > &dataFrameIn,
@@ -161,7 +172,8 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                       std::valarray < double >) = & SVD,
                  bool        embedded        = false,
                  bool        const_predict   = false,
-                 bool        verbose         = true );
+                 bool        verbose         = true,
+                 std::vector<bool> validLib = std::vector<bool>() );
 
 CCMValues CCM( std::string pathIn          = "./data/",
                std::string dataFile        = "",

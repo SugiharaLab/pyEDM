@@ -29,6 +29,8 @@ Parameters::Parameters(
     bool        const_predict,
     bool        verbose,
 
+    std::vector<bool> validLib,
+    
     std::string SmapOutputFile,
     std::string blockOutputFile,
 
@@ -68,6 +70,8 @@ Parameters::Parameters(
     embedded         ( embedded ),
     const_predict    ( const_predict ),
     verbose          ( verbose ),
+
+    validLib         ( validLib ),
 
     SmapOutputFile   ( SmapOutputFile ),
     blockOutputFile  ( blockOutputFile ),

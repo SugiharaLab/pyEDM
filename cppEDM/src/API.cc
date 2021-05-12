@@ -184,7 +184,8 @@ DataFrame< double > Simplex( std::string pathIn,
                              std::string targetName,
                              bool        embedded,
                              bool        const_predict,
-                             bool        verbose )
+                             bool        verbose,
+                             std::vector<bool> valid_lib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -204,7 +205,8 @@ DataFrame< double > Simplex( std::string pathIn,
                                                      targetName,
                                                      embedded,
                                                      const_predict,
-                                                     verbose );
+                                                     verbose,
+                                                     valid_lib );
 
     return simplexProjection;
 }
@@ -226,7 +228,8 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                            std::string targetName,
                            bool        embedded,
                            bool        const_predict,
-                           bool        verbose )
+                           bool        verbose,
+                           std::vector<bool> valid_lib)
 {
     // Instantiate Parameters
     Parameters parameters = Parameters( Method::Simplex, "", "",
@@ -234,7 +237,7 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                                         lib, pred, E, Tp, knn, tau, 0,
                                         exclusionRadius,
                                         colNames, targetName, embedded,
-                                        const_predict, verbose );
+                                        const_predict, verbose, valid_lib);
     
     // Instantiate EDM::SimplexClass object
     SimplexClass SimplexModel = SimplexClass( DF, std::ref( parameters ) );
@@ -266,7 +269,8 @@ SMapValues SMap( std::string pathIn,
                  std::string derivatives,
                  bool        embedded,
                  bool        const_predict,
-                 bool        verbose )
+                 bool        verbose,
+                 std::vector<bool> valid_lib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -276,7 +280,7 @@ SMapValues SMap( std::string pathIn,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
-                                  embedded, const_predict, verbose );
+                                  embedded, const_predict, verbose, valid_lib );
     return SMapOutput;
 }
 
@@ -301,7 +305,8 @@ SMapValues SMap( DataFrame< double > & DF,
                  std::string derivatives,
                  bool        embedded,
                  bool        const_predict,
-                 bool        verbose )
+                 bool        verbose,
+                 std::vector<bool> valid_lib)
 {
     // Call overload 4) with default SVD function
     SMapValues SMapOutput = SMap( DF, pathOut, predictFile,
@@ -309,7 +314,7 @@ SMapValues SMap( DataFrame< double > & DF,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives,
                                   & SVD, // LAPACK SVD default
-                                  embedded, const_predict, verbose);
+                                  embedded, const_predict, verbose, valid_lib);
 
     return SMapOutput;
 }
@@ -337,7 +342,8 @@ SMapValues SMap( std::string pathIn,
                                                std::valarray < double >),
                  bool        embedded,
                  bool        const_predict,
-                 bool        verbose )
+                 bool        verbose,
+                 std::vector<bool> valid_lib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -347,7 +353,8 @@ SMapValues SMap( std::string pathIn,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
-                                  solver, embedded, const_predict, verbose );
+                                  solver, embedded, const_predict, verbose,
+                                  valid_lib );
     return SMapOutput;
 }
 
@@ -373,7 +380,8 @@ SMapValues SMap( DataFrame< double > & DF,
                                                std::valarray < double >),
                  bool        embedded,
                  bool        const_predict,
-                 bool        verbose )
+                 bool        verbose,
+                 std::vector<bool> valid_lib)
 {
     if ( derivatives.size() ) {} // -Wunused-parameter
     
@@ -382,7 +390,7 @@ SMapValues SMap( DataFrame< double > & DF,
                                         lib, pred, E, Tp, knn, tau, theta,
                                         exclusionRadius,
                                         columns, target, embedded,
-                                        const_predict, verbose,
+                                        const_predict, verbose, valid_lib,
                                         smapFile );
     
     // Instantiate EDM::SMapClass object
@@ -474,6 +482,7 @@ CCMValues CCM( DataFrame< double > & DF,
                                         false,           // embedded
                                         false,           // const_predict
                                         verbose,         // 
+                                        std::vector<bool>(), // valid_lib
                                         "",              // SmapFile
                                         "",              // blockFile
                                         0,               // multiviewEnsemble
@@ -579,6 +588,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         false,        // embedded false
                                         false,        // const_predict
                                         verbose,      // 
+                                        std::vector<bool>(), // valid_lib
                                         "",           // SmapFile
                                         "",           // blockFile
                                         multiview,    // multiviewEnsemble,
