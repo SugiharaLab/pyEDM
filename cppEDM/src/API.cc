@@ -185,7 +185,7 @@ DataFrame< double > Simplex( std::string pathIn,
                              bool        embedded,
                              bool        const_predict,
                              bool        verbose,
-                             std::vector<bool> valid_lib)
+                             std::vector<bool> validLib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -206,7 +206,7 @@ DataFrame< double > Simplex( std::string pathIn,
                                                      embedded,
                                                      const_predict,
                                                      verbose,
-                                                     valid_lib );
+                                                     validLib );
 
     return simplexProjection;
 }
@@ -229,7 +229,7 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                            bool        embedded,
                            bool        const_predict,
                            bool        verbose,
-                           std::vector<bool> valid_lib)
+                           std::vector<bool> validLib)
 {
     // Instantiate Parameters
     Parameters parameters = Parameters( Method::Simplex, "", "",
@@ -237,7 +237,7 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                                         lib, pred, E, Tp, knn, tau, 0,
                                         exclusionRadius,
                                         colNames, targetName, embedded,
-                                        const_predict, verbose, valid_lib);
+                                        const_predict, verbose, validLib);
     
     // Instantiate EDM::SimplexClass object
     SimplexClass SimplexModel = SimplexClass( DF, std::ref( parameters ) );
@@ -270,7 +270,7 @@ SMapValues SMap( std::string pathIn,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> valid_lib)
+                 std::vector<bool> validLib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -280,7 +280,7 @@ SMapValues SMap( std::string pathIn,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
-                                  embedded, const_predict, verbose, valid_lib );
+                                  embedded, const_predict, verbose, validLib );
     return SMapOutput;
 }
 
@@ -306,7 +306,7 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> valid_lib)
+                 std::vector<bool> validLib)
 {
     // Call overload 4) with default SVD function
     SMapValues SMapOutput = SMap( DF, pathOut, predictFile,
@@ -314,7 +314,7 @@ SMapValues SMap( DataFrame< double > & DF,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives,
                                   & SVD, // LAPACK SVD default
-                                  embedded, const_predict, verbose, valid_lib);
+                                  embedded, const_predict, verbose, validLib);
 
     return SMapOutput;
 }
@@ -343,7 +343,7 @@ SMapValues SMap( std::string pathIn,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> valid_lib)
+                 std::vector<bool> validLib)
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -354,7 +354,7 @@ SMapValues SMap( std::string pathIn,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
                                   solver, embedded, const_predict, verbose,
-                                  valid_lib );
+                                  validLib );
     return SMapOutput;
 }
 
@@ -381,7 +381,7 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> valid_lib)
+                 std::vector<bool> validLib)
 {
     if ( derivatives.size() ) {} // -Wunused-parameter
     
@@ -390,7 +390,7 @@ SMapValues SMap( DataFrame< double > & DF,
                                         lib, pred, E, Tp, knn, tau, theta,
                                         exclusionRadius,
                                         columns, target, embedded,
-                                        const_predict, verbose, valid_lib,
+                                        const_predict, verbose, validLib,
                                         smapFile );
     
     // Instantiate EDM::SMapClass object
@@ -482,7 +482,7 @@ CCMValues CCM( DataFrame< double > & DF,
                                         false,           // embedded
                                         false,           // const_predict
                                         verbose,         // 
-                                        std::vector<bool>(), // valid_lib
+                                        std::vector<bool>(), // validLib
                                         "",              // SmapFile
                                         "",              // blockFile
                                         0,               // multiviewEnsemble
@@ -588,7 +588,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         false,        // embedded false
                                         false,        // const_predict
                                         verbose,      // 
-                                        std::vector<bool>(), // valid_lib
+                                        std::vector<bool>(), // validLib
                                         "",           // SmapFile
                                         "",           // blockFile
                                         multiview,    // multiviewEnsemble,
