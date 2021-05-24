@@ -45,7 +45,7 @@ public: // No need for protected or private
     bool        const_predict;     // true to compute non "predictor" stats
     bool        verbose;
 
-    std::vector<bool> validLib;   // maps row to valid library flag
+    std::vector<bool> validLib;    // maps row to valid library flag
 
     std::string SmapOutputFile;    //
     std::string blockOutputFile;   // Embed() output file
