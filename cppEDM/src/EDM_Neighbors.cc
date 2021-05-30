@@ -168,7 +168,6 @@ void EDM::FindNeighbors() {
 
             // Reach exceeding grasp : forecast point is outside library
             if ( libRowTp > max_lib_index ) {
-                std::cout<<"tp skipping row "<<libRow<<std::endl;
                continue; // keep looking
             }
             if ( libRowTp < 0 ) {
@@ -181,6 +180,7 @@ void EDM::FindNeighbors() {
                     }
                 }
             }
+
             // Exclusion radius: units are data rows, not time
             if ( parameters.exclusionRadius ) {
                 int delta_i = std::abs( (int) predictionRow - (int) libRow );
