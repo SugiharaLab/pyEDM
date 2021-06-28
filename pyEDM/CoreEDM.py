@@ -96,7 +96,7 @@ def Simplex( pathIn       = "./",
              verbose      = False,
              const_pred   = False,
              showPlot     = False,
-             validLib     = None
+             validLib     = []
              ):
     '''Simplex prediction on path/file.'''
 
@@ -117,9 +117,6 @@ def Simplex( pathIn       = "./",
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
-
-    if validLib is None:
-        validLib = []
 
     # D is a Python dict from pybind11 < cppEDM Simplex 
     D = pyBindEDM.Simplex( pathIn,
@@ -173,7 +170,7 @@ def SMap( pathIn       = "./",
           verbose      = False,
           const_pred   = False,
           showPlot     = False,
-          validLib     = None
+          validLib     = []
           ):
     '''S-Map prediction on path/file.'''
 
@@ -195,9 +192,6 @@ def SMap( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
-
-    if validLib is None:
-        validLib = []
 
     # Validate the solver if one was passed in
     if solver :
