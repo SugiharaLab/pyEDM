@@ -15,7 +15,6 @@
 // Common.cc
 extern std::vector<std::string> SplitString( std::string inString, 
                                              std::string delimeters = "," );
-extern bool OnlyDigits( std::string str, bool integerOnly );
 
 // Type definition for CSV NamedData to pair column names & column data
 typedef std::vector<std::pair<std::string, std::vector<double>>> NamedData;
@@ -608,7 +607,7 @@ private:
             throw std::runtime_error( errMsg.str() );
         }
 
-        // Read into a vector of strings, one line per string
+        // Read all lines into a vector of strings, one line per string
         std::vector< std::string > dataLines;
         std::string tmp;
 
@@ -629,31 +628,15 @@ private:
         // Container of column names in the same order as in csv file
         std::vector< std::string > colNames;
 
-        // Check first line to see if it's only numeric digits, or a header
-        bool onlyDigits = true;
+        // First line of .csv is REQUIRED header / column names
         std::vector<std::string> firstLineWords = SplitString( dataLines[0] );
 
-        for ( auto si =  firstLineWords.begin();
-                   si != firstLineWords.end(); ++si ){
-
-            onlyDigits = OnlyDigits( *si, false );
-            
-            if ( not onlyDigits ) { break; }
+        // Get named columns from header line
+        for (size_t colIdx = 0; colIdx < firstLineWords.size(); colIdx++){
+            colNames.push_back( firstLineWords[ colIdx ] );
         }
-        if ( onlyDigits ) {
-            // Create named columns with generic col names: V1, V2...
-            for (size_t colIdx = 0; colIdx < firstLineWords.size(); colIdx++){
-                colNames.push_back( "V" + std::to_string(colIdx) );
-            }
-        }
-        else {
-            // Get named columns from header line
-            for (size_t colIdx = 0; colIdx < firstLineWords.size(); colIdx++){
-                colNames.push_back( firstLineWords[ colIdx ] );  
-            }
-            // Remove header line from read in lines so only numerical after
-            dataLines.erase( dataLines.begin() );
-        }
+        // Remove header from dataLines so only numerical data is left
+        dataLines.erase( dataLines.begin() );
 
         if ( not noTime ) {
             timeName = colNames[ 0 ];

@@ -24,41 +24,6 @@ std::string ToLower( std::string str ) {
     return lowerStr;
 }
 
-//-------------------------------------------------------------------
-// Called in two different contexts:
-// DataFrame.h  ReadData() Are data columns numeric or labels?
-// Parameter.cc Validate() Are columns/target integer index or label?
-//
-// param integer : true: only digits, false: digits plus '-', '.'
-// return
-//        true  : str has only numeric characters
-//        false : str has non-numeric characters
-//-------------------------------------------------------------------
-bool OnlyDigits( std::string str, bool integer ) {
-
-    if ( not str.size() ) {
-        throw std::runtime_error( "OnlyDigits(): String is empty.\n" );
-    }
-
-    // Remove whitespace
-    std::string str_( str );
-    str_.erase( std::remove_if( str_.begin(), str_.end(), ::isspace ),
-                str_.end() );
-
-    std::string digits;
-    if ( integer ) {
-        digits = "0123456789";
-    }
-    else {
-        digits = "-.0123456789";
-    }
-
-    // Is str_ purely numeric characters?
-    bool onlyDigits = strspn(str_.c_str(), digits.c_str()) == str_.size();
-
-    return onlyDigits;
-}
-
 //----------------------------------------------------------------
 // SplitString
 //

@@ -58,8 +58,7 @@ struct MultiviewValues {
 //-------------------------------------------------------------
 // Prototypes
 //-------------------------------------------------------------
-std::string ToLower   ( std::string str );
-bool        OnlyDigits( std::string str, bool integerOnly );
+std::string ToLower( std::string str );
 
 std::vector<std::string> SplitString( std::string inString, 
                                       std::string delimeters );

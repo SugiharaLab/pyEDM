@@ -65,7 +65,6 @@ Parameters::Parameters(
 
     columns_str      ( columns_str ),
     target_str       ( target_str ),
-    targetIndex      ( 0 ),
 
     embedded         ( embedded ),
     const_predict    ( const_predict ),
@@ -90,7 +89,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 9, 0, "2021-06-01" )
+    version          ( 1, 9, 1, "2021-08-07" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -127,38 +126,19 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
 
     //--------------------------------------------------------------
-    // columns
-    // If columns are purely integer, set vector<size_t> columnIndex
-    // Otherwise fill in vector<string> columnNames
+    // columns : Fill in vector<string> columnNames
     //--------------------------------------------------------------
     if ( columns_str.size() ) {
 
         std::vector<std::string> columns_vec = SplitString( columns_str,
                                                             " \t,\n" );
-
-        bool onlyDigits = false;
-
-        for ( auto ci = columns_vec.begin(); ci != columns_vec.end(); ++ci ) {
-            onlyDigits = OnlyDigits( *ci, true );
-
-            if ( not onlyDigits ) { break; }
-        }
-
-        if ( onlyDigits ) {
-            for ( auto ci =  columns_vec.begin();
-                       ci != columns_vec.end(); ++ci ) {
-                columnIndex.push_back( std::stoi( *ci ) );
-            }
-        }
-        else {
-            columnNames = columns_vec;
-        }
+        columnNames = columns_vec;
     }
 
-    if ( not columnIndex.size() and not columnNames.size() ) {
+    if ( not columnNames.size() ) {
         std::stringstream errMsg;
         errMsg << "Parameters::Validate(): Simplex/CCM: "
-               << " No valid columns found." << std::endl;
+               << " No columns parsed." << std::endl;
         throw std::runtime_error( errMsg.str() );
     }
 
@@ -166,13 +146,7 @@ void Parameters::Validate() {
     // target
     //--------------------------------------------------------------
     if ( target_str.size() ) {
-        bool onlyDigits = OnlyDigits( target_str, true );
-        if ( onlyDigits ) {
-            targetIndex = std::stoi( target_str );
-        }
-        else {
-            targetName = target_str;
-        }
+        targetName = target_str;
     }
 
     //--------------------------------------------------------------
@@ -276,12 +250,7 @@ void Parameters::Validate() {
 
         // embedded = true: Set E to number of columns if not already set
         if ( embedded ) {
-            if ( columnIndex.size() ) {
-                if ( E != (int) columnIndex.size() ) {
-                    E = columnIndex.size();
-                }
-            }
-            else if ( columnNames.size() ) {
+            if ( columnNames.size() ) {
                 if ( E != (int) columnNames.size() ) {
                     E = columnNames.size();
                 }
@@ -314,10 +283,7 @@ void Parameters::Validate() {
     //--------------------------------------------------------------------
     else if ( method == Method::SMap ) {
         if ( embedded and columnNames.size() > 1 ) {
-            if ( columnIndex.size() ) {
-                E = columnIndex.size();
-            }
-            else if ( columnNames.size() ) {
+            if ( columnNames.size() ) {
                 E = columnNames.size();
             }
         }
