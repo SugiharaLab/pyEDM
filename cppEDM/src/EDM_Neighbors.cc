@@ -31,7 +31,6 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
         CheckValidLib( "PrepareEmbedding" );
     }
 
-
     // 1) Extract or Embed() data into embedding
     if ( parameters.embedded ) {
         // data is a multivariable block, no embedding needed
@@ -39,12 +38,9 @@ void EDM::PrepareEmbedding( bool checkDataRows ) {
         if ( parameters.columnNames.size() ) {
             embedding = data.DataFrameFromColumnNames( parameters.columnNames );
         }
-        else if ( parameters.columnIndex.size() ) {
-            embedding = data.DataFrameFromColumnIndex( parameters.columnIndex );
-        }
         else {
-            throw std::runtime_error( "PrepareEmbedding(): colNames and "
-                                      " colIndex are empty.\n" );
+            throw std::runtime_error( "PrepareEmbedding(): "
+                                      " columnNames are empty.\n" );
         }
     }
     else {

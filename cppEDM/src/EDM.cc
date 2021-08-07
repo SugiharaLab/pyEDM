@@ -22,10 +22,7 @@ void EDM::Project () {}
 // Set target (library) vector
 //----------------------------------------------------------------
 void EDM::GetTarget() {
-    if ( parameters.targetIndex ) {
-        target = data.Column( parameters.targetIndex );
-    }
-    else if ( parameters.targetName.size() ) {
+    if ( parameters.targetName.size() ) {
         target = data.VectorColumnName( parameters.targetName );
     }
     else {
@@ -42,8 +39,7 @@ void EDM::GetTarget() {
 //----------------------------------------------------------------
 void EDM::EmbedData() {
 
-    if ( not parameters.columnIndex.size() and
-         data.ColumnNameToIndex().empty() ) {
+    if ( data.ColumnNameToIndex().empty() ) {
         throw std::runtime_error("EDM::Embed(): columnNameIndex empty.\n");
     }
 
@@ -66,33 +62,16 @@ void EDM::EmbedData() {
     // Get column names for MakeBlock
     std::vector< std::string > colNames;
     if ( parameters.columnNames.size() ) {
-        // column names are strings use as-is
+        // column names are strings
         colNames = parameters.columnNames;
     }
-    else if ( parameters.columnIndex.size() ) {
-        // columns are indices : Create column names for MakeBlock
-        for ( size_t i = 0; i < parameters.columnIndex.size(); i++ ) {
-            std::stringstream ss;
-            ss << "V" << parameters.columnIndex[i];
-            colNames.push_back( ss.str() );
-        }
-    }
     else {
-        throw std::runtime_error( "EDM::Embed(): columnNames and "
-                                  " columnIndex are empty.\n" );
+        throw std::runtime_error( "EDM::Embed(): columnNames are empty.\n" );
     }
 
     // Extract the specified columns (sub)DataFrame from dataFrameIn
-    DataFrame< double > dataFrame;
-
-    if ( parameters.columnNames.size() ) {
-        dataFrame = data.DataFrameFromColumnNames( parameters.columnNames );
-    }
-    else if ( parameters.columnIndex.size() ) {
-        // already have column indices
-        // Note there will be no column names transferred
-        dataFrame = data.DataFrameFromColumnIndex( parameters.columnIndex );
-    }
+    DataFrame< double > dataFrame =
+        data.DataFrameFromColumnNames( parameters.columnNames );
 
     // deletePartial = false
     embedding = MakeBlock( std::ref( dataFrame ), parameters.E,

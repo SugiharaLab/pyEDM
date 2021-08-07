@@ -36,10 +36,8 @@ public: // No need for protected or private
     std::string                columns_str;
     std::string                target_str;
     std::vector< std::string > columnNames; // column names 
-    std::vector< size_t >      columnIndex; // column indices
 
     std::string targetName;        // target column name
-    size_t      targetIndex;       // target column index
 
     bool        embedded;          // true if data is already embedded/block
     bool        const_predict;     // true to compute non "predictor" stats
