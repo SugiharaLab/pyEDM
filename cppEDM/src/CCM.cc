@@ -138,17 +138,16 @@ void CrossMap( SimplexClass   & S,
 
     // Note that the embedding has NPartial invalid rows
     // since the partial data vectors were not removed.
-    size_t N_row = S.embedding.NRows() - NPartial;
-    int    libStart;
-    int    libStop;
+    // Set library index limits for RNG
+    size_t N_row    = S.embedding.NRows() - NPartial;
+    int    RNGStart = 0;
+    int    RNGStop;
 
     if ( S.parameters.tau > 0 ) {
-        libStart = NPartial;
-        libStop  = S.embedding.NRows() - 1;
+        RNGStop = *( end( S.allLibRows.Row( 0 ) ) - 1 );
     }
     else {
-        libStart = 0;
-        libStop  = S.embedding.NRows() - NPartial - 1;
+        RNGStop = S.embedding.NRows() - NPartial - 1;
     }
 
     //-----------------------------------------------------------------
@@ -193,7 +192,8 @@ void CrossMap( SimplexClass   & S,
         size_t libSize = S.parameters.librarySizes[ libSize_i ];
 
         // Create RNG sampler for this libSize out of N_row
-        std::uniform_int_distribution< size_t > distribution(libStart, libStop);
+        std::uniform_int_distribution< size_t >
+            distribution( RNGStart, RNGStop );
 
 #ifdef DEBUG_ALL
         {
@@ -229,15 +229,24 @@ void CrossMap( SimplexClass   & S,
                 else {
                     // Without replacement libSize elements from [0, N_row-1]
                     // NOTE: c++17 has the sample() function in <algorithm>
-                    if ( libSize > N_row ) {
+                    if ( S.parameters.tau < 0 and libSize > N_row ) {
                         std::stringstream errMsg;
                         errMsg << "CrossMap(): libSize = "       << libSize
                                << " must be less than or equal " << N_row
                                << " for random sample without replacement.";
                         throw std::runtime_error( errMsg.str() );
                     }
+                    else if ( S.parameters.tau > 0 and (int)libSize > RNGStop ) {
+                        std::stringstream errMsg;
+                        errMsg << "CrossMap(): libSize = "       << libSize
+                               << " must be less than or equal " << RNGStop
+                               << " for random sample without replacement.";
+                        throw std::runtime_error( errMsg.str() );
+                    }
 
-                    // unordered set to store samples
+                    // unordered_set to store samples
+                    // Each element is inserted only if it is not equivalent
+                    // to any other element already in the container
                     std::unordered_set< size_t > samples;
  
                     // Sample and insert unique values into samples
@@ -257,7 +266,7 @@ void CrossMap( SimplexClass   & S,
                 if ( libSize >= N_row ) {
                     // library size exceeded, back down
                     lib_i.resize( N_row );
-                    std::iota( lib_i.begin(), lib_i.end(), libStart );
+                    std::iota( lib_i.begin(), lib_i.end(), RNGStart );
                     libSize = N_row;
 
                     if ( S.parameters.verbose ) {
@@ -271,17 +280,17 @@ void CrossMap( SimplexClass   & S,
                 else {
                     // Contiguous blocks up to N_rows = maxSamples
                     if ( n + libSize < N_row ) {
-                        std::iota( lib_i.begin(), lib_i.end(), n + libStart );
+                        std::iota( lib_i.begin(), lib_i.end(), n + RNGStart );
                     }
                     else {
                         // n + libSize > N_row, wrap around to data origin
                         std::vector< size_t > lib_start( N_row - n );
                         std::iota( lib_start.begin(), lib_start.end(),
-                                   n + libStart );
+                                   n + RNGStart );
 
                         size_t max_i = std::min( libSize - (N_row - n), N_row );
                         std::vector< size_t > lib_wrap( max_i );
-                        std::iota( lib_wrap.begin(), lib_wrap.end(), libStart );
+                        std::iota( lib_wrap.begin(), lib_wrap.end(), RNGStart );
 
                         // Build new lib_i
                         lib_i = std::vector< size_t > ( lib_start );
