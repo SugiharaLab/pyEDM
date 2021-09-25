@@ -137,18 +137,17 @@ void CrossMap( SimplexClass   & S,
     }
 
     // Note that the embedding has NPartial invalid rows
-    // since the partial data vectors were not removed.
-    // Set library index limits for RNG
-    size_t N_row    = S.embedding.NRows() - NPartial;
-    int    RNGStart = 0;
-    int    RNGStop;
+    // since partial data vectors were not removed.
+    size_t N_row = S.embedding.NRows() - NPartial;
 
-    if ( S.parameters.tau > 0 ) {
-        RNGStop = *( end( S.allLibRows.Row( 0 ) ) - 1 );
-    }
-    else {
-        RNGStop = S.embedding.NRows() - NPartial - 1;
-    }
+    // Set index limits for RNG random library samples.
+    // Note that allLibRows is a vector of lib indices into the embedding.
+    // allLibRows defines the library. These indices will not start
+    // at 0 and end at N_row - 1 if tau is non zero.
+    // In CCM, the library is the entire lib domain allowed by tau and Tp.
+    // Random library samples are selected from allLibRows.
+    int RNGStart = 0;
+    int RNGStop  = (int) S.allLibRows.NColumns() - 1;
 
     //-----------------------------------------------------------------
     // Set number of samples
@@ -191,9 +190,8 @@ void CrossMap( SimplexClass   & S,
 
         size_t libSize = S.parameters.librarySizes[ libSize_i ];
 
-        // Create RNG sampler for this libSize out of N_row
-        std::uniform_int_distribution< size_t >
-            distribution( RNGStart, RNGStop );
+        // Create RNG sampler into allLibRows for this libSize
+        std::uniform_int_distribution< size_t > distribution(RNGStart, RNGStop);
 
 #ifdef DEBUG_ALL
         {
