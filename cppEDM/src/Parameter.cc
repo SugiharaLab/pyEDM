@@ -30,6 +30,9 @@ Parameters::Parameters(
     bool        verbose,
 
     std::vector<bool> validLib,
+
+    int         generateSteps,
+    bool        parameterList,
     
     std::string SmapOutputFile,
     std::string blockOutputFile,
@@ -72,6 +75,9 @@ Parameters::Parameters(
 
     validLib         ( validLib ),
 
+    generateSteps    ( generateSteps ),
+    parameterList    ( parameterList ),
+
     SmapOutputFile   ( SmapOutputFile ),
     blockOutputFile  ( blockOutputFile ),
 
@@ -89,12 +95,13 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 9, 3, "2021-09-25" )
+    version          ( 1, 10, 0, "2021-12-11" )
 {
     // Constructor code
     if ( method != Method::None ) {
 
         Validate();
+        FillMap();
 
         if ( verbose ) {
             version.ShowVersion();
@@ -535,6 +542,48 @@ void Parameters::Validate() {
         }
     }
 
+    //--------------------------------------------------------------
+    // Generative modes
+    // 
+    //--------------------------------------------------------------
+    if ( generateSteps != 0 and
+         ( method == Method::Simplex or method == Method::SMap ) ) {
+        
+        if ( generateSteps < 0 ) {
+            std::string errMsg( "Parameters::Validate(): "
+                                "generateSteps must be non-negative.\n" );
+            throw std::runtime_error( errMsg );
+        }
+        if ( embedded ) {
+            std::string errMsg("Parameters::Validate(): "
+                               "generateSteps embedded data not supported.\n");
+            throw std::runtime_error( errMsg );
+        }
+        
+        if ( Tp < 0 ) {
+            std::string errMsg("Parameters::Validate(): "
+                               "generateSteps negative Tp invalid.\n");
+            throw std::runtime_error( errMsg );
+        }
+        
+        if ( columnNames.front() != targetName ) {
+            std::string errMsg("Parameters::Validate(): generateSteps "
+                               "columns and target disjoint. "
+                               "Only univariate data allowed.\n");
+            throw std::runtime_error( errMsg );
+        }
+        
+        if ( columnNames.size() > 1 ) {
+            std::cout << "NOTE: Parameters::Validate(): generateSteps: "
+                      << "Multiple columns found. "
+                      << "Only univariate time-delay embedded data allowed. "
+                      << columnNames.front() << " used as column data."
+                      << std::endl;
+            columnNames.clear();
+            columnNames.push_back( targetName );
+        }
+    }
+
 #ifdef DEBUG_ALL
     PrintIndices( library, prediction );
 #endif
@@ -624,12 +673,161 @@ void Parameters::AdjustLibPred() {
     return;
 }
 
+//----------------------------------------------------------------
+//
+//----------------------------------------------------------------
+void Parameters::FillMap() {
+    std::stringstream ss;
+
+    ss << version.Major << "." << version.Minor
+       << "." << version.Micro << " " << version.Date;
+    Map[ "version" ] = ss.str();
+    ss.str( std::string() ); // clear the ss string
+
+    if      ( method == Method::Simplex ) { ss <<  "Simplex"; }
+    else if ( method == Method::SMap    ) { ss <<  "SMap";    }
+    else if ( method == Method::CCM     ) { ss <<  "CCM";     }
+    else if ( method == Method::None    ) { ss <<  "None";    }
+    else if ( method == Method::Embed   ) { ss <<  "Embed";   }
+    Map[ "method" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << columns_str;
+    Map[ "columns" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << target_str;
+    Map[ "target" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << lib_str;
+    Map[ "lib" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << pred_str;
+    Map[ "pred" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << E;
+    Map[ "E" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << Tp;
+    Map[ "Tp" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << knn;
+    Map[ "knn" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << tau;
+    Map[ "tau" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << theta;
+    Map[ "theta" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << exclusionRadius;
+    Map[ "exclusionRadius" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << libSizes_str;
+    Map[ "libSizes" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << subSamples;
+    Map[ "subSamples" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << randomLib;
+    Map[ "randomLib" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << replacement;
+    Map[ "replacement" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << seed;
+    Map[ "seed" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << includeData;
+    Map[ "includeData" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << multiviewEnsemble;
+    Map[ "multiviewEnsemble" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << multiviewD;
+    Map[ "multiviewD" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << multiviewTrainLib;
+    Map[ "multiviewTrainLib" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << multiviewExcludeTarget;
+    Map[ "multiviewExcludeTarget" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << embedded;
+    Map[ "embedded" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << "[ ";
+    for ( auto v : validLib ) { ss << v << " "; }
+    ss << "]";
+    Map[ "validLib" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << const_predict;
+    Map[ "const_predict" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << generateSteps;
+    Map[ "generateSteps" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << parameterList;
+    Map[ "parameterList" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << verbose;
+    Map[ "verbose" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << pathIn;
+    Map[ "pathIn" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << dataFile;
+    Map[ "dataFile" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << pathOut;
+    Map[ "pathOut" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << predictOutputFile;
+    Map[ "predictOutputFile" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << SmapOutputFile;
+    Map[ "SmapOutputFile" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << blockOutputFile;
+    Map[ "blockOutputFile" ] = ss.str();
+    ss.str( std::string() );
+}
+
 //------------------------------------------------------------------
 // Overload << to output to ostream
 //------------------------------------------------------------------
 std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
 
-    // print info about the dataframe
     os << "Parameters: -------------------------------------------\n";
 
     std::string method("Unknown");

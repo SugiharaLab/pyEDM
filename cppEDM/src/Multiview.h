@@ -20,7 +20,7 @@ public:
     std::vector<size_t>  predictionIn;        // copy from parameters
 
     struct MultiviewValues MVvalues; // output structure
-    
+
     // Constructor
     MultiviewClass ( DataFrame< double > & data,
                      Parameters          & parameters );

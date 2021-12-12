@@ -32,7 +32,7 @@ std::valarray<double> SmapSolver( DataFrame< double >     A,
     // Get solver results
     std::vector<double> coeffs =
         SmapSolverObject.attr( "coef_" ).cast< std::vector< double > >();
-    
+
     double intercept = SmapSolverObject.attr( "intercept_" ).cast< float >();
 
     // Insert intercept bias vector as leading coefficient as in cppEDM::SMap
@@ -46,28 +46,32 @@ std::valarray<double> SmapSolver( DataFrame< double >     A,
 //----------------------------------------------------------
 // 
 //----------------------------------------------------------
-std::map< std::string, py::dict > SMap_pybind( std::string pathIn, 
-                                               std::string dataFile,
-                                               DF          df,
-                                               std::string pathOut,
-                                               std::string predictFile,
-                                               std::string lib,
-                                               std::string pred, 
-                                               int         E,
-                                               int         Tp,
-                                               int         knn,
-                                               int         tau,
-                                               double      theta,
-                                               int         exclusionRadius,
-                                               std::string columns,
-                                               std::string target,
-                                               std::string smapFile,
-                                               std::string derivatives,
-                                               py::object  solver,
-                                               bool        embedded,
-                                               bool        const_predcit,
-                                               bool        verbose,
-                                              std::vector<bool> validLib ) {
+std::map< std::string, py::dict >
+    SMap_pybind( std::string pathIn, 
+                 std::string dataFile,
+                 DF          df,
+                 std::string pathOut,
+                 std::string predictFile,
+                 std::string lib,
+                 std::string pred, 
+                 int         E,
+                 int         Tp,
+                 int         knn,
+                 int         tau,
+                 double      theta,
+                 int         exclusionRadius,
+                 std::string columns,
+                 std::string target,
+                 std::string smapFile,
+                 std::string derivatives,
+                 py::object  solver,
+                 bool        embedded,
+                 bool        const_predcit,
+                 bool        verbose,
+                 std::vector<bool> validLib,
+                 int         generateSteps,
+                 bool        parameterList
+ ) {
     SmapSolverObject = solver;
 
     // Select solver
@@ -76,10 +80,10 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
         &SVD : &SmapSolver;
 
     SMapValues SM;
-    
+
     if ( dataFile.size() ) {
         // dataFile specified, dispatch overloaded SMap, ignore dataList
-        
+
         SM = SMap( pathIn,
                    dataFile,
                    pathOut,
@@ -100,11 +104,13 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    embedded,
                    const_predcit,
                    verbose,
-                   validLib);
+                   validLib,
+                   generateSteps,
+                   parameterList );
     }
     else if ( df.dataList.size() ) {
         DataFrame< double > dataFrame = DFToDataFrame( df );
-        
+
         SM = SMap( dataFrame,
                    pathOut,
                    predictFile,
@@ -124,7 +130,9 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
                    embedded,
                    const_predcit,
                    verbose,
-                   validLib);
+                   validLib,
+                   generateSteps,
+                   parameterList );
     }
     else {
         throw std::runtime_error( "SMap_pybind(): Invalid input.\n" );
@@ -132,11 +140,15 @@ std::map< std::string, py::dict > SMap_pybind( std::string pathIn,
 
     DF df_pred = DataFrameToDF( SM.predictions  );
     DF df_coef = DataFrameToDF( SM.coefficients );
- 
+
     std::map< std::string, py::dict > SMap_;
 
     SMap_["predictions" ] = DFtoDict( df_pred );
     SMap_["coefficients"] = DFtoDict( df_coef );
+
+    if ( parameterList ) {
+        SMap_["parameters"] = ParamMaptoDict( SM.parameterMap );
+    }
 
     // Release python object since done with it now
     SmapSolverObject.release();

@@ -8,12 +8,12 @@
 // Instantiated in Parameters() constructor
 //------------------------------------------------------------
 class Version {
+public:
     int         Major;
     int         Minor;
     int         Micro;
     std::string Date;
     
-public:
     Version( int Major, int Minor, int Micro, std::string Date ) :
         Major( Major  ), Minor( Minor ), Micro( Micro ), Date ( Date  ) {};
     

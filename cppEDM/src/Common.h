@@ -30,9 +30,15 @@ struct VectorError {
     double MAE;
 };
 
+struct SimplexValues {
+    DataFrame< double >                  predictions;
+    std::map< std::string, std::string > parameterMap;
+};
+
 struct SMapValues {
-    DataFrame< double > predictions;
-    DataFrame< double > coefficients;
+    DataFrame< double >                  predictions;
+    DataFrame< double >                  coefficients;
+    std::map< std::string, std::string > parameterMap;
 };
 
 // Return object for CrossMap() worker function
@@ -47,12 +53,14 @@ struct CCMValues {
     DataFrame< double > AllLibStats;  // unified mean libsize, rho, RMSE, MAE
     CrossMapValues CrossMap1;
     CrossMapValues CrossMap2;
+    std::map< std::string, std::string > parameterMap;
 };
 
 struct MultiviewValues {
     DataFrame< double > ComboRho;             // col_i..., rho, MAE, RMSE
     DataFrame< double > Predictions;
     std::vector< std::string > ComboRhoTable; // includes column names
+    std::map< std::string, std::string > parameterMap;
 };
 
 //-------------------------------------------------------------

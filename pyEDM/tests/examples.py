@@ -42,27 +42,31 @@ def main():
                                "TentMap", "", False, False, 4 )
     
     # Tent map simplex : specify multivariable columns embedded = True
-    df = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                      "1 99", "100 198", 3, 1, 0, -1, 0,
-                      "x_t y_t z_t", "x_t", True, False, True, True )
+    S = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
+                     "1 99", "100 198", 3, 1, 0, -1, 0,
+                     "x_t y_t z_t", "x_t", True, False, True, True,
+                     [], 0, False )
 
     # Tent map simplex : Embed column x_t to E=3, embedded = False
-    df = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                      "1 99", "100 195", 3, 1, 0, -1, 0,
-                      "x_t", "x_t", False, False, True, True )
+    S = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
+                     "1 99", "100 195", 3, 1, 0, -1, 0,
+                     "x_t", "x_t", False, False, True, True,
+                     [], 0, False )
 
     M = EDM.Multiview( "", Files[ "block_3sp.csv" ], None, "./", "", 
                        "1 100", "101 198", 0, 3, 1, 0, -1,
-                       "x_t y_t z_t", "x_t", 0, 0, True, False, False, 4, True )
+                       "x_t y_t z_t", "x_t", 0, 0,
+                       True, False, False, False, 4, True )
 
     # S-map circle : specify multivariable columns embedded = True
     S = EDM.SMap( "", Files[ "circle.csv" ], None, "./", "", 
                   "1 100", "101 198", 2, 1, 0, -1, 4, 0,
-                  "x y", "x", "", "", None, True, False, True, True )
+                  "x y", "x", "", "", None, True, False, True, True,
+                  [], 0, False )
     
-    df = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
+    CM = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
                   3, 0, 0, -1, 0, "anchovy", "np_sst",
-                  "10 70 10", 100, True, False, 0, False, True, True )
+                  "10 70 10", 100, True, False, 0, False, False, False, True )
 
 #------------------------------------------------------------
 #------------------------------------------------------------

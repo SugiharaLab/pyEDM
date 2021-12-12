@@ -7,6 +7,8 @@
 #include "Common.h"
 #include "Version.h"
 
+class ParameterContainer; // forward declaration
+
 //------------------------------------------------------------
 //
 //------------------------------------------------------------
@@ -18,7 +20,7 @@ public: // No need for protected or private
     std::string pathIn;             // path for input dataFile
     std::string dataFile;           // input dataFile (assumed .csv)
     std::string pathOut;            // path for output files
-    std::string predictOutputFile;  //
+    std::string predictOutputFile;  // path for output file
 
     std::string lib_str;            // multi argument parameters for library
     std::string pred_str;           // multi argument parameters for prediction
@@ -35,9 +37,8 @@ public: // No need for protected or private
 
     std::string                columns_str;
     std::string                target_str;
-    std::vector< std::string > columnNames; // column names 
-
-    std::string targetName;        // target column name
+    std::vector< std::string > columnNames; // column name(s)
+    std::string                targetName;  // target column name
 
     bool        embedded;          // true if data is already embedded/block
     bool        const_predict;     // true to compute non "predictor" stats
@@ -45,7 +46,11 @@ public: // No need for protected or private
 
     std::vector<bool> validLib;    // maps row to valid library flag
 
-    std::string SmapOutputFile;    //
+    int         generateSteps;     // Number of timesteps to feedback generate
+
+    bool        parameterList;     // Add parameter list to output
+
+    std::string SmapOutputFile;    // path for output file
     std::string blockOutputFile;   // Embed() output file
 
     int         multiviewEnsemble; // Number of ensembles in multiview
@@ -64,6 +69,8 @@ public: // No need for protected or private
     bool        validated;
 
     Version version; // Version object, instantiated in constructor
+    
+    std::map< std::string, std::string > Map;
 
     friend std::ostream& operator<<( std::ostream & os, Parameters & params );
 
@@ -94,6 +101,9 @@ public: // No need for protected or private
 
         std::vector<bool> validLib    = std::vector<bool>(),
 
+        int         generateSteps     = 0,
+        bool        parameterList     = false,
+
         std::string SmapOutputFile    = "",
         std::string blockOutputFile   = "",        
 
@@ -114,6 +124,7 @@ public: // No need for protected or private
 
     void Validate();      // Parameter validation and index offsets
     void AdjustLibPred(); // Adjust for embedding
+    void FillMap();
     void PrintIndices( std::vector< size_t > library,
                        std::vector< size_t > prediction );
 };

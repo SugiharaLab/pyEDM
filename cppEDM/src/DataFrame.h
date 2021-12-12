@@ -157,7 +157,7 @@ public:
     // Return data column selected by column name
     //------------------------------------------------------------------
     std::valarray< double > VectorColumnName( std::string column ) {
-        
+
         std::vector< std::string >::iterator ci = std::find(columnNames.begin(),
                                                             columnNames.end(),
                                                             column );
@@ -287,13 +287,13 @@ public:
                        << row_i << ") exceeds the data frame domain.\n";
                 throw std::runtime_error( errMsg.str() );
             }
-            
+
             std::valarray< T > row_vec_i = Row( row_i );
 
             M.WriteRow( row_j, row_vec_i );
             row_j++;
         }
-        
+
         // Add time vector if present
         if ( time.size() ) {
             std::vector< std::string > timeRow( row_index.size() );
@@ -308,7 +308,7 @@ public:
             M.ColumnNames() = columnNames;
             M.BuildColumnNameIndex();
         }
-        
+
         return M;
     }
 
@@ -356,7 +356,7 @@ public:
     //-----------------------------------------------------------------
     void WriteColumn( size_t col, std::valarray< T > array ) {
         size_t N = array.size();
-    
+
         if ( N != n_rows ) {
             std::stringstream errMsg;
             errMsg << "DataFrame::WriteColumn(): array must have "
@@ -426,8 +426,8 @@ public:
 
         os << "DataFrame: -----------------------------------\n";
         os << D.NRows() << " rows, " << D.NColumns() << " columns.\n";
-        os << "---------------- First " << D.MaxRowPrint()
-           << " rows ---------------\n";
+        os << "---------------- Last " << D.MaxRowPrint()
+           << " rows ----------------\n";
 
         // print names of columns
         if ( D.timeName.size() ) {
@@ -440,9 +440,11 @@ public:
 
         os << "----------------------------------------------\n";
 
+        size_t rowStart = D.MaxRowPrint() > D.NRows() ?
+                          0 : D.NRows() - D.MaxRowPrint();
+
         // print vec data up to maxRowPrint points
-        for ( size_t row = 0; row < D.NRows() and
-                              row < D.MaxRowPrint(); row++ ) {
+        for ( size_t row = rowStart; row < D.NRows(); row++ ) {
 
             // row time
             if ( D.time.size() ) {
@@ -516,7 +518,7 @@ public:
             if ( time.size() ) {
                 lineStr << time[ rowIdx ] << ",";
             }
-            
+
             for ( size_t colIdx = 0; colIdx < n_columns; colIdx++ ) {
 
                 lineStr << (*this) ( rowIdx, colIdx );
@@ -653,7 +655,7 @@ private:
 
         // Process each line in dataLines to fill in data vectors and time
         for ( size_t lineIdx = 0; lineIdx < dataLines.size(); lineIdx++ ) {
-            
+
             std::vector<std::string> words = SplitString(dataLines[ lineIdx ]);
 
             if ( words.size() != colNames.size() ) {

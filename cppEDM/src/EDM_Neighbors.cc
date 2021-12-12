@@ -188,11 +188,7 @@ void EDM::FindNeighbors() {
             // Conditional embedding : check row is valid lib if supplied
             if ( parameters.validLib.size() ) {
                 if ( not parameters.validLib[ libRow ] ) {
-#ifdef PRINT_SKIP_ROWS
-                    std::cout << "Skipping row " << libRow  << std::endl;
-#endif
-                    
-                    continue;
+                    continue; // keep looking
                 }
             }
 

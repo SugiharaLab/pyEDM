@@ -15,6 +15,7 @@ public:
                    Parameters        & parameters );
 
     // Method declarations
+    void Generate();
     void Project();
     void Simplex();
     void WriteOutput();

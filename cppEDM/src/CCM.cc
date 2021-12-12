@@ -389,7 +389,7 @@ void CrossMap( SimplexClass   & S,
         std::lock_guard<std::mutex> lck( EDM_CCM_Lock::q_mtx );
         EDM_CCM_Lock::exceptionQ.push( std::current_exception() );
 #else
-        throw std::rethrow_exception( std::current_exception() );
+        std::rethrow_exception( std::current_exception() );
 #endif
     }
 }
