@@ -59,6 +59,7 @@ public: // No need for private or protected
     void GetTarget();
     void EmbedData();
     void Project();  // Simplex.cc : SMap.cc : CCM.cc : Multiview.cc
+    void Generate(); // Simplex.cc : SMap.cc
 
     // EDM_Neighbors.cc
     void PrepareEmbedding( bool checkDataRows = true );

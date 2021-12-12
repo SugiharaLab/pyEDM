@@ -21,8 +21,9 @@ struct DF {
     DataList                   dataList;
 };
 
-// Forward declarations for DataFrameWrapper.cpp convertors
+// Forward declarations for DataFrame.cpp convertors
 DataFrame< double > DFToDataFrame ( DF df );
 DF                  DataFrameToDF ( DataFrame< double > dataFrame );
+py::dict ParamMaptoDict( std::map< std::string, std::string > m );
 
 #endif

@@ -23,6 +23,7 @@ std::map< std::string, py::dict > Multiview_pybind (
     int          exclusionRadius,
     bool         trainLib,
     bool         excludeTarget,
+    bool         parameterList,
     bool         verbose,
     unsigned int numThreads ) {
 
@@ -48,6 +49,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         exclusionRadius,
                         trainLib,
                         excludeTarget,
+                        parameterList,
                         verbose,
                         numThreads );
     }
@@ -70,6 +72,7 @@ std::map< std::string, py::dict > Multiview_pybind (
                         exclusionRadius,
                         trainLib,
                         excludeTarget,
+                        parameterList,
                         verbose,
                         numThreads );
     }
@@ -84,6 +87,10 @@ std::map< std::string, py::dict > Multiview_pybind (
 
     MV_["View"  ]      = DFtoDict( combo_rho   );
     MV_["Predictions"] = DFtoDict( predictions );
+
+    if ( parameterList ) {
+        MV_["parameters"] = ParamMaptoDict( MV.parameterMap );
+    }
 
     return MV_;
 }

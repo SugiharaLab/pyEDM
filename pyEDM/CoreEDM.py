@@ -78,25 +78,27 @@ def Embed( pathIn    = "./",
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def Simplex( pathIn       = "./",
-             dataFile     = "",
-             dataFrame    = None,
-             pathOut      = "./",
-             predictFile  = "",
-             lib          = "",
-             pred         = "",
-             E            = 0, 
-             Tp           = 1,
-             knn          = 0,
-             tau          = -1,
+def Simplex( pathIn          = "./",
+             dataFile        = "",
+             dataFrame       = None,
+             pathOut         = "./",
+             predictFile     = "",
+             lib             = "",
+             pred            = "",
+             E               = 0, 
+             Tp              = 1,
+             knn             = 0,
+             tau             = -1,
              exclusionRadius = 0,
-             columns      = "",
-             target       = "", 
-             embedded     = False,
-             verbose      = False,
-             const_pred   = False,
-             showPlot     = False,
-             validLib     = []
+             columns         = "",
+             target          = "", 
+             embedded        = False,
+             verbose         = False,
+             const_pred      = False,
+             showPlot        = False,
+             validLib        = [],
+             generateSteps   = 0,
+             parameterList   = False
              ):
     '''Simplex prediction on path/file.'''
 
@@ -118,7 +120,8 @@ def Simplex( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
-    # D is a Python dict from pybind11 < cppEDM Simplex 
+    # D is a Python dict from pybind11 < cppEDM Simplex:
+    #  { "predictions" : {}, ["parameters" : {}] }
     D = pyBindEDM.Simplex( pathIn,
                            dataFile,
                            DF,
@@ -136,41 +139,50 @@ def Simplex( pathIn       = "./",
                            embedded,
                            const_pred,
                            verbose,
-                           validLib )
+                           validLib,
+                           generateSteps,
+                           parameterList )
 
-    df = DataFrame( D ) # Convert to pandas DataFrame
-
+    df = DataFrame( D['predictions'] ) # Convert to pandas DataFrame
+    
     if showPlot :
         pyEDM.AuxFunc.PlotObsPred( df, dataFile, E, Tp )
 
-    return df
+    if parameterList :
+        SDict = { 'predictions' : df }
+        SDict[ 'parameters' ] = D[ 'parameters' ]
+        return SDict
+    else :
+        return df
 
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def SMap( pathIn       = "./",
-          dataFile     = "",
-          dataFrame    = None,
-          pathOut      = "./",
-          predictFile  = "",
-          lib          = "",
-          pred         = "",
-          E            = 0, 
-          Tp           = 1,
-          knn          = 0,
-          tau          = -1,
-          theta        = 0,
+def SMap( pathIn          = "./",
+          dataFile        = "",
+          dataFrame       = None,
+          pathOut         = "./",
+          predictFile     = "",
+          lib             = "",
+          pred            = "",
+          E               = 0, 
+          Tp              = 1,
+          knn             = 0,
+          tau             = -1,
+          theta           = 0,
           exclusionRadius = 0,
-          columns      = "",
-          target       = "",
-          smapFile     = "",
-          jacobians    = "",
-          solver       = None,
-          embedded     = False,
-          verbose      = False,
-          const_pred   = False,
-          showPlot     = False,
-          validLib     = []
+          columns         = "",
+          target          = "",
+          smapFile        = "",
+          jacobians       = "",
+          solver          = None,
+          embedded        = False,
+          verbose         = False,
+          const_pred      = False,
+          showPlot        = False,
+          validLib        = [],
+          generateSteps   = 0,
+          parameterList   = False
           ):
     '''S-Map prediction on path/file.'''
 
@@ -192,7 +204,6 @@ def SMap( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str,columns   ) )
 
-
     # Validate the solver if one was passed in
     if solver :
         supportedSolvers = [ 'LinearRegression',
@@ -202,7 +213,7 @@ def SMap( pathIn       = "./",
             raise Exception( "SMap(): Invalid solver." )
 
     # D is a Python dict from pybind11 < cppEDM SMap:
-    #  { "predictions" : {}, "coefficients" : {} }
+    #  { "predictions" : {}, "coefficients" : {}, ["parameters" : {}] }
     D = pyBindEDM.SMap( pathIn,
                         dataFile,
                         DF,
@@ -224,16 +235,21 @@ def SMap( pathIn       = "./",
                         embedded,
                         const_pred,
                         verbose,
-                        validLib)
+                        validLib,
+                        generateSteps,
+                        parameterList )
 
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame
     df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame
 
+    SMapDict = { 'predictions' : df_pred, 'coefficients' : df_coef }
+
+    if parameterList :
+        SMapDict[ 'parameters' ] = D[ 'parameters' ]
+
     if showPlot :
         pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp, False )
         pyEDM.AuxFunc.PlotCoeff  ( df_coef, dataFile, E, Tp )
-
-    SMapDict = { 'predictions' : df_pred, 'coefficients' : df_coef }
 
     return SMapDict
 
@@ -258,6 +274,7 @@ def Multiview( pathIn          = "./",
                exclusionRadius = 0,
                trainLib        = True,
                excludeTarget   = False,
+               parameterList   = False,
                verbose         = False,
                numThreads      = 4,
                showPlot        = False ):
@@ -301,16 +318,20 @@ def Multiview( pathIn          = "./",
                              exclusionRadius,
                              trainLib,
                              excludeTarget,
+                             parameterList,
                              verbose,
                              numThreads )
 
     df_pred = DataFrame( D['Predictions'] ) # Convert to pandas DataFrame
     view    = DataFrame( D['View'] )
 
+    MV = { 'Predictions' : df_pred, 'View' : view }
+
+    if parameterList :
+        MV[ 'parameters' ] = D[ 'parameters' ]
+
     if showPlot :
         pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp )
-
-    MV = { 'Predictions' : df_pred, 'View' : view }
 
     return MV
 
@@ -335,6 +356,7 @@ def CCM( pathIn           = "./",
          replacement      = False,
          seed             = 0,
          includeData      = False,
+         parameterList    = False,
          verbose          = False,
          showPlot         = False ) :
     '''Convergent Cross Mapping on path/file.'''
@@ -372,6 +394,7 @@ def CCM( pathIn           = "./",
                        replacement,
                        seed,
                        includeData,
+                       parameterList,
                        verbose )
 
     # D has { "LibMeans" : DF }
@@ -379,10 +402,13 @@ def CCM( pathIn           = "./",
     libMeans = DataFrame( D[ "LibMeans" ] ) # Convert to pandas DataFrame
 
     # If includeData, create dict with means and individual prediction stats
-    if includeData:
+    if includeData :
         CM = { 'LibMeans'      : libMeans,
                'PredictStats1' : DataFrame( D[ "PredictStats1" ] ),
                'PredictStats2' : DataFrame( D[ "PredictStats2" ] ) }
+
+    if parameterList and includeData :
+        CM[ 'parameters' ] = D[ 'parameters' ]
 
     if showPlot :
         title = dataFile + "\nE=" + str(E)

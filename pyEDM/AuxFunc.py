@@ -82,14 +82,14 @@ def Examples():
     # S-map circle : specify multivariable columns embedded = True
     cmd = str().join(['SMap( dataFrame = sampleData["circle"],',
                       ' lib = "1 100", pred = "110 190", theta = 4, E = 2,',
-                      ' verbose = True, showPlot = True, embedded = True,',
+                      ' verbose = False, showPlot = True, embedded = True,',
                       ' columns = "x y", target = "x") '])
     RunEDM( cmd )
     
     #---------------------------------------------------------------
     cmd = str().join(['CCM( dataFrame = sampleData["sardine_anchovy_sst"],',
                       ' E = 3, Tp = 0, columns = "anchovy", target = "np_sst",',
-                      ' libSizes = "10 70 10", sample = 100, verbose = True, ',
+                      ' libSizes = "10 70 10", sample = 100, verbose = False, ',
                       ' showPlot = True) '])
     RunEDM( cmd )
 

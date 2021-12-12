@@ -30,8 +30,9 @@ public:
                 Parameters        & parameters );
 
     // Method declarations
-    void Project( Solver );
-    void SMap   ( Solver );
+    void Generate( Solver );
+    void Project ( Solver );
+    void SMap    ( Solver );
     void WriteOutput();
 };
 #endif

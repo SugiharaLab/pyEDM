@@ -126,6 +126,22 @@ py::dict DFtoDict( DF df ) {
 }
 
 //---------------------------------------------------------------
+// Convert parameterMap struct to Python dict
+//---------------------------------------------------------------
+py::dict ParamMaptoDict( std::map< std::string, std::string > m ) {
+
+    py::dict D;
+
+    for ( auto pi = m.begin(); pi != m.end(); pi++ ) {
+        
+        // Why is cast required for string key but not valarray? 
+        D[ py::str( pi->first ) ] = pi->second;
+    }
+    
+    return D;
+}
+
+//---------------------------------------------------------------
 // Load path/file into cppEDM DataFrame, convert to Python
 // dict{ column : array }
 //---------------------------------------------------------------

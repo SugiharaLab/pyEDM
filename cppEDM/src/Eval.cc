@@ -219,24 +219,25 @@ void EmbedThread( EDM_Eval::WorkQueue & workQ,
         DataFrame< double > localData( data );
 
         try {
-            DataFrame<double> S = Simplex( std::ref( localData ),
-                                           "",          // pathOut,
-                                           "",          // predictFile,
-                                           lib,
-                                           pred,
-                                           E,
-                                           Tp,
-                                           0,           // knn
-                                           tau,
-                                           0,           // exclusionRadius
-                                           colNames,
-                                           targetName,
-                                           embedded,
-                                           false,       // const_predict
-                                           verbose );
+            SimplexValues S = Simplex( std::ref( localData ),
+                                       "",          // pathOut,
+                                       "",          // predictFile,
+                                       lib,
+                                       pred,
+                                       E,
+                                       Tp,
+                                       0,           // knn
+                                       tau,
+                                       0,           // exclusionRadius
+                                       colNames,
+                                       targetName,
+                                       embedded,
+                                       false,       // const_predict
+                                       verbose );
 
-            VectorError ve = ComputeError( S.VectorColumnName("Observations"),
-                                           S.VectorColumnName("Predictions"));
+            VectorError ve = ComputeError(
+                             S.predictions.VectorColumnName("Observations"),
+                             S.predictions.VectorColumnName("Predictions"));
 
             E_rho.WriteRow( i, std::valarray<double>({ (double) E, ve.rho }));
 
@@ -403,24 +404,25 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
         DataFrame< double > localData( data );
 
         try {
-            DataFrame< double > S = Simplex( std::ref( localData ),
-                                             "",          // pathOut,
-                                             "",          // predictFile,
-                                             lib,
-                                             pred,
-                                             E,
-                                             Tp,
-                                             0,           // knn
-                                             tau,
-                                             0,           // exclusionRadius
-                                             colNames,
-                                             targetName,
-                                             embedded,
-                                             false,       // const_pred
-                                             verbose );
+            SimplexValues S = Simplex( std::ref( localData ),
+                                       "",          // pathOut,
+                                       "",          // predictFile,
+                                       lib,
+                                       pred,
+                                       E,
+                                       Tp,
+                                       0,           // knn
+                                       tau,
+                                       0,           // exclusionRadius
+                                       colNames,
+                                       targetName,
+                                       embedded,
+                                       false,       // const_pred
+                                       verbose );
  
-            VectorError ve = ComputeError( S.VectorColumnName("Observations"),
-                                           S.VectorColumnName("Predictions"));
+            VectorError ve = ComputeError(
+                             S.predictions.VectorColumnName("Observations"),
+                             S.predictions.VectorColumnName("Predictions"));
 
             Tp_rho.WriteRow( i, std::valarray<double>({ (double) Tp, ve.rho }));
 

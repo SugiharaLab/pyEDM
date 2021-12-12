@@ -55,7 +55,8 @@ class test_EDM( unittest.TestCase ):
         print ( "--- Simplex embedded = False ---" )
         df = EDM.Simplex( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                           "1 100", "101 195", 3, 1, 0, -1, 0,
-                          "x_t", "x_t", False, False, True, False )
+                          "x_t", "x_t",
+                          False, False, True, False, [], 0, False )
 
         # cppEDM and devEDM outputs are rounded to os.precision( 4 );
         dfv = EDM.ReadDataFrame( "",
@@ -73,7 +74,8 @@ class test_EDM( unittest.TestCase ):
         print ( "--- Simplex embedded = True ---" )
         df = EDM.Simplex( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                           "1 99", "100 198", 3, 1, 0, -1, 0,
-                          "x_t y_t z_t", "x_t", True, False, True, False )
+                          "x_t y_t z_t", "x_t",
+                          True, False, True, False, [], 0, False )
 
         # This has been rounded to os.precision( 4 );
         dfv = EDM.ReadDataFrame( "",
@@ -96,7 +98,8 @@ class test_EDM( unittest.TestCase ):
         # Passing Pandas DataFrame input to Smap rather than path/file
         SM = EDM.SMap( "", "", dfc, "", "",
                        "1 100", "101 198", 2, 1, 0, -1, 4, 0,
-                       "x y", "x", "", "", None, True, False, True, False )
+                       "x y", "x", "", "",
+                       None, True, False, False, False, [], 0, False )
         
         df = SM['predictions']
         
@@ -115,7 +118,7 @@ class test_EDM( unittest.TestCase ):
         SM = EDM.SMap( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                        "1 99", "100 198", 3, 1, 0, -1, 2, 0,
                        "x_t y_t z_t", "x_t", "", "",
-                       None, True, False, True, False )
+                       None, True, False, False, False, [], 0, False )
 
         df = SM['predictions']
         
@@ -133,7 +136,8 @@ class test_EDM( unittest.TestCase ):
         print ( "--- Multiview ---" )
         M = EDM.Multiview( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                            "1 100", "101 198", 0, 3, 1, 0, -1,
-                           "x_t y_t z_t", "x_t", 0, 0, True, False, False, 4 )
+                           "x_t y_t z_t", "x_t", 0, 0,
+                           True, False, False, False, 4 )
 
         df_pred  = M['Predictions']
         df_combo = round( M['View'  ], 4 )
@@ -160,7 +164,7 @@ class test_EDM( unittest.TestCase ):
         df = EDM.CCM( "", self.Files[ "sardine_anchovy_sst.csv" ],
                       None, "./", "", 
                       3, 0, 0, -1, 0, "anchovy", "np_sst",
-                      "10 75 5", 1, False, False, 0, False, True )
+                      "10 75 5", 1, False, False, 0, False, False, False )
 
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "CCM_anch_sst_cppEDM_valid.csv" ],

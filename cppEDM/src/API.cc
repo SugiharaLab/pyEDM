@@ -5,6 +5,11 @@
 //
 // Functions implemented in Eval.cc:
 //     EmbedDimension(), PredictInterval(), PredictNonlinear()
+//
+// Note: Functions that implement either filepath or DataFrame
+//       input are overloads. The first pattern takes a filepath
+//       argument, creates the DataFrame object, then calls the
+//       second with the DataFrame.
 //----------------------------------------------------------------
 
 #include "API.h"
@@ -120,7 +125,7 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
     std::slice slice_i;   // slice to write data rows
     std::slice slice_NA;  // slice for partial data
     std::valarray< double > rowNan; // NAN for partial data if not deletePartial
-    
+
     if ( deletePartial ) {
         if ( tau < 0 ) {
             slice_i = std::slice( NPartial, NDataRows - NPartial, 1 );
@@ -140,7 +145,7 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
         for ( int e = 0; e < E; e++ ) {
 
             std::valarray< double > column = dataFrame.Column( col );
-            
+
             // Returns a copy of the valarray object with its elements
             // shifted left n spaces (or right if n is negative).
             std::valarray< double > tmp = column.shift( e * tau );
@@ -155,10 +160,10 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
                 }
                 tmp[ slice_NA ] = rowNan[ slice_NA ];
             }
-            
+
             // Write shifted columns to the output embedding DataFrame
             embedding.WriteColumn( colCount, tmp[ slice_i ] );
-            
+
             colCount++;
         }
     }
@@ -169,67 +174,73 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
 //----------------------------------------------------------------------
 // Simplex with path/file input
 //----------------------------------------------------------------------
-DataFrame< double > Simplex( std::string pathIn,
-                             std::string dataFile,
-                             std::string pathOut,
-                             std::string predictFile,
-                             std::string lib,
-                             std::string pred,
-                             int         E,
-                             int         Tp,
-                             int         knn,
-                             int         tau,
-                             int         exclusionRadius,
-                             std::string colNames,
-                             std::string targetName,
-                             bool        embedded,
-                             bool        const_predict,
-                             bool        verbose,
-                             std::vector<bool> validLib)
+SimplexValues Simplex( std::string       pathIn,
+                       std::string       dataFile,
+                       std::string       pathOut,
+                       std::string       predictFile,
+                       std::string       lib,
+                       std::string       pred,
+                       int               E,
+                       int               Tp,
+                       int               knn,
+                       int               tau,
+                       int               exclusionRadius,
+                       std::string       colNames,
+                       std::string       targetName,
+                       bool              embedded,
+                       bool              const_predict,
+                       bool              verbose,
+                       std::vector<bool> validLib,
+                       int               generateSteps,
+                       bool              parameterList )
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
 
     // Pass data frame to Simplex 
-    DataFrame< double > simplexProjection = Simplex( std::ref( DF ),
-                                                     pathOut,
-                                                     predictFile,
-                                                     lib,
-                                                     pred,
-                                                     E,
-                                                     Tp,
-                                                     knn,
-                                                     tau,
-                                                     exclusionRadius,
-                                                     colNames,
-                                                     targetName,
-                                                     embedded,
-                                                     const_predict,
-                                                     verbose,
-                                                     validLib );
+    SimplexValues S = Simplex( std::ref( DF ),
+                               pathOut,
+                               predictFile,
+                               lib,
+                               pred,
+                               E,
+                               Tp,
+                               knn,
+                               tau,
+                               exclusionRadius,
+                               colNames,
+                               targetName,
+                               embedded,
+                               const_predict,
+                               verbose,
+                               validLib,
+                               generateSteps,
+                               parameterList );
 
-    return simplexProjection;
+    return S;
 }
 
 //----------------------------------------------------------------------
 // Simplex with DataFrame input
 //----------------------------------------------------------------------
-DataFrame<double> Simplex( DataFrame< double > & DF,
-                           std::string pathOut,
-                           std::string predictFile,
-                           std::string lib,
-                           std::string pred,
-                           int         E,
-                           int         Tp,
-                           int         knn,
-                           int         tau,
-                           int         exclusionRadius,
-                           std::string colNames,
-                           std::string targetName,
-                           bool        embedded,
-                           bool        const_predict,
-                           bool        verbose,
-                           std::vector<bool> validLib)
+SimplexValues Simplex( DataFrame< double > & DF,
+                       std::string       pathOut,
+                       std::string       predictFile,
+                       std::string       lib,
+                       std::string       pred,
+                       int               E,
+                       int               Tp,
+                       int               knn,
+                       int               tau,
+                       int               exclusionRadius,
+                       std::string       colNames,
+                       std::string       targetName,
+                       bool              embedded,
+                       bool              const_predict,
+                       bool              verbose,
+                       std::vector<bool> validLib,
+                       int               generateSteps,
+                       bool              parameterList )
 {
     // Instantiate Parameters
     Parameters parameters = Parameters( Method::Simplex, "", "",
@@ -237,14 +248,24 @@ DataFrame<double> Simplex( DataFrame< double > & DF,
                                         lib, pred, E, Tp, knn, tau, 0,
                                         exclusionRadius,
                                         colNames, targetName, embedded,
-                                        const_predict, verbose, validLib);
-    
+                                        const_predict, verbose, validLib,
+                                        generateSteps, parameterList );
+
     // Instantiate EDM::SimplexClass object
     SimplexClass SimplexModel = SimplexClass( DF, std::ref( parameters ) );
 
-    SimplexModel.Project();
+    if ( generateSteps ) {
+        SimplexModel.Generate();
+    }
+    else {
+        SimplexModel.Project();
+    }
 
-    return SimplexModel.projection;
+    SimplexValues values = SimplexValues();
+    values.predictions   = SimplexModel.projection;
+    values.parameterMap  = SimplexModel.parameters.Map;
+
+    return values;
 }
 
 //----------------------------------------------------------------------------
@@ -270,7 +291,9 @@ SMapValues SMap( std::string pathIn,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> validLib)
+                 std::vector<bool> validLib,
+                 int         generateSteps,
+                 bool        parameterList )
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
@@ -280,7 +303,8 @@ SMapValues SMap( std::string pathIn,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
-                                  embedded, const_predict, verbose, validLib );
+                                  embedded, const_predict, verbose, validLib,
+                                  generateSteps, parameterList );
     return SMapOutput;
 }
 
@@ -306,7 +330,9 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> validLib)
+                 std::vector<bool> validLib,
+                 int         generateSteps,
+                 bool        parameterList )
 {
     // Call overload 4) with default SVD function
     SMapValues SMapOutput = SMap( DF, pathOut, predictFile,
@@ -314,7 +340,8 @@ SMapValues SMap( DataFrame< double > & DF,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives,
                                   & SVD, // LAPACK SVD default
-                                  embedded, const_predict, verbose, validLib);
+                                  embedded, const_predict, verbose, validLib,
+                                  generateSteps, parameterList );
 
     return SMapOutput;
 }
@@ -343,18 +370,20 @@ SMapValues SMap( std::string pathIn,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> validLib)
+                 std::vector<bool> validLib,
+                 int         generateSteps,
+                 bool        parameterList )
 {
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
-    
+
     // Call overload 4) with DataFrame and solver object
     SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
                                   solver, embedded, const_predict, verbose,
-                                  validLib );
+                                  validLib, generateSteps, parameterList );
     return SMapOutput;
 }
 
@@ -381,26 +410,34 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
-                 std::vector<bool> validLib)
+                 std::vector<bool> validLib,
+                 int         generateSteps,
+                 bool        parameterList )
 {
     if ( derivatives.size() ) {} // -Wunused-parameter
-    
+
     Parameters parameters = Parameters( Method::SMap, "", "",
                                         pathOut, predictFile,
                                         lib, pred, E, Tp, knn, tau, theta,
                                         exclusionRadius,
                                         columns, target, embedded,
                                         const_predict, verbose, validLib,
-                                        smapFile );
-    
+                                        generateSteps, parameterList, smapFile );
+
     // Instantiate EDM::SMapClass object
     SMapClass SMapModel = SMapClass( DF, std::ref( parameters ) );
 
-    SMapModel.Project( solver );
+    if ( generateSteps ) {
+        SMapModel.Generate( solver );
+    }
+    else {
+        SMapModel.Project( solver );
+    }
 
-    SMapValues values = SMapValues();
+    SMapValues values   = SMapValues();
     values.predictions  = SMapModel.projection;
     values.coefficients = SMapModel.coefficients;
+    values.parameterMap = SMapModel.parameters.Map;
 
     return values;    
 }
@@ -425,6 +462,7 @@ CCMValues CCM( std::string pathIn,
                bool        replacement,
                unsigned    seed,
                bool        includeData,
+               bool        parameterList,
                bool        verbose )
 {
     // DataFrame constructor loads data
@@ -434,7 +472,8 @@ CCMValues CCM( std::string pathIn,
                                E, Tp, knn, tau, exclusionRadius,
                                colNames, targetName, libSizes_str,
                                sample, random, replacement,
-                               seed, includeData, verbose );
+                               seed, includeData, parameterList,
+                               verbose );
 
     return ccmValues;
 }
@@ -458,6 +497,7 @@ CCMValues CCM( DataFrame< double > & DF,
                bool        replacement,
                unsigned    seed,
                bool        includeData,
+               bool        parameterList,
                bool        verbose )
 {
     // Set library and prediction indices to entire library (embedded)
@@ -483,6 +523,8 @@ CCMValues CCM( DataFrame< double > & DF,
                                         false,           // const_predict
                                         verbose,         // 
                                         std::vector<bool>(), // validLib
+                                        0,               // generateSteps
+                                        parameterList,   //
                                         "",              // SmapFile
                                         "",              // blockFile
                                         0,               // multiviewEnsemble
@@ -501,12 +543,13 @@ CCMValues CCM( DataFrame< double > & DF,
 
     CCMModel.Project();
 
-    CCMValues values = CCMValues();
-    values.AllLibStats = CCMModel.allLibStats;
-    values.CrossMap1   = CCMModel.colToTargetValues;
-    values.CrossMap2   = CCMModel.targetToColValues;
+    CCMValues values    = CCMValues();
+    values.AllLibStats  = CCMModel.allLibStats;
+    values.CrossMap1    = CCMModel.colToTargetValues;
+    values.CrossMap2    = CCMModel.targetToColValues;
+    values.parameterMap = CCMModel.parameters.Map;
 
-    return values;    
+    return values;
 }
 
 //----------------------------------------------------------------------
@@ -529,6 +572,7 @@ MultiviewValues Multiview( std::string pathIn,
                            int         exclusionRadius,
                            bool        trainLib,
                            bool        excludeTarget,
+                           bool        parameterList,
                            bool        verbose,
                            unsigned    nThreads )
 {
@@ -539,7 +583,8 @@ MultiviewValues Multiview( std::string pathIn,
                                           lib, pred, D, E, Tp, knn, tau,
                                           columns, target, multiview,
                                           exclusionRadius, trainLib,
-                                          excludeTarget, verbose, nThreads);
+                                          excludeTarget, parameterList,
+                                          verbose, nThreads );
 
     return mvValues;
 }
@@ -563,6 +608,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                            int         exclusionRadius,
                            bool        trainLib,
                            bool        excludeTarget,
+                           bool        parameterList,
                            bool        verbose,
                            unsigned    nThreads )
 {
@@ -589,6 +635,8 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         false,        // const_predict
                                         verbose,      // 
                                         std::vector<bool>(), // validLib
+                                        0,            // generateSteps
+                                        parameterList,//
                                         "",           // SmapFile
                                         "",           // blockFile
                                         multiview,    // multiviewEnsemble,
@@ -600,6 +648,9 @@ MultiviewValues Multiview( DataFrame< double > & DF,
     MultiviewClass MultiviewModel = MultiviewClass( DF, std::ref( parameters ) );
 
     MultiviewModel.Project( nThreads );
+
+    // MultiviewClass MultiviewModel contians MultiviewValues MVvalues
+    MultiviewModel.MVvalues.parameterMap = MultiviewModel.parameters.Map;
 
     return MultiviewModel.MVvalues;
 }
