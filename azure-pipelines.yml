@@ -1,6 +1,6 @@
 variables:
     CIBW_BUILD: cp37-* cp38-* cp39-*
-    CIBW_BEFORE_BUILD: yum install -y lapack-devel libpng-devel freetype-devel freetype blas-devel pkg-config; pip install -r requirements.txt; 
+    CIBW_BEFORE_BUILD: apt install -y lapack-devel libpng-devel freetype-devel freetype blas-devel pkg-config; pip install -r requirements.txt; 
 
 strategy:
   matrix:
