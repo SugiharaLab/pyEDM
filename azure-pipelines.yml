@@ -59,7 +59,7 @@ steps:
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - bash: |
-        python -m pip install cibuildwheel==1.10.0
+        python -m pip install cibuildwheel==2.3.0
         pip install -r requirements.txt
         pip install --upgrade wheel
         pip install --upgrade setuptools
