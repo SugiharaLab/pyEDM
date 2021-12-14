@@ -1,10 +1,11 @@
 variables:
     CIBW_BUILD: cp37-* cp38-* cp39-*
-    CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
-    CIBW_MANYLINUX_I686_IMAGE: manylinux2014
-    CIBW_MANYLINUX_PYPY_X86_64_IMAGE: manylinux2014
-    CIBW_MANYLINUX_PYPY_I686_IMAGE: manylinux2014
-    CIBW_BEFORE_ALL: yum install -y lapack-devel; yum install -y libpng-devel; yum install -y freetype-devel; yum install -y freetype; yum install -y blas-devel;
+    CIBW_BEFORE_ALL: >
+      yum install -y lapack-devel   &&
+      yum install -y libpng-devel   &&
+      yum install -y freetype-devel &&
+      yum install -y freetype       &&
+      yum install -y blas-devel
 # yum install -y pkg-config;
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
