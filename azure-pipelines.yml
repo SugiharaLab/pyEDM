@@ -8,7 +8,7 @@ variables:
       yum install -y blas-devel
 # yum install -y pkg-config;
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
-    CIBW_SKIP: *-musllinux_*
+    CIBW_SKIP: cp37-musllinux_* cp38-musllinux_* cp39-musllinux_*
 
 strategy:
   matrix:
