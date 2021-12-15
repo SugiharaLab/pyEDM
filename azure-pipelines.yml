@@ -1,6 +1,6 @@
 variables:
     CIBW_BUILD: cp37-* cp38-* cp39-*
-    CIBW_SKIP: *-musllinux_*
+    CIBW_SKIP: *-musllinux_* 
     CIBW_BEFORE_ALL_LINUX: >
       yum install -y lapack-devel   &&
       yum install -y libpng-devel   &&
