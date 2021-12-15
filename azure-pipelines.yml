@@ -1,6 +1,5 @@
 variables:
     CIBW_BUILD: cp37-* cp38-* cp39-*
-    CIBW_SKIP: *-musllinux_* 
     CIBW_BEFORE_ALL_LINUX: >
       yum install -y lapack-devel   &&
       yum install -y libpng-devel   &&
@@ -9,6 +8,7 @@ variables:
       yum install -y blas-devel
 # yum install -y pkg-config;
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
+    CIBW_SKIP: *-musllinux_*
 
 strategy:
   matrix:
