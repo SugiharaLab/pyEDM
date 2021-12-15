@@ -1,5 +1,9 @@
 variables:
-    CIBW_BUILD: cp37-* cp38-* cp39-*
+    CIBW_BUILD: cp37-* cp38-* cp39-* cp-310-*
+
+    CIBW_SKIP: >
+      cp37-musllinux_* cp38-musllinux_* cp39-musllinux_* cp310-musllinux_*
+
     CIBW_BEFORE_ALL_LINUX: >
       yum install -y lapack-devel   &&
       yum install -y libpng-devel   &&
@@ -7,8 +11,8 @@ variables:
       yum install -y freetype       &&
       yum install -y blas-devel
 # yum install -y pkg-config;
+
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
-    CIBW_SKIP: cp37-musllinux_* cp38-musllinux_* cp39-musllinux_*
 
 strategy:
   matrix:
@@ -24,6 +28,10 @@ strategy:
       vmImage: 'windows-2019'
       build_name: 'Windows_2019_3.9_EDM'
       python.version: '3.9'
+    Windows_3.10:
+      vmImage: 'windows-2019'
+      build_name: 'Windows_2019_3.10_EDM'
+      python.version: '3.10'
     MacOS_3.7:
       vmImage: 'macos-latest'
       build_name: 'MacOS_3.7_EDM'
@@ -36,6 +44,10 @@ strategy:
       vmImage: 'macos-latest'
       build_name: 'MacOS_3.9_EDM'
       python.version: '3.9'
+    MacOS_3.10:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_3.10_EDM'
+      python.version: '3.10'
     Linux_3.7:
       vmImage: 'ubuntu-latest'
       build_name: 'manylinux37'
@@ -48,6 +60,10 @@ strategy:
       vmImage: 'ubuntu-latest'
       build_name: 'manylinux39'
       python.version: '3.9'
+    Linux_3.10:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux310'
+      python.version: '3.10'
 
 pool:
 
