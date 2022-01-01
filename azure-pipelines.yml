@@ -104,6 +104,11 @@ steps:
   displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+- powershell: |
+    cp $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libEDM.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\EDM.lib
+  displayName: 'copy cppEDM/libEDM.a to EDM.lib'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
 - bash: |
     distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
     echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
