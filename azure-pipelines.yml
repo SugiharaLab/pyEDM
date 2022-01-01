@@ -9,8 +9,8 @@ variables:
       yum install -y libpng-devel   &&
       yum install -y freetype-devel &&
       yum install -y freetype       &&
-      yum install -y blas-devel
-# yum install -y pkg-config;
+      yum install -y blas-devel     &&
+      yum install -y pkg-config;
 
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
