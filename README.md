@@ -1,13 +1,13 @@
 ## Empirical Dynamic Modeling (EDM)
 ---
-This package provides a Python/Pandas DataFrame interface to the [cppEDM](https://github.com/SugiharaLab/cppEDM "cppEDM") library for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/ "EDM @ Sugihara Lab").  Introduction and documentation are are avilable [online](https://sugiharalab.github.io/EDM_Documentation/ "EDM Docs"), or in the package [API docs](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf "pyEDM API").
+This package provides a Python/Pandas DataFrame interface to the [cppEDM](https://github.com/SugiharaLab/cppEDM "cppEDM") library for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/ "EDM @ Sugihara Lab").  Introduction and documentation are are avilable [online](https://sugiharalab.github.io/EDM_Documentation/ "EDM Docs"), or in the package [API docs](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf "pyEDM API"). A Jupyter notebook interface is available at [jpyEDM](https://github.com/SugiharaLab/jpyEDM#empirical-dynamic-modeling-edm-jupyter-notebook).
 
 Functionality includes:
-* Simplex projection (Sugihara and May 1990)
-* Sequential Locally Weighted Global Linear Maps (S-map) (Sugihara 1994)
-* Multivariate embeddings (Dixon et. al. 1999)
-* Convergent cross mapping (Sugihara et. al. 2012)
-* Multiview embedding (Ye and Sugihara 2016)
+* Simplex projection ([Sugihara and May 1990](https://www.nature.com/articles/344734a0))
+* Sequential Locally Weighted Global Linear Maps (S-Map) ([Sugihara 1994](https://royalsocietypublishing.org/doi/abs/10.1098/rsta.1994.0106))
+* Multivariate embeddings ([Dixon et. al. 1999](https://science.sciencemag.org/content/283/5407/1528))
+* Convergent cross mapping ([Sugihara et. al. 2012](https://science.sciencemag.org/content/338/6106/496))
+* Multiview embedding ([Ye and Sugihara 2016](https://science.sciencemag.org/content/353/6302/922))
 
 ---
 ## Installation
@@ -18,7 +18,7 @@ Certain MacOS, Linux and Windows platforms are supported with prebuilt binary di
 Command line using the Python pip module: `python -m pip install pyEDM`
 
 ### Manual Install
-Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user can build the cppEDM library on their machine, then install the Python package using pip.  On OSX and Linux this requires g++. On Windows, [mingw](http://www.mingw.org/) and Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
+Unfortunately, we do not have the resources to provide pre-built binary distributions for all computer platforms.  In this case the user can build the cppEDM library, then install the Python package using pip.  On OSX and Linux this requires g++. On Windows, [mingw](http://www.mingw.org/) and Microsoft Visual Studio Compiler (MSVC) which can be obtained from `Build Tools for Visual Studio 2019`. Only the Windows SDK is needed.
 
 Note that the [LAPACK](http://www.netlib.org/lapack/explore-html/index.html) library is required to build cppEDM.
 
