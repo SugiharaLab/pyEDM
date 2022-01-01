@@ -93,7 +93,7 @@ steps:
 
 - task: BatchScript@1
   inputs:
-    filename: 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat'
+    filename: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat'
     arguments: 'amd64'
     modifyEnvironment: True 
   displayName: setup visual studio env on windows
@@ -102,11 +102,6 @@ steps:
 - powershell: |
     cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib
   displayName: 'move window openblas binary'
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-- powershell: |
-    cp $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libEDM.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\EDM.lib
-  displayName: 'copy cppEDM/libEDM.a to EDM.lib'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - bash: |
