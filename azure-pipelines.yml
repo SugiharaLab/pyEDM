@@ -68,6 +68,7 @@ pool:
 
   vmImage: $(vmImage)
   python.version: $(python.version)
+  CXX: mingw32
 
 steps:
 
