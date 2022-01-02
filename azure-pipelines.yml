@@ -109,8 +109,8 @@ steps:
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-- script: |
 # pip install -r requirements.txt
+- script: |
     pip install --upgrade wheel
     pip install --upgrade setuptools
   displayName: install required python modules for pyEDM build
