@@ -10,7 +10,6 @@ variables:
       yum install -y freetype-devel &&
       yum install -y freetype       &&
       yum install -y blas-devel;
-#     yum install -y pkg-config;
 
     CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
@@ -115,6 +114,10 @@ steps:
     pip install --upgrade wheel
     pip install --upgrade setuptools
   displayName: install required python modules for pyEDM build
+
+- script: |
+    python setup.py build_ext --inplace
+  displayName: 'Build extensions'
 
 - script: python setup.py bdist_wheel
   displayName: build pyEDM wheel
