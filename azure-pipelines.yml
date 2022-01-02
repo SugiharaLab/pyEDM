@@ -11,7 +11,7 @@ variables:
       yum install -y freetype       &&
       yum install -y blas-devel;
 
-    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
+#    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
 strategy:
   matrix:
@@ -109,10 +109,10 @@ steps:
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-# pip install -r requirements.txt
 - script: |
     pip install --upgrade wheel
     pip install --upgrade setuptools
+    pip install -r requirements.txt
   displayName: install required python modules for pyEDM build
 
 #- script: |
