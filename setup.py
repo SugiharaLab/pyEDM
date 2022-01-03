@@ -116,7 +116,7 @@ def cpp_flag( compiler ):
 class BuildExt( build_ext ):
     
     c_opts = {
-        'msvc'    : ['/EHsc'],
+        ###'msvc'    : ['/EHsc'],
         'unix'    : ['-llapack'],
         'mingw32' : ['-DMS_WIN64']
     }
@@ -133,9 +133,9 @@ class BuildExt( build_ext ):
             opts.append( cpp_flag(self.compiler) )
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
-        elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' %
-                        self.distribution.get_version())
+        #elif ct == 'msvc':
+        #    opts.append('/DVERSION_INFO=\\"%s\\"' %
+        #                self.distribution.get_version())
             # opts.append('/link /MACHINE:X86')
 
         for ext in self.extensions:
@@ -162,10 +162,10 @@ Extension_modules = [
         extra_compile_args = ['-std=c++11'],
         library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+        libraries = ['libEDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
-        extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
-                          if sys.platform.startswith('win') else [],
+        #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
+        #                  if sys.platform.startswith('win') else [],
     ),
 ]
 
