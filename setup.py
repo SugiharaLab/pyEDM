@@ -57,12 +57,6 @@ if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
 with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
 
-if sys.platform == 'win32':
-    copy_libEDM = subprocess.Popen(["copy", "D:\\a\\1\\s\\cppEDM\\" + cppLibName,
-                                   "D:\\a\\1\\s\\cppEDM\\" + "EDM.lib" ], 
-                                   stderr = subprocess.STDOUT)
-    copy_libEDM.wait()
-
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
