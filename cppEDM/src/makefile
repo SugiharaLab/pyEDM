@@ -11,7 +11,8 @@ SRCS = API.cc CCM.cc Common.cc DateTime.cc EDM.cc EDM_Formatting.cc\
 
 OBJ = $(SRCS:%.cc=%.o)
 
-LIB = libEDM.a
+#LIB = libEDM.a
+LIB = EDM.lib
 
 CFLAGS += -std=c++11 -Wpedantic -Wall -Wextra -Wreorder -O3
 CFLAGS += -DCCM_THREADED -fPIC
