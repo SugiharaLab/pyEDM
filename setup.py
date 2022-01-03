@@ -163,7 +163,8 @@ Extension_modules = [
         extra_compile_args = ['-std=c++11'],
         library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','openblas']\ #,'gfortran','pthread','m','quadmath'] \
+        #libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+        libraries = ['EDM','openblas'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         extra_link_args = []
         #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
