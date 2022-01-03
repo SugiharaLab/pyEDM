@@ -52,7 +52,14 @@ if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
              " does not exist.\n\nYou can install cppEDM manually per: " +\
              "https://github.com/SugiharaLab/pyEDM#manual-install."
     raise Exception( errStr )
-         
+
+# Windows hack?
+copy_libEDM = subprocess.Popen(["copy",
+                                os.path.join( "./cppEDM/src/lib", cppLibName ),
+                                EDM_Lib_Path + "EDM.lib"],
+                                stderr=subprocess.STDOUT)
+copy_libEDM.wait()
+
 # Transfer the README.md to the package decsription
 with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
@@ -162,7 +169,7 @@ Extension_modules = [
         extra_compile_args = ['-std=c++11'],
         library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['libEDM','openblas','gfortran','pthread','m','quadmath'] \
+        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
         #                  if sys.platform.startswith('win') else [],
