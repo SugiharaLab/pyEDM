@@ -110,9 +110,9 @@ steps:
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-- powershell: choco install mingw
-  displayName: 'install choco mingw'
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+#- powershell: choco install mingw
+#  displayName: 'install choco mingw'
+#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - script: |
     pip install --upgrade wheel
