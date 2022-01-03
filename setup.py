@@ -53,13 +53,6 @@ if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
              "https://github.com/SugiharaLab/pyEDM#manual-install."
     raise Exception( errStr )
 
-# Windows hack?
-copy_libEDM = subprocess.Popen(["copy",
-                                os.path.join( "./cppEDM/src/lib", cppLibName ),
-                                EDM_Lib_Path + "EDM.lib"],
-                                stderr=subprocess.STDOUT)
-copy_libEDM.wait()
-
 # Transfer the README.md to the package decsription
 with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
