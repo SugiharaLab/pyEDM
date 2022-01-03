@@ -100,7 +100,7 @@ steps:
 #  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.lib
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
   displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
