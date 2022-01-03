@@ -17,35 +17,35 @@ strategy:
   matrix:
     # Windows_3.7:
     #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_37_EDM'
+    #   build_name: 'Windows_37'
     #   python.version: '3.7'
     # Windows_3.8:
     #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_38_EDM'
+    #   build_name: 'Windows_38'
     #   python.version: '3.8'
     Windows_3.9:
-      vmImage: 'windows-latest'
-      build_name: 'Windows_2019_39_EDM'
+      vmImage: 'windows-2019'
+      build_name: 'Windows_39'
       python.version: '3.9'
     # Windows_3.10:
     #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_2019_310_EDM'
+    #   build_name: 'Windows_310'
     #   python.version: '3.10'
     # MacOS_3.7:
     #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_37_EDM'
+    #   build_name: 'MacOS_37'
     #   python.version: '3.7'
     # MacOS_3.8:
     #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_38_EDM'
+    #   build_name: 'MacOS_38'
     #   python.version: '3.8'
     # MacOS_3.9:
     #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_39_EDM'
+    #   build_name: 'MacOS_39'
     #   python.version: '3.9'
     # MacOS_3.10:
     #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_310_EDM'
+    #   build_name: 'MacOS_310'
     #   python.version: '3.10'
     # Linux_3.7:
     #   vmImage: 'ubuntu-latest'
@@ -68,7 +68,6 @@ pool:
 
   vmImage: $(vmImage)
   python.version: $(python.version)
-  CXX: mingw32
 
 steps:
 
@@ -76,11 +75,12 @@ steps:
   inputs:
     versionSpec: '$(python.version)'
 
-- bash: |
-    pyconf_path=`echo "from sysconfig import get_paths;print(get_paths()['include'])"|python`
-    sed -i '/#define hypot _hypot/d' $pyconf_path/pyconfig.h
-  displayName: remove conflicting hypot bug in pyconf
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+#- bash: |
+#    pyconf_path=`echo "from sysconfig import get_paths;
+#                 print(get_paths()['include'])"|python`
+#    sed -i '/#define hypot _hypot/d' $pyconf_path/pyconfig.h
+#  displayName: remove conflicting hypot bug in pyconf
+#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - bash: |
         python -m pip install cibuildwheel
