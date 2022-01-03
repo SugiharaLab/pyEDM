@@ -56,7 +56,13 @@ if not os.path.isfile( os.path.join( EDM_Lib_Path, cppLibName ) ) :
 # Transfer the README.md to the package decsription
 with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
-    
+
+if sys.platform == 'win32':
+    copy_libEDM = subprocess.Popen(["copy", "./cppEDM/src/libEDM.a",
+                                    "./cppEDM/lib/EDM.lib" ], 
+                                   stderr=subprocess.STDOUT)
+    copy_libEDM.wait()
+
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
