@@ -28,7 +28,8 @@ from   setuptools.command.build_ext import build_ext
 
 # Set msvc runtime dll for windows build : Required for windows
 import distutils.cygwinccompiler
-distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
+#distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr100']
+distutils.cygwinccompiler.get_msvcr = lambda: []
 
 # Package paths e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
@@ -164,6 +165,8 @@ Extension_modules = [
         # Note PEP 308: <expression1> if <condition> else <expression2>
         libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
+        extra_link_args = ["-Wl,-Bstatic", "-lpthread" ] \
+                          if sys.platform.startswith('win') else [],
         #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
         #                  if sys.platform.startswith('win') else [],
     ),
