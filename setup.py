@@ -58,9 +58,9 @@ with open(os.path.join(tmpInstallPath, 'README.md')) as f:
     long_description = f.read()
 
 if sys.platform == 'win32':
-    copy_libEDM = subprocess.Popen(["copy", "./cppEDM/lib/libEDM.a",
-                                    "./cppEDM/lib/EDM.lib" ], 
-                                   stderr=subprocess.STDOUT)
+    copy_libEDM = subprocess.Popen(["copy", EDM_Lib_Path + '/' + cppLibName,
+                                   EDM_Lib_Path + "/EDM.lib" ], 
+                                   stderr = subprocess.STDOUT)
     copy_libEDM.wait()
 
 #----------------------------------------------------------------------
