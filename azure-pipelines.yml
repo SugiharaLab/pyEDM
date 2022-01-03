@@ -114,6 +114,10 @@ steps:
 #  displayName: 'install choco mingw'
 #  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+- powershell: copy $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libEDM.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\EDM.lib
+  displayName: 'copy libEDM.a EDM.lib'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
 - script: |
     pip install --upgrade wheel
     pip install --upgrade setuptools
