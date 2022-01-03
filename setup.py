@@ -37,8 +37,7 @@ EDM_H_Path     = os.path.join( tmpInstallPath, "cppEDM/src" )
 Bindings_Path  = os.path.join( tmpInstallPath, "src/bindings/" )
 
 # Build libEDM.a 
-#cppLibName = "libEDM.a"
-cppLibName = "EDM.lib"
+cppLibName = "libEDM.a"
 
 if not os.path.exists(EDM_Lib_Path): # in case of sdist build, mkdir lib
     os.makedirs(EDM_Lib_Path)
