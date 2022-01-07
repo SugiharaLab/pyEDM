@@ -1,8 +1,11 @@
-##
+#--------------------------------------------------------------------------
 # Build the pyEDM Python binding to cppEDM.
 #
 # The core/extension library is the C++ cppEDM libEDM.a
 # NOTE: libEDM.a needs to be built with -fPIC. 
+#
+# NOTE: win32 builds are of course, problematic.
+#       ****** Force the use of mingw32. Do not use msvc ******
 #
 # Bindings to cppEDM are provided via pybind11 in src/bindings/PyBind.cpp
 # and are built as an Extension module into a platform-specific shared
@@ -16,7 +19,9 @@
 #
 # Some of this setup is cloned from pybind11 example setup.py
 # https://github.com/pybind/python_example
-##
+#--------------------------------------------------------------------------
+
+DEBUG_BUILD_pyEDM = False
 
 import sys
 import os
@@ -26,9 +31,12 @@ import setuptools
 from   setuptools import setup, Extension
 from   setuptools.command.build_ext import build_ext
 
-# Set msvc runtime dll for windows build : Required for windows
+# Clear msvc runtime dll for windog build
+# CygwinCCompiler class is a subclass of UnixCCompiler that handles
+# the Cygwin port of the GNU C compiler to Windows. It also contains
+# the Mingw32CCompiler class which handles the mingw32 port of GCC
 import distutils.cygwinccompiler
-distutils.cygwinccompiler.get_msvcr = lambda: ['msvcr1929']
+distutils.cygwinccompiler.get_msvcr = lambda:[]
 
 # Package paths e.g. /tmp/pip-req-build-9ljrp27z/
 tmpInstallPath = os.path.dirname( os.path.abspath( __file__ ) )
@@ -60,120 +68,6 @@ with open(os.path.join(tmpInstallPath, 'README.md')) as f:
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
-class get_pybind_include( object ):
-    """Helper class to determine the pybind11 include path
-    The purpose of this class is to postpone importing pybind11
-    until it is actually installed, so that the ``get_include()``
-    method can be invoked."""
-
-    def __init__(self, user=False):
-        self.user = user
-
-    def __str__(self):
-        import pybind11
-        return pybind11.get_include(self.user)
-
-#----------------------------------------------------------------------
-# As of Python 3.6, CCompiler has a `has_flag` method.
-# cf http://bugs.python.org/issue26689
-#----------------------------------------------------------------------
-def has_flag( compiler, flagname ):
-    """Return a boolean indicating whether a flag name is supported on
-    the specified compiler."""
-    
-    import tempfile
-    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
-        f.write('int main (int argc, char **argv) { return 0; }')
-        try:
-            compiler.compile([f.name], extra_postargs=[flagname])
-        except setuptools.distutils.errors.CompileError:
-            return False
-    return True
-
-#----------------------------------------------------------------------
-#
-#----------------------------------------------------------------------
-def cpp_flag( compiler ):
-    """Return the -std=c++[11/14] compiler flag.
-    The c++14 is prefered over c++11 (when it is available)."""
-    
-    if has_flag( compiler, '-std=c++14' ):
-        return '-std=c++14'
-    elif has_flag( compiler, '-std=c++11' ):
-        return '-std=c++11'
-    else:
-        raise RuntimeError('Unsupported compiler -- at least C++11 support '
-                           'is needed!')
-
-#----------------------------------------------------------------------
-# Note:
-# >>> distutils.ccompiler.show_compilers()
-# List of available compilers:
-#   --compiler=mingw32  Mingw32 port of GNU C Compiler for Win32
-#   --compiler=msvc     Microsoft Visual C++
-#   --compiler=unix     standard UNIX-style compiler
-#----------------------------------------------------------------------
-class BuildExt( build_ext ):
-    
-    c_opts = {
-        'msvc'    : ['/EHsc'],
-        'unix'    : ['-llapack'],
-        'mingw32' : ['-DMS_WIN64']
-    }
-
-    if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-
-    def build_extensions(self):
-        ct   = self.compiler.compiler_type
-        opts = self.c_opts.get(ct, [])
-
-        if ct == 'unix':
-            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-            opts.append( cpp_flag(self.compiler) )
-            if has_flag(self.compiler, '-fvisibility=hidden'):
-                opts.append('-fvisibility=hidden')
-        elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' %
-                        self.distribution.get_version())
-            # opts.append('/link /MACHINE:X86')
-
-        for ext in self.extensions:
-            ext.extra_compile_args = opts
-
-        build_ext.build_extensions(self)
-
-#----------------------------------------------------------------------
-#
-#----------------------------------------------------------------------
-Extension_modules = [
-    Extension(
-        name = 'pyBindEDM',
-
-        sources = [ Bindings_Path + 'PyBind.cpp' ],
-        
-        include_dirs = [
-            get_pybind_include(), # Path to pybind11 headers
-            get_pybind_include( user = True ),
-            EDM_H_Path # Path to cppEDM headers
-        ],
-
-        language           = 'c++',
-        extra_compile_args = ['-std=c++11'],
-        library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
-        # Note PEP 308: <expression1> if <condition> else <expression2>
-        #libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
-        libraries = ['EDM','openblas'] \
-                    if sys.platform.startswith('win') else ['EDM','lapack'],
-        extra_link_args = []
-        #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
-        #                  if sys.platform.startswith('win') else [],
-    ),
-]
-
-#----------------------------------------------------------------------
-#
-#----------------------------------------------------------------------
 def read_version(*file_paths):
     '''Read __init__.py to get __version__'''
     with open(os.path.join( tmpInstallPath, *file_paths ), 'r') as fp:
@@ -193,6 +87,123 @@ def read_version(*file_paths):
 #----------------------------------------------------------------------
 #
 #----------------------------------------------------------------------
+class get_pybind_include( object ):
+    """Helper class to determine the pybind11 include path
+    The purpose of this class is to postpone importing pybind11
+    until it is actually installed, so that the ``get_include()``
+    method can be invoked."""
+
+    def __init__(self, user=False):
+        self.user = user
+
+    def __str__(self):
+        import pybind11
+        return pybind11.get_include(self.user)
+
+#----------------------------------------------------------------------
+# 
+#----------------------------------------------------------------------
+def has_flag( compiler, flagname ):
+    """Return a boolean indicating whether a flag is supported on
+    the specified compiler."""
+    
+    import tempfile
+    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+        f.write('int main (int argc, char **argv) { return 0; }')
+        try:
+            compiler.compile([f.name], extra_postargs=[flagname])
+        except setuptools.distutils.errors.CompileError:
+            return False
+    return True
+
+#----------------------------------------------------------------------
+#
+#----------------------------------------------------------------------
+def cpp_flag( compiler ):
+    """Return the -std=c++[11/14] compiler flag.
+    The c++14 is prefered over c++11."""
+    
+    if has_flag( compiler, '-std=c++17' ):
+        return '-std=c++17'
+    elif has_flag( compiler, '-std=c++14' ):
+        return '-std=c++14'
+    elif has_flag( compiler, '-std=c++11' ):
+        return '-std=c++11'
+    else:
+        raise RuntimeError('Unsupported compiler: '
+                           'C++11 minimum standard required.')
+
+#----------------------------------------------------------------------
+# Note:
+# >>> distutils.ccompiler.show_compilers()
+# List of available compilers:
+#   --compiler=mingw32  Mingw32 port of GNU C Compiler for Win32
+#   --compiler=msvc     Microsoft Visual C++
+#   --compiler=unix     standard UNIX-style compiler
+#----------------------------------------------------------------------
+class BuildExt( build_ext ):
+    
+    c_opts = {
+        'msvc'    : [],
+        'unix'    : ['-llapack'],
+        'mingw32' : ['-DMS_WIN64']
+    }
+
+    if DEBUG_BUILD_pyEDM :
+        print( ">>>>>>>>>>> sys.platform: ", sys.platform )
+
+    if sys.platform == 'darwin':
+        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+
+    def build_extensions(self):
+        ct   = self.compiler.compiler_type
+        opts = self.c_opts.get(ct, [])
+
+        if DEBUG_BUILD_pyEDM :
+            print( '>>>>>>>>>>> compiler_type: ', self.compiler.compiler_type )
+        
+        if ct == 'unix':
+            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
+            opts.append( cpp_flag(self.compiler) )
+            if has_flag(self.compiler, '-fvisibility=hidden'):
+                opts.append('-fvisibility=hidden')
+
+        for ext in self.extensions:
+            ext.extra_compile_args = opts
+
+        build_ext.build_extensions(self)
+
+#----------------------------------------------------------------------
+#
+#----------------------------------------------------------------------
+Extension_modules = [
+    Extension(
+        name = 'pyBindEDM',
+
+        sources = [ Bindings_Path + 'PyBind.cpp' ],
+        
+        include_dirs = [
+            get_pybind_include(), # Path to pybind11 headers
+            get_pybind_include( user = True ),
+            EDM_H_Path            # Path to cppEDM headers
+        ],
+
+        language           = 'c++',
+        extra_compile_args = ['-std=c++11'],
+        library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
+        
+        # Note PEP 308: <expression1> if <condition> else <expression2>
+        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+                    if sys.platform.startswith('win') else ['EDM','lapack'],
+        
+        extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
+                          if sys.platform.startswith('win') else [],
+    ),
+]
+
+#----------------------------------------------------------------------
+#
+#----------------------------------------------------------------------
 setup(
     name             = 'pyEDM', # name of *-version.dist-info directory
     version          = read_version( 'pyEDM', '__init__.py' ),
@@ -208,8 +219,8 @@ setup(
     ext_modules      = Extension_modules,
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
-    install_requires = ['pybind11>=2.3', 'pandas>=0.20.3', 'matplotlib>=2.2'],
-    python_requires  = '>=3',
+    install_requires = ['pybind11>=2.3', 'pandas>=1.1', 'matplotlib>=2.2'],
+    python_requires  = '>=3.6',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
     zip_safe         = False,
 )

@@ -11,58 +11,58 @@ variables:
       yum install -y freetype       &&
       yum install -y blas-devel;
 
-#    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
+    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
 strategy:
   matrix:
-    # Windows_3.7:
-    #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_37'
-    #   python.version: '3.7'
-    # Windows_3.8:
-    #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_38'
-    #   python.version: '3.8'
+    Windows_3.7:
+      vmImage: 'windows-latest'
+      build_name: 'Windows_37'
+      python.version: '3.7'
+    Windows_3.8:
+      vmImage: 'windows-latest'
+      build_name: 'Windows_38'
+      python.version: '3.8'
     Windows_3.9:
       vmImage: 'windows-2019'
       build_name: 'Windows_39'
       python.version: '3.9'
-    # Windows_3.10:
-    #   vmImage: 'windows-latest'
-    #   build_name: 'Windows_310'
-    #   python.version: '3.10'
-    # MacOS_3.7:
-    #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_37'
-    #   python.version: '3.7'
-    # MacOS_3.8:
-    #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_38'
-    #   python.version: '3.8'
-    # MacOS_3.9:
-    #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_39'
-    #   python.version: '3.9'
-    # MacOS_3.10:
-    #   vmImage: 'macos-latest'
-    #   build_name: 'MacOS_310'
-    #   python.version: '3.10'
-    # Linux_3.7:
-    #   vmImage: 'ubuntu-latest'
-    #   build_name: 'manylinux37'
-    #   python.version: '3.7'
-    # Linux_3.8:
-    #   vmImage: 'ubuntu-latest'
-    #   build_name: 'manylinux38'
-    #   python.version: '3.8'
-    # Linux_3.9:
-    #   vmImage: 'ubuntu-latest'
-    #   build_name: 'manylinux39'
-    #   python.version: '3.9'
-    # Linux_3.10:
-    #   vmImage: 'ubuntu-latest'
-    #   build_name: 'manylinux310'
-    #   python.version: '3.10'
+    Windows_3.10:
+      vmImage: 'windows-latest'
+      build_name: 'Windows_310'
+      python.version: '3.10'
+    MacOS_3.7:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_37'
+      python.version: '3.7'
+    MacOS_3.8:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_38'
+      python.version: '3.8'
+    MacOS_3.9:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_39'
+      python.version: '3.9'
+    MacOS_3.10:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_310'
+      python.version: '3.10'
+    Linux_3.7:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux37'
+      python.version: '3.7'
+    Linux_3.8:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux38'
+      python.version: '3.8'
+    Linux_3.9:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux39'
+      python.version: '3.9'
+    Linux_3.10:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux310'
+      python.version: '3.10'
 
 pool:
 
@@ -75,55 +75,40 @@ steps:
   inputs:
     versionSpec: '$(python.version)'
 
-#- bash: |
-#    pyconf_path=`echo "from sysconfig import get_paths;
-#                 print(get_paths()['include'])"|python`
-#    sed -i '/#define hypot _hypot/d' $pyconf_path/pyconfig.h
-#  displayName: remove conflicting hypot bug in pyconf
-#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
+#--------- Linux : Install manylinux dependencies
 - bash: |
         python -m pip install cibuildwheel
-        pip install -r requirements.txt
-        pip install --upgrade wheel
-        pip install --upgrade setuptools
         python -m cibuildwheel --output-dir wheelhouse
   displayName: manylinux build
   condition: eq( variables['Agent.OS'], 'Linux' )
 
-- task: BatchScript@1
-  inputs:
-    filename: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat'
-    arguments: 'amd64'
-    modifyEnvironment: True 
-  displayName: setup visual studio env on windows
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
+#--------- Windows_NT : Copy openblas.a
 - powershell: |
     cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
   displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+#--------- Windows_NT : Setup mingw 
 - bash: |
     distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
     echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-#- powershell: choco install mingw
-#  displayName: 'install choco mingw'
-#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
+#--------- Install dependencies
 - script: |
     pip install --upgrade wheel
     pip install --upgrade setuptools
     pip install -r requirements.txt
   displayName: install required python modules for pyEDM build
 
-#- script: |
-#    python setup.py build_ext --inplace
-#  displayName: 'Build extensions'
+#--------- Windows_NT : Build extension Force mingw32
+- script: |
+    python setup.py build_ext "--compiler=mingw32"
+  displayName: 'Build extension'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+#--------- Windows_NT & MacOS : Build pyEDM wheel
 - script: python setup.py bdist_wheel
   displayName: build pyEDM wheel
   condition: ne( variables['Agent.OS'], 'Linux' )
