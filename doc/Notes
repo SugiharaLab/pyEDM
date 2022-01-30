@@ -15,7 +15,10 @@ used to build separate binary distributions for Linux, OSX and Windows.
 The setuptools build on Linux/OSX requires position independent code:
 libEDM.a must be compiled with -fPIC.
 
-Build/system differences to support Windows.
+2022-01-21 : Note. We now use mingw in an Azure DevOps pipeline to
+build Windows.  Notes below on MSVC are retained for information.
+
+Build/system differences to support Windows MSVC.
 ------------------------------------------------------------------------
 1) Must use MSVC x64 compiler to build EDM.lib from cppEDM.
 2) MSVC nmake compatible makefile: makefile.windows
@@ -24,4 +27,3 @@ Build/system differences to support Windows.
    explicit type-cast is needed to placate the compiler (AuxFunc.cc).
 5) On MSVC overloaded struct MultiviewValues constructors (Common.h)
    are not reasonably supported. 
-
