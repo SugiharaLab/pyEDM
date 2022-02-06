@@ -118,7 +118,7 @@ def Simplex( pathIn          = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM Simplex:
     #  { "predictions" : {}, ["parameters" : {}] }
@@ -144,8 +144,10 @@ def Simplex( pathIn          = "./",
                            parameterList )
 
     df = DataFrame( D['predictions'] ) # Convert to pandas DataFrame
-    
+
     if showPlot :
+        if embedded :
+            E = len( columns.split() )
         pyEDM.AuxFunc.PlotObsPred( df, dataFile, E, Tp )
 
     if parameterList :
@@ -202,7 +204,7 @@ def SMap( pathIn          = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # Validate the solver if one was passed in
     if solver :
@@ -248,6 +250,8 @@ def SMap( pathIn          = "./",
         SMapDict[ 'parameters' ] = D[ 'parameters' ]
 
     if showPlot :
+        if embedded :
+            E = len( columns.split() )
         pyEDM.AuxFunc.PlotObsPred( df_pred, dataFile, E, Tp, False )
         pyEDM.AuxFunc.PlotCoeff  ( df_coef, dataFile, E, Tp )
 
@@ -296,7 +300,7 @@ def Multiview( pathIn          = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "View" : < vector< string >, "Predictions" : {} }
@@ -373,7 +377,7 @@ def CCM( pathIn           = "./",
 
     # If columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
@@ -463,7 +467,7 @@ def EmbedDimension( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.EmbedDimension( pathIn,
@@ -531,7 +535,7 @@ def PredictInterval( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM PredictInterval
     D = pyBindEDM.PredictInterval( pathIn,
@@ -553,6 +557,8 @@ def PredictInterval( pathIn       = "./",
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     if showPlot :
+        if embedded :
+            E = len( columns.split() )
         title = dataFile + "\nE=" + str( E )
 
         ax = df.plot( 'Tp', 'rho', title = title, linewidth = 3 )
@@ -601,7 +607,7 @@ def PredictNonlinear( pathIn       = "./",
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM PredictNonlinear
     D = pyBindEDM.PredictNonlinear( pathIn,
@@ -625,6 +631,8 @@ def PredictNonlinear( pathIn       = "./",
     df = DataFrame( D ) # Convert to pandas DataFrame
 
     if showPlot :
+        if embedded :
+            E = len( columns.split() )
         title = dataFile + "\nE=" + str( E )
     
         ax = df.plot( 'Theta', 'rho', title = title, linewidth = 3 )
