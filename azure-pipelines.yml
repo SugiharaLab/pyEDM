@@ -88,7 +88,7 @@ steps:
   displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-#--------- Windows_NT : Setup mingw 
+#--------- Windows_NT : Setup mingw
 - bash: |
     distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
     echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
