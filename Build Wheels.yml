@@ -1,5 +1,7 @@
 variables:
-    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
+    
+###CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
+    CIBW_BUILD: cp310-*
 
     CIBW_SKIP: >
       *-musllinux_*
@@ -11,7 +13,7 @@ variables:
       yum install -y freetype       &&
       yum install -y blas-devel;
 
-#    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
+    CIBW_BEFORE_BUILD: pip install -r requirements.txt; 
 
 strategy:
   matrix:
