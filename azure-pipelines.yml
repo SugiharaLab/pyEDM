@@ -1,5 +1,5 @@
 variables:
-    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
+###    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
 
     CIBW_SKIP: >
       cp37-musllinux_* cp38-musllinux_* cp39-musllinux_* cp310-musllinux_*
