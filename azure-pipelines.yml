@@ -1,8 +1,7 @@
 variables:
-###    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
+    CIBW_BUILD: cp38-* cp39-* cp310-*
 
-    CIBW_SKIP: >
-      cp37-musllinux_* cp38-musllinux_* cp39-musllinux_* cp310-musllinux_*
+    CIBW_SKIP: *-musllinux_*
 
     CIBW_BEFORE_ALL_LINUX: >
       yum install -y lapack-devel   &&
@@ -47,10 +46,6 @@ strategy:
       vmImage: 'macos-latest'
       build_name: 'MacOS_310'
       python.version: '3.10'
-    Linux_3.7:
-      vmImage: 'ubuntu-latest'
-      build_name: 'manylinux37'
-      python.version: '3.7'
     Linux_3.8:
       vmImage: 'ubuntu-latest'
       build_name: 'manylinux38'
