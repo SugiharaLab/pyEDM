@@ -95,7 +95,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 10, 1, "2022-01-21" )
+    version          ( 1, 10, 2, "2022-02-10" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -548,31 +548,32 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     if ( generateSteps != 0 and
          ( method == Method::Simplex or method == Method::SMap ) ) {
-        
+
         if ( generateSteps < 0 ) {
             std::string errMsg( "Parameters::Validate(): "
                                 "generateSteps must be non-negative.\n" );
             throw std::runtime_error( errMsg );
         }
+
         if ( embedded ) {
             std::string errMsg("Parameters::Validate(): "
                                "generateSteps embedded data not supported.\n");
             throw std::runtime_error( errMsg );
         }
-        
-        if ( Tp < 0 ) {
+
+        if ( Tp <= 0 ) {
             std::string errMsg("Parameters::Validate(): "
-                               "generateSteps negative Tp invalid.\n");
+                               "generateSteps zero or negative Tp invalid.\n");
             throw std::runtime_error( errMsg );
         }
-        
+
         if ( columnNames.front() != targetName ) {
             std::string errMsg("Parameters::Validate(): generateSteps "
                                "columns and target disjoint. "
                                "Only univariate data allowed.\n");
             throw std::runtime_error( errMsg );
         }
-        
+
         if ( columnNames.size() > 1 ) {
             std::cout << "NOTE: Parameters::Validate(): generateSteps: "
                       << "Multiple columns found. "
