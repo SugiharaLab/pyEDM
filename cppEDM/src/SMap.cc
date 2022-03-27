@@ -526,7 +526,9 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
              &rank, &workSize, &lwork, &info );
 
     if ( info ) {
-        throw std::runtime_error( "Lapack_SVD(): dgelss failed on query.\n" );
+        std::stringstream errMsg;
+        errMsg << "Lapack_SVD(): dgelss query failed. Info: " << info;
+        throw std::runtime_error( errMsg.str() );
     }
 
 #ifdef DEBUG_ALL
@@ -544,7 +546,12 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
              &rank, work, &lwork, &info );
 
     if ( info ) {
-        throw std::runtime_error( "Lapack_SVD(): dgelss failed.\n" );
+        std::stringstream errMsg;
+        errMsg << "Lapack_SVD(): dgelss failed. Info: " << info << std::endl
+               << "The algorithm for computing the SVD failed to converge. "
+               << info << " off-diagonal elements of an intermediate "
+               << "bidiagonal form did not converge to zero.\n";
+        throw std::runtime_error( errMsg.str() );
     }
 
 #ifdef DEBUG_ALL

@@ -136,15 +136,19 @@ void CrossMap( SimplexClass   & S,
         throw std::runtime_error( errMsg.str() );
     }
 
-    if ( S.parameters.Tp < 0 and
-         (int) S.data.NRows() + S.parameters.Tp <=
-         (int) S.parameters.librarySizes.back() ) {
-        std::lock_guard<std::mutex> lck( EDM_CCM_Lock::mtx );
-        std::stringstream errMsg;
-        errMsg << "CrossMap(): Tp = " << S.parameters.Tp
-               << " is inconsistent with maximum libSize = "
-               << S.parameters.librarySizes.back();
-        throw std::runtime_error( errMsg.str() );
+    if ( S.parameters.Tp < 0 ) {
+        int maxLibSize = (int) S.parameters.librarySizes.back();
+        int maxAllowed = (int) S.data.NRows() - NPartial + (S.parameters.Tp + 1);
+        
+        if ( maxLibSize > maxAllowed ) {
+            std::lock_guard<std::mutex> lck( EDM_CCM_Lock::mtx );
+            std::stringstream errMsg;
+            errMsg << "CrossMap(): Maximum libSize " << maxLibSize
+                   << " too large for Tp " <<  S.parameters.Tp
+                   << " E " << S.parameters.E << " tau " << S.parameters.tau
+                   << ".  Maximum " << maxAllowed;
+            throw std::runtime_error( errMsg.str() );
+        }
     }
 
     // Note that the embedding has NPartial invalid rows
