@@ -95,7 +95,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 10, 2, "2022-02-10" )
+    version          ( 1, 10, 3, "2022-03-27" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -157,9 +157,10 @@ void Parameters::Validate() {
     }
 
     //--------------------------------------------------------------
-    // CCM sample not 0 if random is true
+    // CCM
     //--------------------------------------------------------------
     if ( method == Method::CCM ) {
+        // sample not 0 if random is true
         if ( randomLib ) {
             if ( subSamples < 1 ) {
                 std::string errMsg( "Parameters::Validate(): "
@@ -167,16 +168,18 @@ void Parameters::Validate() {
                 throw std::runtime_error( errMsg );
             }
         }
-    }
 
-    //--------------------------------------------------------------
-    // CCM librarySizes
-    //   1) 3 arguments : start stop increment
-    //      if increment < stop generate the library sequence.
-    //      if increment > stop presume list of 3 library sizes.
-    //   2) Otherwise: "x y ..." : list of library sizes.
-    //--------------------------------------------------------------
-    if ( libSizes_str.size() > 0 ) {
+        // CCM librarySizes        
+        if ( not libSizes_str.size() )  {
+            std::string errMsg( "Parameters::Validate(): CCM libSize empty.\n" );
+            throw std::runtime_error( errMsg );
+        }
+
+        // libSizes
+        //   1) 3 arguments : start stop increment
+        //      if increment < stop generate the library sequence.
+        //      if increment > stop presume list of 3 library sizes.
+        //   2) Otherwise: "x y ..." : list of library sizes.
         std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
 
         bool libSizeSequence = false;
