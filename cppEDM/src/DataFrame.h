@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <fstream>
 #include <iterator>
+#include <unordered_set>
 
 // Common.cc
 extern std::vector<std::string> SplitString( std::string inString, 
@@ -22,7 +23,7 @@ typedef std::vector<std::pair<std::string, std::vector<double>>> NamedData;
 //----------------------------------------------------------------
 // DataFrame class
 // Data container is a single, contiguous valarray: elements.
-// NOTE: elements are Row Major format, ala C, C++, numpy
+// NOTE: elements are Row Major format, ala C, C++, numpy.
 // DataFrame element access is through the () operator: (row,col).
 // The time column is not processed as data, but as strings.
 //----------------------------------------------------------------
@@ -39,6 +40,9 @@ class DataFrame {
     std::vector< std::string > time;
     std::string                timeName;
     NamedData                  namedData;
+
+    std::vector< size_t > nanRows;   // SMap DataFrameRemoveNanRows
+    std::vector< size_t > validRows; // SMap DataFrameRemoveNanRows
 
     size_t maxRowPrint;
     bool   noTime;
@@ -133,6 +137,11 @@ public:
     std::map< std::string, size_t > &ColumnNameToIndex() {
         return columnNameToIndex;
     }
+
+    std::vector< size_t >  NanRows()   const { return nanRows;   }
+    std::vector< size_t > &NanRows()         { return nanRows;   }
+    std::vector< size_t >  ValidRows() const { return validRows; }
+    std::vector< size_t > &ValidRows()       { return validRows; }
 
     size_t  MaxRowPrint() const { return maxRowPrint; }
     size_t &MaxRowPrint()       { return maxRowPrint; }
@@ -308,6 +317,60 @@ public:
             M.ColumnNames() = columnNames;
             M.BuildColumnNameIndex();
         }
+
+        return M;
+    }
+
+    //-----------------------------------------------------------------
+    // Scan columns for nan
+    // If no nan: return false, do not set DataFrame nanRows & validRows
+    // If nan:    return true,  set DataFrame nanRows & validRows
+    //-----------------------------------------------------------------
+    bool NanRows( std::vector< std::string > columns ) {
+
+        nanRows.clear();  // JP instead: throw warn/error if already set?
+        validRows.clear();
+
+        bool nanFound = false;
+        std::unordered_set< size_t > nanSetRows; // unique nan rows
+
+        // Scan each column
+        for ( auto col : columns ) {
+            std::valarray<T> colData = VectorColumnName( col );
+            // Scan each row
+            for ( size_t row = 0; row < n_rows; row++ ) {
+                if ( std::isnan( colData[ row ] ) ) {
+                    nanSetRows.insert( row );
+                }
+            }
+        }
+
+        if ( not nanSetRows.empty() ) { nanFound = true; }
+
+        if ( nanFound ) {
+            // Copy nanSetRows (unordered_set) to DataFrame nanRows (vector)
+            nanRows.insert( nanRows.end(), nanSetRows.begin(), nanSetRows.end());
+
+            // validRows is compliment of nanRows
+            std::unordered_set< size_t >::const_iterator usi;
+            for ( size_t row = 0; row < n_rows; row++ ) {
+                usi = nanSetRows.find( row );
+                if ( usi == nanSetRows.end() ) {
+                    validRows.push_back( row );
+                }
+            }
+        }
+
+        return nanFound;
+    }
+
+    //-----------------------------------------------------------------
+    // Return (sub)DataFrame with rows removed having nan in columns
+    //-----------------------------------------------------------------
+    DataFrame< T > DataFrameRemoveNanRows() {
+
+        // NOTE: Call NanRows( columns ) first to set validRows
+        DataFrame< T > M = DataFrameFromRowIndex( validRows );
 
         return M;
     }
