@@ -6,10 +6,15 @@
 // Functions implemented in Eval.cc:
 //     EmbedDimension(), PredictInterval(), PredictNonlinear()
 //
-// Note: Functions that implement either filepath or DataFrame
+// NOTE: Functions that implement either filepath or DataFrame
 //       input are overloads. The first pattern takes a filepath
 //       argument, creates the DataFrame object, then calls the
-//       second with the DataFrame.
+//       second with a reference to the DataFrame.
+//
+//       In the case of SMap, there are 4 overloads, two with
+//       the default SVD solver, two with a user supplied solver.
+//       In all cases, the final overload (4) creates the SMap
+//       object and executes the SMap algorithm.
 //----------------------------------------------------------------
 
 #include "API.h"
@@ -172,7 +177,7 @@ DataFrame< double > MakeBlock( DataFrame< double >      & dataFrame,
 }
 
 //----------------------------------------------------------------------
-// Simplex with path/file input
+// Simplex with pathIn/dataFile input : calls Simplex( & DataFrame )
 //----------------------------------------------------------------------
 SimplexValues Simplex( std::string       pathIn,
                        std::string       dataFile,
@@ -197,7 +202,7 @@ SimplexValues Simplex( std::string       pathIn,
     // DataFrame constructor loads data
     DataFrame< double > DF( pathIn, dataFile );
 
-    // Pass data frame to Simplex 
+    // Call Simplex( & DataFrame )
     SimplexValues S = Simplex( std::ref( DF ),
                                pathOut,
                                predictFile,
@@ -269,7 +274,7 @@ SimplexValues Simplex( DataFrame< double > & DF,
 }
 
 //----------------------------------------------------------------------------
-// 1) SMap with path/file input
+// 1) SMap with pathIn/dataFile input. Calls overload 2)
 //    Default SVD (LAPACK) assigned in SMap() overload 2)
 //----------------------------------------------------------------------------
 SMapValues SMap( std::string pathIn,
@@ -309,8 +314,8 @@ SMapValues SMap( std::string pathIn,
 }
 
 //----------------------------------------------------------------------------
-// 2) SMap with DataFrame
-//    Default SVD (LAPACK) assigned in Smap.cc overload 2)
+// 2) SMap with DataFrame. Calls overload 4)
+//    Default SVD (LAPACK) was assigned in Smap.cc overload 2)
 //----------------------------------------------------------------------------
 SMapValues SMap( DataFrame< double > & DF,
                  std::string pathOut,
@@ -347,7 +352,7 @@ SMapValues SMap( DataFrame< double > & DF,
 }
 
 //----------------------------------------------------------------------------
-// 3) Data path/file with external solver object
+// 3) Data pathIn/dataFile with external solver object. Calls 4)
 //----------------------------------------------------------------------------
 SMapValues SMap( std::string pathIn,
                  std::string dataFile,
@@ -424,8 +429,69 @@ SMapValues SMap( DataFrame< double > & DF,
                                         const_predict, verbose, validLib,
                                         generateSteps, parameterList, smapFile );
 
+    // Handle nan
+    // If nan are found in library or prediction rows of columns or target,
+    // remove them from DataFrame DF
+    //   nan rows are saved in DF nanRows, validRows
+    //   JP: Seems silly to do this check as a default...
+    std::vector< std::string > nanColsCheck = parameters.columnNames;
+    // Add target to nanColsCheck for DF.NanRows()
+    // Don't add empty or degenerate target
+    if ( not parameters.targetName.empty() and
+         find( nanColsCheck.begin(), nanColsCheck.end(), parameters.targetName )
+         == nanColsCheck.end() ) {
+        nanColsCheck.push_back( parameters.targetName );
+    }
+    bool nanFound = DF.NanRows( nanColsCheck ); // Look for nan
+
+    // Reference to DF or DataFrameRemoveNanRows
+    DataFrame< double > DF_ = std::ref( DF );
+
+    if ( nanFound ) {
+        // Remove DF nanRows from parameters.library and prediction
+        // If any nan are found, set nanRemovedLibPred true
+        bool nanRemovedLibPred = false;
+        
+        // First, sort nanRows to delete from lib/pred in reverse order
+        std::sort( DF.NanRows().begin(), DF.NanRows().end() );
+
+        // Now erase in reverse order
+        std::vector< size_t >::iterator         vi;
+        std::vector< size_t >::reverse_iterator ri;
+
+        for ( ri = DF.NanRows().rbegin(); ri != DF.NanRows().rend(); ++ri ) {
+            vi = std::find( parameters.library.begin(),
+                            parameters.library.end(), *ri );
+            if ( vi != parameters.library.end() ) {
+                parameters.library.erase( vi );
+                if ( not nanRemovedLibPred ){ nanRemovedLibPred = true; }
+            }
+            vi = std::find( parameters.prediction.begin(),
+                            parameters.prediction.end(), *ri );
+            if ( vi != parameters.prediction.end() ) {
+                parameters.prediction.erase( vi );
+                if ( not nanRemovedLibPred ){ nanRemovedLibPred = true; }
+            }
+        }
+
+        if ( nanRemovedLibPred ) {
+            // JP: If DF is large, it is dumb to create a new DF
+            DataFrame< double > DFNanRemove = DF.DataFrameRemoveNanRows();
+            DF_ = std::ref( DFNanRemove );
+            
+            std::stringstream msg;
+            msg << "WARNING: SMap() nan rows detected in columns or target. "
+                << DF.NanRows().size() << " deleted. "
+                << "Original number of rows " << DF.NRows() << ".\n";
+            if ( not parameters.embedded ) {
+                msg << "Time delay embedding presumption violated.\n";
+            }
+            std::cout << msg.str();
+        }
+    }
+
     // Instantiate EDM::SMapClass object
-    SMapClass SMapModel = SMapClass( DF, std::ref( parameters ) );
+    SMapClass SMapModel = SMapClass( DF_, std::ref( parameters ) );
 
     if ( generateSteps ) {
         SMapModel.Generate( solver );
@@ -439,11 +505,11 @@ SMapValues SMap( DataFrame< double > & DF,
     values.coefficients = SMapModel.coefficients;
     values.parameterMap = SMapModel.parameters.Map;
 
-    return values;    
+    return values;
 }
 
 //----------------------------------------------------------------------
-// CCM with path/file input
+// CCM with pathin/dataFile input. Calls CCM( & DF )
 //----------------------------------------------------------------------
 CCMValues CCM( std::string pathIn,
                std::string dataFile,
@@ -553,7 +619,7 @@ CCMValues CCM( DataFrame< double > & DF,
 }
 
 //----------------------------------------------------------------------
-// Multiview with path/file input
+// Multiview with path/file input. Calls Multiview( & DF )
 //----------------------------------------------------------------------
 MultiviewValues Multiview( std::string pathIn,
                            std::string dataFile,
