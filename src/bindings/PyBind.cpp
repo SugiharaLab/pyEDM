@@ -31,7 +31,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
         .def_readwrite( "timeName", &DF::timeName )
         .def_readwrite( "time",     &DF::time     )
         .def_readwrite( "dataList", &DF::dataList );
-    
+
     pyMod.def( "ComputeError", &ComputeError_pybind );
 
     pyMod.def( "DataFrameToDF", &DataFrameToDF );
@@ -64,7 +64,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("tau")      = 0,
                py::arg("columns")  = std::string(""),
                py::arg("verbose")  = false );
-    
+
     pyMod.def( "Simplex", &Simplex_pybind,
                py::arg("pathIn")          = std::string("./"),
                py::arg("dataFile")        = std::string(""),
@@ -76,7 +76,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("E")               = 0,
                py::arg("Tp")              = 1,
                py::arg("knn")             = 0,
-               py::arg("tau")             = 1,
+               py::arg("tau")             = -1,
                py::arg("exclusionRadius") = 0,
                py::arg("columns")         = std::string(""),
                py::arg("target")          = std::string(""),
@@ -86,7 +86,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("validLib")        = std::vector<bool>(),
                py::arg("generateSteps")   = 0,
                py::arg("parameterList")   = false );
-    
+
     pyMod.def( "SMap", &SMap_pybind,
                py::arg("pathIn")          = std::string("./"),
                py::arg("dataFile")        = std::string(""),
@@ -98,7 +98,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("E")               = 0,
                py::arg("Tp")              = 1,
                py::arg("knn")             = 0,
-               py::arg("tau")             = 1,
+               py::arg("tau")             = -1,
                py::arg("theta")           = 0,
                py::arg("exclusionRadius") = 0,
                py::arg("columns")         = std::string(""),
@@ -125,7 +125,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("E")               = 1,
                py::arg("Tp")              = 1,
                py::arg("knn")             = 0,
-               py::arg("tau")             = 1,
+               py::arg("tau")             = -1,
                py::arg("columns")         = std::string(""),
                py::arg("target")          = std::string(""),
                py::arg("multiview")       = 0,
@@ -135,7 +135,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("parameterList")   = false,
                py::arg("verbose")         = false,
                py::arg("numThreads")      = 4 );
-    
+
     pyMod.def( "CCM", &CCM_pybind,
                py::arg("pathIn")          = std::string("./"),
                py::arg("dataFile")        = std::string(""),
@@ -145,7 +145,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("E")               = 0,
                py::arg("Tp")              = 0,
                py::arg("knn")             = 0,
-               py::arg("tau")             = 1,
+               py::arg("tau")             = -1,
                py::arg("exclusionRadius") = 0,
                py::arg("columns")         = std::string(""),
                py::arg("target")          = std::string(""),
@@ -157,57 +157,63 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("includeData")     = false,
                py::arg("parameterList")   = false,
                py::arg("verbose")         = false );
-    
+
     pyMod.def( "EmbedDimension", &EmbedDimension_pybind,
-               py::arg("pathIn")      = std::string("./"),
-               py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(),
-               py::arg("pathOut")     = std::string("./"),
-               py::arg("predictFile") = std::string(""),
-               py::arg("lib")         = std::string(""),
-               py::arg("pred")        = std::string(""),
-               py::arg("maxE")        = 10,
-               py::arg("Tp")          = 1,
-               py::arg("tau")         = 1,
-               py::arg("columns")     = std::string(""),
-               py::arg("target")      = std::string(""),
-               py::arg("embedded")    = false,
-               py::arg("verbose")     = false,
-               py::arg("numThreads")  = 4 );
+               py::arg("pathIn")          = std::string("./"),
+               py::arg("dataFile")        = std::string(""),
+               py::arg("pyInput")         = DF(),
+               py::arg("pathOut")         = std::string("./"),
+               py::arg("predictFile")     = std::string(""),
+               py::arg("lib")             = std::string(""),
+               py::arg("pred")            = std::string(""),
+               py::arg("maxE")            = 10,
+               py::arg("Tp")              = 1,
+               py::arg("tau")             = -1,
+               py::arg("exclusionRadius") = 0,
+               py::arg("columns")         = std::string(""),
+               py::arg("target")          = std::string(""),
+               py::arg("embedded")        = false,
+               py::arg("verbose")         = false,
+               py::arg("validLib")        = std::vector<bool>(),
+               py::arg("numThreads")      = 4 );
 
     pyMod.def( "PredictInterval", &PredictInterval_pybind,
-               py::arg("pathIn")      = std::string("./"),
-               py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(),
-               py::arg("pathOut")     = std::string("./"),
-               py::arg("predictFile") = std::string(""),
-               py::arg("lib")         = std::string(""),
-               py::arg("pred")        = std::string(""),
-               py::arg("maxTp")       = 10,
-               py::arg("E")           = 0,
-               py::arg("tau")         = 1,
-               py::arg("columns")     = std::string(""),
-               py::arg("target")      = std::string(""),
-               py::arg("embedded")    = false,
-               py::arg("verbose")     = false,
-               py::arg("numThreads")  = 4 );
+               py::arg("pathIn")          = std::string("./"),
+               py::arg("dataFile")        = std::string(""),
+               py::arg("pyInput")         = DF(),
+               py::arg("pathOut")         = std::string("./"),
+               py::arg("predictFile")     = std::string(""),
+               py::arg("lib")             = std::string(""),
+               py::arg("pred")            = std::string(""),
+               py::arg("maxTp")           = 10,
+               py::arg("E")               = 0,
+               py::arg("tau")             = -1,
+               py::arg("exclusionRadius") = 0,
+               py::arg("columns")         = std::string(""),
+               py::arg("target")          = std::string(""),
+               py::arg("embedded")        = false,
+               py::arg("verbose")         = false,
+               py::arg("validLib")        = std::vector<bool>(),
+               py::arg("numThreads")      = 4 );
 
     pyMod.def( "PredictNonlinear", &PredictNonlinear_pybind,
-               py::arg("pathIn")      = std::string("./"),
-               py::arg("dataFile")    = std::string(""),
-               py::arg("pyInput")     = DF(),
-               py::arg("pathOut")     = std::string("./"),
-               py::arg("predictFile") = std::string(""),
-               py::arg("lib")         = std::string(""),
-               py::arg("pred")        = std::string(""),
-               py::arg("theta")       = std::string(""),
-               py::arg("E")           = 0,
-               py::arg("Tp")          = 1,
-               py::arg("knn")         = 0,
-               py::arg("tau")         = 1,
-               py::arg("columns")     = std::string(""),
-               py::arg("target")      = std::string(""),
-               py::arg("embedded")    = false,
-               py::arg("verbose")     = false,
-               py::arg("numThreads")  = 4 );
+               py::arg("pathIn")          = std::string("./"),
+               py::arg("dataFile")        = std::string(""),
+               py::arg("pyInput")         = DF(),
+               py::arg("pathOut")         = std::string("./"),
+               py::arg("predictFile")     = std::string(""),
+               py::arg("lib")             = std::string(""),
+               py::arg("pred")            = std::string(""),
+               py::arg("theta")           = std::string(""),
+               py::arg("E")               = 0,
+               py::arg("Tp")              = 1,
+               py::arg("knn")             = 0,
+               py::arg("tau")             = -1,
+               py::arg("exclusionRadius") = 0,
+               py::arg("columns")         = std::string(""),
+               py::arg("target")          = std::string(""),
+               py::arg("embedded")        = false,
+               py::arg("verbose")         = false,
+               py::arg("validLib")        = std::vector<bool>(),
+               py::arg("numThreads")      = 4 );
 }

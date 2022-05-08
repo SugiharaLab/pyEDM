@@ -4,21 +4,23 @@
 //---------------------------------------------------------------
 // Input data path and file
 //---------------------------------------------------------------
-py::dict PredictInterval_pybind( std::string pathIn,
-                                 std::string dataFile,
-                                 DF          df,
-                                 std::string pathOut,
-                                 std::string predictFile,
-                                 std::string lib,
-                                 std::string pred,
-                                 int         maxTp,
-                                 int         E,
-                                 int         tau,
-                                 std::string columns,
-                                 std::string target,
-                                 bool        embedded,
-                                 bool        verbose,
-                                 unsigned    numThreads ) {
+py::dict PredictInterval_pybind( std::string       pathIn,
+                                 std::string       dataFile,
+                                 DF                df,
+                                 std::string       pathOut,
+                                 std::string       predictFile,
+                                 std::string       lib,
+                                 std::string       pred,
+                                 int               maxTp,
+                                 int               E,
+                                 int               tau,
+                                 int               exclusionRadius,
+                                 std::string       columns,
+                                 std::string       target,
+                                 bool              embedded,
+                                 bool              verbose,
+                                 std::vector<bool> validLib,
+                                 unsigned          numThreads ) {
 
     DataFrame< double > PredictDF;
 
@@ -34,10 +36,12 @@ py::dict PredictInterval_pybind( std::string pathIn,
                                      maxTp,
                                      E,
                                      tau,
+                                     exclusionRadius,
                                      columns,
                                      target,
                                      embedded,
                                      verbose,
+                                     validLib,
                                      numThreads );
     }
     else if ( df.dataList.size() ) {
@@ -51,10 +55,12 @@ py::dict PredictInterval_pybind( std::string pathIn,
                                      maxTp,
                                      E,
                                      tau,
+                                     exclusionRadius,
                                      columns,
                                      target,
                                      embedded,
                                      verbose,
+                                     validLib,
                                      numThreads );
     }
     else {
