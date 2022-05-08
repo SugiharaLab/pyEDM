@@ -35,10 +35,12 @@ void EmbedThread( EDM_Eval::WorkQueue &workQ,
                   std::string          pred,
                   int                  Tp,
                   int                  tau,
+                  int                  exclusionRadius,
                   std::string          colNames,
                   std::string          targetName,
                   bool                 embedded,
-                  bool                 verbose );
+                  bool                 verbose,
+                  std::vector<bool>    validLib );
 
 //----------------------------------------------------------------
 // Forward declaration:
@@ -51,10 +53,12 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
                             std::string          pred,
                             int                  E,
                             int                  tau,
+                            int                  exclusionRadius,
                             std::string          colNames,
                             std::string          targetName,
                             bool                 embedded,
-                            bool                 verbose );
+                            bool                 verbose,
+                            std::vector<bool>    validLib );
 
 //----------------------------------------------------------------
 // Forward declaration:
@@ -70,30 +74,34 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                  int                    Tp,
                  int                    knn,
                  int                    tau,
+                 int                    exclusionRadius,
                  std::string            colNames,
                  std::string            targetName,
                  bool                   embedded,
-                 bool                   verbose );
+                 bool                   verbose,
+                 std::vector<bool>      validLib );
 
 //----------------------------------------------------------------
 // EmbedDimension() : Evaluate Simplex rho vs. dimension E
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2:
 //----------------------------------------------------------------
-DataFrame< double > EmbedDimension( std::string pathIn,
-                                    std::string dataFile,
-                                    std::string pathOut,
-                                    std::string predictFile,
-                                    std::string lib,
-                                    std::string pred,
-                                    int         maxE,
-                                    int         Tp,
-                                    int         tau,
-                                    std::string colNames,
-                                    std::string targetName,
-                                    bool        embedded,
-                                    bool        verbose,
-                                    unsigned    nThreads ) {
+DataFrame< double > EmbedDimension( std::string       pathIn,
+                                    std::string       dataFile,
+                                    std::string       pathOut,
+                                    std::string       predictFile,
+                                    std::string       lib,
+                                    std::string       pred,
+                                    int               maxE,
+                                    int               Tp,
+                                    int               tau,
+                                    int               exclusionRadius,
+                                    std::string       colNames,
+                                    std::string       targetName,
+                                    bool              embedded,
+                                    bool              verbose,
+                                    std::vector<bool> validLib,
+                                    unsigned          nThreads ) {
 
     // Create DataFrame (constructor loads data)
     DataFrame< double > dataFrameIn ( pathIn, dataFile );
@@ -106,10 +114,12 @@ DataFrame< double > EmbedDimension( std::string pathIn,
                                               maxE,
                                               Tp,
                                               tau,
+                                              exclusionRadius,
                                               colNames,
                                               targetName,
                                               embedded,
                                               verbose,
+                                              validLib,
                                               nThreads );
     return E_rho;
 }
@@ -126,10 +136,12 @@ DataFrame< double > EmbedDimension( DataFrame< double > & data,
                                     int                   maxE,
                                     int                   Tp,
                                     int                   tau,
+                                    int                   exclusionRadius,
                                     std::string           colNames,
                                     std::string           targetName,
                                     bool                  embedded,
                                     bool                  verbose,
+                                    std::vector<bool>     validLib,
                                     unsigned              nThreads ) {
 
     // Container for results
@@ -159,10 +171,12 @@ DataFrame< double > EmbedDimension( DataFrame< double > & data,
                                         pred,
                                         Tp,
                                         tau,
+                                        exclusionRadius,
                                         colNames,
                                         targetName,
                                         embedded,
-                                        verbose ) );
+                                        verbose,
+                                        validLib ) );
     }
 
     // join threads
@@ -201,10 +215,12 @@ void EmbedThread( EDM_Eval::WorkQueue & workQ,
                   std::string           pred,
                   int                   Tp,
                   int                   tau,
+                  int                   exclusionRadius,
                   std::string           colNames,
                   std::string           targetName,
                   bool                  embedded,
-                  bool                  verbose )
+                  bool                  verbose,
+                  std::vector<bool>     validLib )
 {
     std::size_t i = std::atomic_fetch_add( &EDM_Eval::embed_count_i,
                                            std::size_t(1) );
@@ -228,12 +244,13 @@ void EmbedThread( EDM_Eval::WorkQueue & workQ,
                                        Tp,
                                        0,           // knn
                                        tau,
-                                       0,           // exclusionRadius
+                                       exclusionRadius,
                                        colNames,
                                        targetName,
                                        embedded,
                                        false,       // const_predict
-                                       verbose );
+                                       verbose,
+                                       validLib );
 
             VectorError ve = ComputeError(
                              S.predictions.VectorColumnName("Observations"),
@@ -266,20 +283,22 @@ void EmbedThread( EDM_Eval::WorkQueue & workQ,
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2: 
 //-----------------------------------------------------------------
-DataFrame< double > PredictInterval( std::string pathIn,
-                                     std::string dataFile,
-                                     std::string pathOut,
-                                     std::string predictFile,
-                                     std::string lib,
-                                     std::string pred,
-                                     int         maxTp,
-                                     int         E,
-                                     int         tau,
-                                     std::string colNames,
-                                     std::string targetName,
-                                     bool        embedded,
-                                     bool        verbose,
-                                     unsigned    nThreads ) {
+DataFrame< double > PredictInterval( std::string       pathIn,
+                                     std::string       dataFile,
+                                     std::string       pathOut,
+                                     std::string       predictFile,
+                                     std::string       lib,
+                                     std::string       pred,
+                                     int               maxTp,
+                                     int               E,
+                                     int               tau,
+                                     int               exclusionRadius,
+                                     std::string       colNames,
+                                     std::string       targetName,
+                                     bool              embedded,
+                                     bool              verbose,
+                                     std::vector<bool> validLib,
+                                     unsigned          nThreads ) {
 
     // Create DataFrame (constructor loads data)
     DataFrame< double > dataFrameIn( pathIn, dataFile );
@@ -292,10 +311,12 @@ DataFrame< double > PredictInterval( std::string pathIn,
                                                   maxTp,
                                                   E,
                                                   tau,
+                                                  exclusionRadius,
                                                   colNames,
                                                   targetName,
                                                   embedded,
                                                   verbose,
+                                                  validLib,
                                                   nThreads );
     return Tp_rho;
 }
@@ -312,10 +333,12 @@ DataFrame< double > PredictInterval( DataFrame< double > & data,
                                      int                   maxTp,
                                      int                   E,
                                      int                   tau,
+                                     int                   exclusionRadius,
                                      std::string           colNames,
                                      std::string           targetName,
                                      bool                  embedded,
                                      bool                  verbose,
+                                     std::vector<bool>     validLib,
                                      unsigned              nThreads ) {
 
     // Container for results
@@ -344,10 +367,12 @@ DataFrame< double > PredictInterval( DataFrame< double > & data,
                                         pred,
                                         E,
                                         tau,
+                                        exclusionRadius,
                                         colNames,
                                         targetName,
                                         embedded,
-                                        verbose ) );
+                                        verbose,
+                                        validLib ) );
     }
 
     // join threads
@@ -386,10 +411,12 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
                             std::string          pred,
                             int                  E,
                             int                  tau,
+                            int                  exclusionRadius,
                             std::string          colNames,
                             std::string          targetName,
                             bool                 embedded,
-                            bool                 verbose )
+                            bool                 verbose,
+                            std::vector<bool>    validLib )
 {
     std::size_t i = std::atomic_fetch_add( &EDM_Eval::tp_count_i,
                                            std::size_t(1) );
@@ -413,12 +440,13 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
                                        Tp,
                                        0,           // knn
                                        tau,
-                                       0,           // exclusionRadius
+                                       exclusionRadius,
                                        colNames,
                                        targetName,
                                        embedded,
                                        false,       // const_pred
-                                       verbose );
+                                       verbose,
+                                       validLib );
  
             VectorError ve = ComputeError(
                              S.predictions.VectorColumnName("Observations"),
@@ -452,22 +480,24 @@ void PredictIntervalThread( EDM_Eval::WorkQueue &workQ,
 // API Overload 1: Explicit data file path/name
 //     Implemented as a wrapper to API Overload 2: 
 //----------------------------------------------------------------
-DataFrame< double > PredictNonlinear( std::string pathIn,
-                                      std::string dataFile,
-                                      std::string pathOut,
-                                      std::string predictFile,
-                                      std::string lib,
-                                      std::string pred,
-                                      std::string theta,
-                                      int         E,
-                                      int         Tp,
-                                      int         knn,
-                                      int         tau,
-                                      std::string colNames,
-                                      std::string targetName,
-                                      bool        embedded,
-                                      bool        verbose,
-                                      unsigned    nThreads ) {
+DataFrame< double > PredictNonlinear( std::string       pathIn,
+                                      std::string       dataFile,
+                                      std::string       pathOut,
+                                      std::string       predictFile,
+                                      std::string       lib,
+                                      std::string       pred,
+                                      std::string       theta,
+                                      int               E,
+                                      int               Tp,
+                                      int               knn,
+                                      int               tau,
+                                      int               exclusionRadius,
+                                      std::string       colNames,
+                                      std::string       targetName,
+                                      bool              embedded,
+                                      bool              verbose,
+                                      std::vector<bool> validLib,
+                                      unsigned          nThreads ) {
 
     // Create DataFrame (constructor loads data)
     DataFrame< double > dataFrameIn( pathIn, dataFile );
@@ -482,10 +512,12 @@ DataFrame< double > PredictNonlinear( std::string pathIn,
                                                       Tp,
                                                       knn,
                                                       tau,
+                                                      exclusionRadius,
                                                       colNames,
                                                       targetName,
                                                       embedded,
                                                       verbose,
+                                                      validLib,
                                                       nThreads );
     return Theta_rho;
 }
@@ -504,10 +536,12 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & data,
                                       int                   Tp,
                                       int                   knn,
                                       int                   tau,
+                                      int                   exclusionRadius,
                                       std::string           colNames,
                                       std::string           targetName,
                                       bool                  embedded,
                                       bool                  verbose,
+                                      std::vector<bool>     validLib,
                                       unsigned              nThreads ) {
 
     std::vector<double> ThetaValues( { 0.01, 0.1, 0.3, 0.5, 0.75, 1,
@@ -561,10 +595,12 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & data,
                                         Tp,
                                         knn,
                                         tau,
+                                        exclusionRadius,
                                         colNames,
                                         targetName,
                                         embedded,
-                                        verbose ) );
+                                        verbose,
+                                        validLib ) );
     }
 
     // join threads
@@ -606,10 +642,12 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                  int                    Tp,
                  int                    knn,
                  int                    tau,
+                 int                    exclusionRadius,
                  std::string            colNames,
                  std::string            targetName,
                  bool                   embedded,
-                 bool                   verbose )
+                 bool                   verbose,
+                 std::vector<bool>      validLib )
 {
     std::size_t i =
         std::atomic_fetch_add( &EDM_Eval::smap_count_i, std::size_t(1) );
@@ -633,14 +671,15 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                                  knn,
                                  tau,
                                  theta,
-                                 0,         // exclusionRadius
+                                 exclusionRadius,
                                  colNames,
                                  targetName,
                                  "",        // smapFile
                                  "",        // derivatives
                                  embedded,
                                  false,     // const_predict
-                                 verbose );
+                                 verbose,
+                                 validLib );
 
             DataFrame< double > predictions  = S.predictions;
             DataFrame< double > coefficients = S.coefficients;

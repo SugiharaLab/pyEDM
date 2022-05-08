@@ -375,9 +375,11 @@ def CCM( pathIn           = "./",
     else :
         raise Exception( "CCM(): Invalid data input." )
 
-    # If columns are not string, but iterable, convert to string
+    # If columns, libSizes are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str, columns ) )
+    if pyEDM.AuxFunc.NotStringIterable( libSizes ) :
+        libSizes = ' '.join( map( str, libSizes ) )
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
@@ -432,23 +434,24 @@ def CCM( pathIn           = "./",
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def EmbedDimension( pathIn       = "./",
-                    dataFile     = "",
-                    dataFrame    = None,
-                    pathOut      = "./",
-                    predictFile  = "",
-                    lib          = "",
-                    pred         = "",
-                    maxE         = 10,
-                    Tp           = 1,
-                    tau          = -1,
-                    columns      = "",
-                    target       = "",
-                    embedded     = False,
-                    verbose      = False,
-                    numThreads   = 4,
-                    showPlot     = True ):
- 
+def EmbedDimension( pathIn          = "./",
+                    dataFile        = "",
+                    dataFrame       = None,
+                    pathOut         = "./",
+                    predictFile     = "",
+                    lib             = "",
+                    pred            = "",
+                    maxE            = 10,
+                    Tp              = 1,
+                    tau             = -1,
+                    exclusionRadius = 0,
+                    columns         = "",
+                    target          = "",
+                    embedded        = False,
+                    verbose         = False,
+                    validLib        = [],
+                    numThreads      = 4,
+                    showPlot        = True ):
     '''Estimate optimal embedding dimension [1:maxE].'''
 
     # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
@@ -480,10 +483,12 @@ def EmbedDimension( pathIn       = "./",
                                   maxE,
                                   Tp,
                                   tau,
+                                  exclusionRadius,
                                   columns,
                                   target,
                                   embedded,
                                   verbose,
+                                  validLib,
                                   numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
@@ -501,22 +506,24 @@ def EmbedDimension( pathIn       = "./",
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def PredictInterval( pathIn       = "./",
-                     dataFile     = "",
-                     dataFrame    = None,
-                     pathOut      = "./",
-                     predictFile  = "",
-                     lib          = "",
-                     pred         = "",
-                     maxTp        = 10,
-                     E            = 1,
-                     tau          = -1,
-                     columns      = "",
-                     target       = "",
-                     embedded     = False,
-                     verbose      = False,
-                     numThreads   = 4,
-                     showPlot     = True ):
+def PredictInterval( pathIn          = "./",
+                     dataFile        = "",
+                     dataFrame       = None,
+                     pathOut         = "./",
+                     predictFile     = "",
+                     lib             = "",
+                     pred            = "",
+                     maxTp           = 10,
+                     E               = 1,
+                     tau             = -1,
+                     exclusionRadius = 0,
+                     columns         = "",
+                     target          = "",
+                     embedded        = False,
+                     verbose         = False,
+                     validLib        = [],
+                     numThreads      = 4,
+                     showPlot        = True ):
     '''Estimate optimal prediction interval [1:maxTp]'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictInterval()
@@ -548,10 +555,12 @@ def PredictInterval( pathIn       = "./",
                                    maxTp,
                                    E,
                                    tau,
+                                   exclusionRadius,
                                    columns,
                                    target,
                                    embedded,
                                    verbose,
+                                   validLib,
                                    numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
@@ -571,24 +580,26 @@ def PredictInterval( pathIn       = "./",
 #------------------------------------------------------------------------
 #
 #------------------------------------------------------------------------
-def PredictNonlinear( pathIn       = "./",
-                      dataFile     = "",
-                      dataFrame    = None,
-                      pathOut      = "./",
-                      predictFile  = "",
-                      lib          = "",
-                      pred         = "",
-                      theta        = "",
-                      E            = 1,
-                      Tp           = 1,
-                      knn          = 0,
-                      tau          = -1,
-                      columns      = "",
-                      target       = "",
-                      embedded     = False,
-                      verbose      = False,
-                      numThreads   = 4,
-                      showPlot     = True ):
+def PredictNonlinear( pathIn          = "./",
+                      dataFile        = "",
+                      dataFrame       = None,
+                      pathOut         = "./",
+                      predictFile     = "",
+                      lib             = "",
+                      pred            = "",
+                      theta           = "",
+                      E               = 1,
+                      Tp              = 1,
+                      knn             = 0,
+                      tau             = -1,
+                      exclusionRadius = 0,
+                      columns         = "",
+                      target          = "",
+                      embedded        = False,
+                      verbose         = False,
+                      validLib        = [],
+                      numThreads      = 4,
+                      showPlot        = True ):
     '''Estimate S-map localisation over theta.'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
@@ -601,13 +612,15 @@ def PredictNonlinear( pathIn       = "./",
     else :
         raise Exception( "PredictNonlinear(): Invalid data input." )
 
-    # If lib, pred, columns are not string, but iterable, convert to string
+    # If lib,pred,columns,theta are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str, columns ) )
+    if pyEDM.AuxFunc.NotStringIterable( theta ) :
+        theta = ' '.join( map( str, theta ) )
 
     # D is a Python dict from pybind11 < cppEDM PredictNonlinear
     D = pyBindEDM.PredictNonlinear( pathIn,
@@ -622,10 +635,12 @@ def PredictNonlinear( pathIn       = "./",
                                     Tp,
                                     knn,
                                     tau,
+                                    exclusionRadius,
                                     columns,
                                     target,
                                     embedded,
                                     verbose,
+                                    validLib,
                                     numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame
@@ -634,7 +649,7 @@ def PredictNonlinear( pathIn       = "./",
         if embedded :
             E = len( columns.split() )
         title = dataFile + "\nE=" + str( E )
-    
+
         ax = df.plot( 'Theta', 'rho', title = title, linewidth = 3 )
         ax.set( xlabel = "S-map Localisation (θ)",
                 ylabel = "Prediction Skill ρ" )

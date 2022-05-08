@@ -29,44 +29,64 @@ def main():
                              file + " in EDM package" )
 
     # Note the path argument is empty "", file path is in Files{}
-    df = EDM.EmbedDimension( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                             "1 100", "201 500", 10, 1, -1,
-                             "TentMap", "", False, False, 4 )
+    df = EDM.EmbedDimension( pathIn = "", dataFile = Files["TentMap_rEDM.csv"],
+                             lib = "1 100", pred = "201 500", maxE = 10,
+                             Tp = 1, tau = -1, exclusionRadius = 0,
+                             columns = "TentMap", target = "TentMap",
+                             validLib = [], numThreads = 4 )
     
-    df = EDM.PredictInterval( "", Files[ "TentMap_rEDM.csv" ], None, "./", "",
-                              "1 100", "201 500", 10, 2, -1,
-                              "TentMap", "", False, False, 4 );
+    df = EDM.PredictInterval( pathIn = "", dataFile = Files["TentMap_rEDM.csv"],
+                              lib = "1 100", pred = "201 500", maxTp = 10,
+                              E = 2, tau = -1, exclusionRadius = 0,
+                              columns = "TentMap", target = "TentMap",
+                              validLib = [], numThreads = 4 );
 
-    df = EDM.PredictNonlinear( "", Files[ "TentMapNoise_rEDM.csv" ], None,
-                               "./", "", "1 100", "201 500", "", 2, 1, 0, -1,
-                               "TentMap", "", False, False, 4 )
+    df = EDM.PredictNonlinear( pathIn = "",
+                               dataFile = Files[ "TentMapNoise_rEDM.csv" ],
+                               lib = "1 100", pred = "201 500", E = 2,
+                               Tp = 1, knn = 0, tau = -1,
+                               columns = "TentMap", target = "TentMap",
+                               validLib = [], numThreads = 4 )
     
     # Tent map simplex : specify multivariable columns embedded = True
-    S = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                     "1 99", "100 198", 3, 1, 0, -1, 0,
-                     "x_t y_t z_t", "x_t", True, False, True, True,
-                     [], 0, False )
+    S = EDM.Simplex( pathIn = "", dataFile = Files[ "block_3sp.csv" ],
+                     lib = "1 99", pred = "100 198", E = 3, Tp = 1,
+                     knn = 0, tau = -1, exclusionRadius = 0,
+                     columns = "x_t y_t z_t", target = "x_t",
+                     embedded = True, showPlot = True,
+                     validLib = [], generateSteps = 0, parameterList = False )
 
     # Tent map simplex : Embed column x_t to E=3, embedded = False
-    S = EDM.Simplex( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                     "1 99", "100 195", 3, 1, 0, -1, 0,
-                     "x_t", "x_t", False, False, True, True,
-                     [], 0, False )
+    S = EDM.Simplex( pathIn = "", dataFile = Files[ "block_3sp.csv" ],
+                     lib = "1 99", pred = "100 198", E = 3, Tp = 1,
+                     knn = 0, tau = -1, exclusionRadius = 0,
+                     columns = "x_t y_t z_t", target = "x_t",
+                     embedded = False, showPlot = True,
+                     validLib = [], generateSteps = 0, parameterList = False )
 
-    M = EDM.Multiview( "", Files[ "block_3sp.csv" ], None, "./", "", 
-                       "1 100", "101 198", 0, 3, 1, 0, -1,
-                       "x_t y_t z_t", "x_t", 0, 0,
-                       True, False, False, False, 4, True )
+    M = EDM.Multiview( pathIn = "", dataFile = Files[ "block_3sp.csv" ],
+                       lib = "1 100", pred = "101 198",
+                       D = 0, E = 3, Tp = 1, knn = 0, tau = -1,
+                       multiview = 0, exclusionRadius = 0,
+                       columns = "x_t y_t z_t", target = "x_t",
+                       trainLib = True, excludeTarget = False,
+                       numThreads = 4, showPlot = True )
 
     # S-map circle : specify multivariable columns embedded = True
-    S = EDM.SMap( "", Files[ "circle.csv" ], None, "./", "", 
-                  "1 100", "101 198", 2, 1, 0, -1, 4, 0,
-                  "x y", "x", "", "", None, True, False, True, True,
-                  [], 0, False )
+    S = EDM.SMap( pathIn = "", dataFile = Files[ "circle.csv" ], 
+                  lib = "1 100", pred = "101 198",
+                  E = 2, Tp = 1, knn = 0, tau = -1,
+                  theta = 4, exclusionRadius = 0,
+                  columns = "x y", target = "x",
+                  solver = None, embedded = True,
+                  validLib = [], generateSteps = 0, parameterList = False )
     
-    CM = EDM.CCM( "", Files[ "sardine_anchovy_sst.csv" ], None, "./", "", 
-                  3, 0, 0, -1, 0, "anchovy", "np_sst",
-                  "10 70 10", 100, True, False, 0, False, False, False, True )
+    CM = EDM.CCM( pathIn = "", dataFile = Files[ "sardine_anchovy_sst.csv" ],
+                  E = 3, Tp = 0, knn = 0, tau = -1, exclusionRadius = 0,
+                  columns = "anchovy", target = "np_sst",
+                  libSizes = "10 70 10", sample = 100, random = True,
+                  replacement = False, seed = 0, includeData = False,
+                  parameterList = False, verbose = False, showPlot = True )
 
 #------------------------------------------------------------
 #------------------------------------------------------------
