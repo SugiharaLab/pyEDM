@@ -60,8 +60,9 @@ void EvalComboThread( MultiviewClass                      & MV,
                       DataFrame< double >                 & combosRho,
                       std::vector< DataFrame< double > >  & comboPrediction );
 
-std::vector< std::string > ComboRhoTable( DataFrame< double >        combosRho,
-                                          std::vector< std::string > colNames );
+std::map< std::string, std::vector< std::string > >
+ComboRhoNames( DataFrame< double >        combosRho,
+               std::vector< std::string > colNames );
 
 //----------------------------------------------------------------
 // Constructor
@@ -435,8 +436,8 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
     }
 
     // Create combos_rho table with column names
-    std::vector< std::string > comboTable =
-        ComboRhoTable( combosRhoPred, embedding.ColumnNames() );
+    std::map< std::string, std::vector< std::string > > ColumnNames =
+        ComboRhoNames( combosRhoPred, embedding.ColumnNames() );
 
     if ( parameters.verbose ) {
         // Error of ensemble prediction
@@ -446,16 +447,24 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
                   << "  MAE " << ve.MAE << "  RMSE " << ve.RMSE << std::endl;
         std::cout << std::endl << "Multiview Combinations:" << std::endl;
 
-        for ( auto tableRow : comboTable ) {
-            std::cout << tableRow << std::endl;
-        } std::cout << std::endl; 
+        for ( auto cit = ColumnNames.begin(); cit != ColumnNames.end(); ++cit ){
+            std::cout << cit->first << ": ";
+            std::vector< std::string > columnNames = cit->second;
+            for ( auto nit  = columnNames.begin();
+                       nit != columnNames.end(); ++nit ) {
+                std::cout << *nit << " ";
+            }
+            std::cout << std::endl;
+        } std::cout << std::endl;
+
+        std::cout << combosRhoPred;
     }
 
     // Allocate output 
     MultiviewValues MVout;
-    MVout.ComboRho      = combosRhoPred;
-    MVout.Predictions   = Prediction;
-    MVout.ComboRhoTable = comboTable;
+    MVout.ComboRho    = combosRhoPred;
+    MVout.Predictions = Prediction;
+    MVout.ColumnNames = ColumnNames;
 
     MVvalues = MVout; // Assign to Multiview Object
 }
@@ -706,59 +715,48 @@ std::vector< std::vector< size_t > > Combination( int n, int k ) {
 }
 
 //----------------------------------------------------------------
-// Return combos_rho_pred DataFrame as a vector of strings
-// with column names. 
+// Return map of label : column names corresponding to
+// combos_rho_pred col_i
 //----------------------------------------------------------------
-std::vector< std::string > ComboRhoTable(
+std::map< std::string, std::vector< std::string > > ComboRhoNames(
     DataFrame<double>          combos_rho_pred,
     std::vector< std::string > columnNames )
 {
 
-    // combos_rho_pred has E + 3 columns: Col_1, ... Col_E, rho, MAE, RMSE
+    // combos_rho_pred has D + 3 columns: Col_1, ... Col_D, rho, MAE, RMSE
     size_t nCol = combos_rho_pred.NColumns() - 3; // JP Hardcoded silliness!
 
     if ( nCol > columnNames.size() ) {
         std::stringstream errMsg;
-        errMsg << "ComboRhoTable(): Combos_rho has " << nCol
+        errMsg << "ComboRhoNames(): Combos_rho has " << nCol
                << " columns, but the data embedding has "
                << columnNames.size() << " elements.";
         throw std::runtime_error( errMsg.str() );
     }
 
-    std::vector< std::string > table;
+    // Create ColumnNamesMap with D keys and empty vector for each col_i
+    std::map< std::string, std::vector< std::string > > ColumnNamesMap;
 
-    // Header
-    std::stringstream header;
-    for ( size_t col = 0; col < nCol; col++ ) {  // column indices
-        header << "col_" << col + 1 << ", ";
-    }
+    std::vector< std::string > keys; // Store keys for row loop below
     for ( size_t col = 0; col < nCol; col++ ) {  // column names
-        header << "name_" << col + 1 << ", ";
+        std::stringstream key;
+        key << "name_" << col + 1;
+        ColumnNamesMap[ key.str() ] = std::vector< std::string >();
+        keys.push_back( key.str() );
     }
-    header << "rho, MAE, RMSE";
-    table.push_back( header.str() );
 
     // Process each row of combos_rho_pred
     for ( size_t row = 0; row < combos_rho_pred.NRows(); row++ ) {
-        std::stringstream rowsstring;
-        rowsstring.precision( 4 );
 
         std::valarray< double > rowValues = combos_rho_pred.Row( row );
 
-        for ( size_t col = 0; col < nCol; col++ ) {
-            rowsstring << std::setw(4) << rowValues[ col ] <<  ", ";
-        }
+        std::vector< std::string > rowColNames;
         for ( size_t col = 0; col < nCol; col++ ) {
             size_t col_i = (size_t) rowValues[ col ];
-            rowsstring << columnNames[ col_i - 1 ] <<  ", ";
+            std::string key = keys[ col ];
+            ColumnNamesMap[ key ].push_back( columnNames[ col_i - 1 ] );
         }
-
-        rowsstring << std::setw(6) << rowValues[ nCol     ] <<  ", "; // rho
-        rowsstring << std::setw(6) << rowValues[ nCol + 1 ] <<  ", "; // MAE
-        rowsstring << std::setw(6) << rowValues[ nCol + 2 ];          // RMSE
-
-        table.push_back( rowsstring.str() );
     }
 
-    return table;
+    return ColumnNamesMap;
 }

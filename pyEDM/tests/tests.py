@@ -3,6 +3,8 @@ import pyEDM as EDM
 import unittest
 import pkg_resources # Get data file names from EDM package
 
+from pandas import read_csv
+
 #----------------------------------------------------------------
 # Suite of tests
 #----------------------------------------------------------------
@@ -121,14 +123,14 @@ class test_EDM( unittest.TestCase ):
                        None, True, False, False, False, [], 0, False )
 
         df = SM['predictions']
-        
+
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "Smap_embd_block_3sp_pyEDM.csv" ] )
-        
+
         S1 =       dfv.get('Predictions')
         S2 = round( df.get('Predictions'), 4 ) 
         self.assertTrue( S1.equals( S2 ) )
-        
+
     #------------------------------------------------------------
     # Multiview
     #------------------------------------------------------------
@@ -140,20 +142,19 @@ class test_EDM( unittest.TestCase ):
                            True, False, False, False, 4 )
 
         df_pred  = M['Predictions']
-        df_combo = round( M['View'  ], 4 )
-        
-        # cppEDM and devPDM outputs are rounded to os.precision( 4 );
-        dfv = EDM.ReadDataFrame( "", self.Files[ "Multiview_pred_valid.csv" ],
-                                 noTime = True )
-        dfc = EDM.ReadDataFrame( "", self.Files[ "Multiview_combos_valid.csv" ],
-                                 noTime = True )
+        df_combo = round( M['View'], 4 )
 
         # Validate predictions
+        dfv = EDM.ReadDataFrame( "", self.Files[ "Multiview_pred_valid.csv" ],
+                                 noTime = True )
+
+        # cppEDM and devPDM outputs are rounded to os.precision( 4 );
         M1 = dfv.get('Predictions')
         M2 = round( df_pred.get('Predictions'), 4 ) 
         self.assertTrue( M1.equals( M2 ) )
 
         # Validate combinations
+        dfc = read_csv('../data/Multiview_combos_valid.csv')
         self.assertTrue( dfc.equals( df_combo ) )
 
     #------------------------------------------------------------

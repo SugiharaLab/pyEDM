@@ -83,10 +83,18 @@ std::map< std::string, py::dict > Multiview_pybind (
     DF predictions = DataFrameToDF( MV.Predictions );
     DF combo_rho   = DataFrameToDF( MV.ComboRho    );
 
+    // Convert MV.ColumnNames to py::dict
+    py::dict columnNames;
+    for ( auto ci = MV.ColumnNames.begin(); ci != MV.ColumnNames.end(); ci++ ) {
+        // Why is cast required for string key but not valarray?
+        columnNames[ py::str( ci->first ) ] = ci->second;
+    }
+
     std::map< std::string, py::dict > MV_;
 
-    MV_["View"  ]      = DFtoDict( combo_rho   );
+    MV_["View" ]       = DFtoDict( combo_rho   );
     MV_["Predictions"] = DFtoDict( predictions );
+    MV_["ColumnNames"] = columnNames;
 
     if ( parameterList ) {
         MV_["parameters"] = ParamMaptoDict( MV.parameterMap );
