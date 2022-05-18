@@ -303,7 +303,7 @@ def Multiview( pathIn          = "./",
         columns = ' '.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM Multiview:
-    #  { "View" : < vector< string >, "Predictions" : {} }
+    #  { "View" : {}, "Predictions" : {}, ColumnNames : {} }
     D = pyBindEDM.Multiview( pathIn,
                              dataFile,
                              DF,
@@ -329,6 +329,10 @@ def Multiview( pathIn          = "./",
     df_pred = DataFrame( D['Predictions'] ) # Convert to pandas DataFrame
     view    = DataFrame( D['View'] )
 
+    # Add columnNames to view DataFrame
+    for key in D['ColumnNames'].keys() :
+        view[ key ] = D['ColumnNames'][ key ]
+    
     MV = { 'Predictions' : df_pred, 'View' : view }
 
     if parameterList :

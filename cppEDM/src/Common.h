@@ -57,9 +57,10 @@ struct CCMValues {
 };
 
 struct MultiviewValues {
-    DataFrame< double > ComboRho;             // col_i..., rho, MAE, RMSE
+    DataFrame< double > ComboRho;            // col_i..., rho, MAE, RMSE
     DataFrame< double > Predictions;
-    std::vector< std::string > ComboRhoTable; // includes column names
+    // Vectors of column names <- col_i
+    std::map< std::string, std::vector< std::string > > ColumnNames;
     std::map< std::string, std::string > parameterMap;
 };
 
