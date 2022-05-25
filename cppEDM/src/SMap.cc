@@ -358,14 +358,14 @@ void SMapClass::WriteOutput () {
         if ( parameters.embedded ) {
             for ( auto colName : parameters.columnNames ) {
                 std::stringstream coefName;
-                coefName << "∂" << colName << "/∂" << parameters.targetName;
+                coefName << "∂" << parameters.targetName << "/∂" << colName;
                 coefNames.push_back( coefName.str() );
             }
         }
         else {
             for ( auto colName : embedding.ColumnNames() ) {
                 std::stringstream coefName;
-                coefName << "∂" << colName << "/∂" << parameters.targetName;
+                coefName << "∂" << parameters.targetName << "/∂" << colName;
                 coefNames.push_back( coefName.str() );
             }
         }

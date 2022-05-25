@@ -95,7 +95,7 @@ Parameters::Parameters(
 
     // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 12, 1, "2022-05-21" )
+    version          ( 1, 12, 2, "2022-05-25" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -126,6 +126,11 @@ void Parameters::Validate() {
         std::string errMsg( "Parameters::Validate(): "
                             "tau must be non-zero.\n" );
         throw std::runtime_error( errMsg );
+    }
+    if ( tau > 0 ) {
+        std::string errMsg( "WARNING: Parameters::Validate(): "
+                            "Positive tau is experimental.\n" );
+        std::cout << errMsg;
     }
 
     //--------------------------------------------------------------
