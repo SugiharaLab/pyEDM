@@ -6,7 +6,7 @@ from   itertools       import repeat
 
 from pandas import read_csv, concat
 
-from pyEDM  import CCM
+from pyEDM  import CCM, sampleData
 
 #----------------------------------------------------------------------------
 # Main module
@@ -31,7 +31,14 @@ def main():
 #----------------------------------------------------------------------------
 def Process( args ):
 
-    data = read_csv( args.inputFile )
+    # If -i input file: load it, else look for inputData in sampleData
+    if args.inputFile:
+        data = read_csv( args.inputFile )
+    elif args.inputData:
+        data = sampleData[ args.inputData ]
+    else:
+        raise RuntimeError( "Invalid inputFile or inputData" )
+
 
     # Create iterable for Pool.starmap, use repeated copies of args, data
     poolArgs = zip( args.libSizesList, repeat( args ), repeat( data ) )
@@ -77,6 +84,12 @@ def ParseCmdLine():
                         default = None,
                         help    = 'Input data file.')
     
+    parser.add_argument('-d', '--inputData',
+                        dest    = 'inputData', type = str, 
+                        action  = 'store',
+                        default = 'Lorenz5D',
+                        help    = 'Input data frame name.')
+    
     parser.add_argument('-o', '--outputFile',
                         dest    = 'outputFile', type = str, 
                         action  = 'store',
@@ -86,7 +99,7 @@ def ParseCmdLine():
     parser.add_argument('-E', '--E',
                         dest    = 'E', type = int, 
                         action  = 'store',
-                        default = 3,
+                        default = 5,
                         help    = 'Embedding dimension E.')
 
     parser.add_argument('-x', '--exclusionRadius',
@@ -98,20 +111,20 @@ def ParseCmdLine():
     parser.add_argument('-c', '--column',
                         dest    = 'column', type = str, 
                         action  = 'store',
-                        default = None,
+                        default = 'V1',
                         help    = 'Input file data column name.')
     
     parser.add_argument('-t', '--target',
                         dest    = 'target', type = str, 
                         action  = 'store',
-                        default = None,
+                        default = 'V5',
                         help    = 'Input file data target name.')
     
     parser.add_argument('-l', '--libSizesList', nargs = '+',
                         dest    = 'libSizesList', type = str, 
                         action  = 'store',
-                        default = [ "100 300", "500 700",
-                                    "1000 1500", "1800 2000" ],
+                        default = [ "50 75 100 200 300", "400 500 600",
+                                    "700 800", "900 990" ],
                         help    = 'CCM library sizes.')
 
     parser.add_argument('-s', '--sample',
