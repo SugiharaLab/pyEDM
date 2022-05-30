@@ -50,8 +50,6 @@ def Process( args ):
     #          that are unpacked as arguments
     CMList = pool.starmap( CrossMapFunc, poolArgs )
 
-    print( "Result has ", str( len( CMList ) ), " items." )
-
     df = concat( CMList )
     print( df )
 
