@@ -85,7 +85,7 @@ void SMapClass::SMap ( Solver solver ) {
         // vector B (target BC's) for this row (observation).
         int    libRow;
         size_t libRowBase;
-        int    targetLibRowOffset = parameters.Tp - embedShift;
+        int    targetLibRowOffset = parameters.Tp;
 
         for ( size_t k = 0; k < knn; k++ ) {
             libRowBase = knn_neighbors( row, k );
@@ -355,19 +355,18 @@ void SMapClass::WriteOutput () {
     if ( parameters.columnNames.size() and parameters.targetName.size() ) {
         coefNames.push_back( "C0" );
 
-        if ( parameters.embedded ) {
-            for ( auto colName : parameters.columnNames ) {
-                std::stringstream coefName;
-                coefName << "∂" << parameters.targetName << "/∂" << colName;
-                coefNames.push_back( coefName.str() );
-            }
-        }
-        else {
-            for ( auto colName : embedding.ColumnNames() ) {
-                std::stringstream coefName;
-                coefName << "∂" << parameters.targetName << "/∂" << colName;
-                coefNames.push_back( coefName.str() );
-            }
+        // Use parameters.columnNames  if embedded = true,
+        //     embedding.ColumnNames() if embedded = false
+        const std::vector< std::string > & columnNames = 
+            parameters.embedded ? std::ref( parameters.columnNames  ) :
+                                  std::ref( embedding.ColumnNames() );
+
+        for ( auto colName : columnNames ) {
+            std::stringstream coefName;
+            //coefName << u8"∂" << parameters.targetName << u8"/∂" << colName;
+            coefName << "\u2202"  << parameters.targetName
+                     << "/\u2202" << colName;
+            coefNames.push_back( coefName.str() );
         }
     }
     else {

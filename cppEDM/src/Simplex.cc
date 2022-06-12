@@ -81,7 +81,7 @@ void SimplexClass::Simplex () {
 
         // target library vector, one element for each knn
         std::valarray< double > libTarget( 0., parameters.knn );
-        int targetLibRowOffset = parameters.Tp - embedShift;
+        int targetLibRowOffset = parameters.Tp;
         for ( int k = 0; k < parameters.knn; k++ ) {
             int libRow = knn_neighbors( row, k ) + targetLibRowOffset;
             libTarget[ k ] = target[ libRow ];

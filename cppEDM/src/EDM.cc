@@ -10,8 +10,7 @@ extern DataFrame< double > MakeBlock( DataFrame< double > &, int, int,
 //----------------------------------------------------------------
 EDM::EDM ( DataFrame< double > & data,
            Parameters          & parameters ) :
-    data( data ), anyTies( false ), embedShift( 0 ),
-    parameters( parameters ) {}
+    data( data ), anyTies( false ), parameters( parameters ) {}
 
 //----------------------------------------------------------------
 // Project : Implemented in sub-class

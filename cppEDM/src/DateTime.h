@@ -1,31 +1,27 @@
 #ifndef DATETIMEUTIL_H
 #define DATETIMEUTIL_H
 
-#include <iostream> // for testing
-#include <cstdio>   // time formatting
-#include <ctime> 
-#include <string> 
-#include <regex> 
-#include <sstream> 
-#include <fstream> 
+#include <sstream>
+#include <vector>
+#include <algorithm> // std::count
 
-const int iso_start_year  = 1900;
-const int iso_start_month = 1;
+const int ISO_StartYear  = 1900;
+const int ISO_StartMonth = 1;
 
-struct datetime_info {
+struct DatetimeInfo {
     struct tm   time = {};
-    std::string datetime_fmt;
-    bool        unrecognized_fmt = false;
+    std::string format;
+    bool        unrecognized = false;
 };
 
 // Prototypes
-void ParseDatetimeString ( struct tm & time_obj, 
-                           std::string datetime_str,
-                           bool        date_fmt );
+void ParseDatetimeString( struct tm & tmStruct,
+                          std::string datetime,
+                          bool        isDate );
 
-datetime_info ParseDatetime ( std::string datetime );
+DatetimeInfo ParseDatetime( std::string datetime );
 
-std::string IncrementDatetime ( std::string datetime1, 
-                                std::string datetime2,
-                                int         tp );
+std::string IncrementDatetime( std::string datetime1,
+                               std::string datetime2,
+                               int         tp );
 #endif
