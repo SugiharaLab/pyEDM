@@ -47,8 +47,6 @@ public: // No need for private or protected
     std::valarray< double >    target;  // entire record
     std::vector< std::string > allTime; // entire record
 
-    int embedShift; // number of data rows lost to embedding
-
     Parameters parameters;
 
     // Constructor declaration

@@ -87,10 +87,10 @@ void EDM::FormatOutput() {
     int startTarget;
 
     if ( parameters.Tp > -1 ) { // Positive Tp
-        startTarget = parameters.prediction[ 0 ] - embedShift;
+        startTarget = parameters.prediction[ 0 ];
     }
     else {                      // Negative Tp
-        startTarget = parameters.prediction[ 0 ] - embedShift - Tp_magnitude;
+        startTarget = parameters.prediction[ 0 ] - Tp_magnitude;
     }
     if ( startTarget < 0 ) {
         startObservations = std::abs( startTarget );
@@ -198,10 +198,10 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
     bool TpPositive = parameters.Tp > -1 ? true : false;
 
     if ( TpPositive ) {
-        if ( max_pred_i - embedShift + parameters.Tp < N_time ) {
+        if ( max_pred_i + parameters.Tp < N_time ) {
             // All times are present in allTime
             for ( size_t i = 0; i < N_row + TpMagnitude; i++ ) {
-                int t_i = min_pred_i + i - embedShift;
+                int t_i = min_pred_i + i;
                 timeOut[ i ] = allTime[ t_i ];
             }
         }
@@ -212,25 +212,25 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
             // Times need to be generated beyond allTime
             // First, fill in times that are in allTime
             for ( size_t i = 0; i < N_row; i++ ) {
-                int t_i = min_pred_i + i - embedShift;
+                int t_i = min_pred_i + i;
                 timeOut[ i ] = allTime[ t_i ];
             }
 
             // Now, generate future times
             // Try to parse the last time vector string as a date or datetime
-            // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
-            datetime_info dtinfo = ParseDatetime( data.Time()[ max_pred_i ] );
+            // if dtinfo.unrecognized = true; it is not a date or datetime
+            DatetimeInfo dtinfo = ParseDatetime( data.Time()[ max_pred_i ] );
 
             for ( int i = 0; i < parameters.Tp; i++ ) {
                 std::stringstream tss;
 
-                if ( dtinfo.unrecognized_fmt ) {
+                if ( dtinfo.unrecognized ) {
                     // Numeric so add Tp
                     double time_delta = std::stof( allTime[ 1 ] ) -
                                         std::stof( allTime[ 0 ] );
 
                     double newTime = std::stof( allTime[ max_pred_i ] ) +
-                                     ( i + 1 - embedShift ) * time_delta;
+                                     ( i + 1 ) * time_delta;
                     tss << newTime;
                 }
                 else {
@@ -263,10 +263,10 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
         }
     }
     else { // Tp Negative
-        if ( int( min_pred_i ) - embedShift + parameters.Tp >= 0 ) {
+        if ( int( min_pred_i ) + parameters.Tp >= 0 ) {
             // All times are present in allTime
             for ( size_t i = 0; i < N_row + TpMagnitude; i++ ) {
-                int t_i = min_pred_i + i + parameters.Tp - embedShift;
+                int t_i = min_pred_i + i + parameters.Tp;
                 timeOut[ i ] = allTime[ t_i ];
             }
         }
@@ -277,25 +277,25 @@ void EDM::FillTimes( std::vector< std::string > & timeOut )
             // Times need to be generated before allTime
             // First, fill in times that are in allTime
             for ( size_t i = 0; i < N_row; i++ ) {
-                int t_i = min_pred_i + i - embedShift;
+                int t_i = min_pred_i + i;
                 timeOut[ i + TpMagnitude ] = allTime[ t_i ];
             }
 
             // Now, generate past times
             // Try to parse the first time vector string as a date or datetime
-            // if dtinfo.unrecognized_fmt = true; it is not a date or datetime
-            datetime_info dtinfo = ParseDatetime( data.Time()[ 0 ] );
+            // if dtinfo.unrecognized = true; it is not a date or datetime
+            DatetimeInfo dtinfo = ParseDatetime( data.Time()[ 0 ] );
 
             for ( int i = (int) TpMagnitude; i > 0; i-- ) {
                 std::stringstream tss;
 
-                if ( dtinfo.unrecognized_fmt ) {
+                if ( dtinfo.unrecognized ) {
                     // Numeric so subtract i * Tp
                     double time_delta = std::stof( allTime[ 1 ] ) -
                                         std::stof( allTime[ 0 ] );
 
                     double newTime = std::stof( allTime[ min_pred_i ] ) -
-                                     ( i + embedShift ) * time_delta;
+                                     ( i ) * time_delta;
                     tss << newTime;
                 }
                 else {

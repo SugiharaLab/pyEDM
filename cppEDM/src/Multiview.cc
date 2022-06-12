@@ -20,7 +20,7 @@
 //
 // Ye H., and G. Sugihara, 2016. Information leverage in
 // interconnected ecosystems: Overcoming the curse of dimensionality.
-// Science 353:922–925.
+// Science 353:922-925.
 //--------------------------------------------------------------------
 //--------------------------------------------------------------------
 // NOTE: Multiview evaluates the top projections using in-sample
@@ -355,10 +355,10 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
         // If thread threw exception, get from queue and rethrow
         if ( not EDM_Multiview::exceptionQ.empty() ) {
             std::lock_guard<std::mutex> lck( EDM_Multiview::q_mtx );
-            
+
             // Take the first exception in the queue
             std::exception_ptr exceptionPtr = EDM_Multiview::exceptionQ.front();
-            
+
             // Unroll all other exception from the thread/loops
             while( not EDM_Multiview::exceptionQ.empty() ) {
                 EDM_Multiview::exceptionQ.pop();
