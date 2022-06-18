@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm> // std::count
+#include <time.h>    // mktime
 
 const int ISO_StartYear  = 1900;
 const int ISO_StartMonth = 1;
