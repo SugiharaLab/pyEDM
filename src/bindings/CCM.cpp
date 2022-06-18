@@ -22,6 +22,7 @@ std::map< std::string, py::dict >
                 bool        random,
                 bool        replacement,
                 unsigned    seed,
+                bool        embedded,
                 bool        includeData,
                 bool        parameterList,
                 bool        verbose ) {
@@ -47,6 +48,7 @@ std::map< std::string, py::dict >
                          random,
                          replacement,
                          seed,
+                         embedded,
                          includeData,
                          parameterList,
                          verbose );
@@ -69,6 +71,7 @@ std::map< std::string, py::dict >
                          random,
                          replacement,
                          seed,
+                         embedded,
                          includeData,
                          parameterList,
                          verbose );

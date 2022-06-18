@@ -9,7 +9,7 @@
 // If E = 1, no time delay embedding is done, but the variables
 // in the embedding are named X(t-0), Y(t-0)...
 // 
-// Parameters.Validate() with Method::Simplex sets knn equal to E+1
+// Parameters.Validate() with Method::Multiview sets knn equal to E+1
 // if knn not specified, so we need to explicitly set knn to D + 1.
 // 
 // multiviewEnsemble is the number of top-ranked D-dimensional
@@ -124,7 +124,7 @@ void MultiviewClass::Multiview ( unsigned nThreads ) {
         // Get indices of embedding columns from the target
         std::vector< size_t > targetColIndices;
         for ( std::string colName : embedding.ColumnNames() ) {
-            if ( colName.find( parameters.targetName ) != std::string::npos ) {
+            if ( colName.find( parameters.targetNames.front() ) != std::string::npos ) {
                 // combos are not zero offset... + 1
                 size_t colIndex = embedding.ColumnNameToIndex()[ colName ] + 1;
                 targetColIndices.push_back( colIndex );
@@ -524,7 +524,7 @@ void EvalComboThread( MultiviewClass                       & MV,
 
         // Target has been embedded too... add "(t-0)"
         std::stringstream threadTarget;
-        threadTarget << MV.parameters.targetName << "(t-0)";
+        threadTarget << MV.parameters.targetNames.front() << "(t-0)";
 
         // Find target column in embedding
         size_t targetColumn =
@@ -542,8 +542,8 @@ void EvalComboThread( MultiviewClass                       & MV,
         Parameters threadParameters( MV.parameters );
 
         // Replace base copied columnNames and targetName with embedded ones
-        threadParameters.columnNames = comboColumnNames;
-        threadParameters.targetName  = threadTarget.str();
+        threadParameters.columnNames         = comboColumnNames;
+        threadParameters.targetNames.front() = threadTarget.str();
 
         // Simplex
         SimplexClass S( std::ref( comboData ), std::ref( threadParameters ) );
@@ -646,7 +646,7 @@ void MultiviewClass::CheckParameters() {
     if ( not parameters.columnNames.size() ) {
         throw std::runtime_error( "Multiview() requires column names." );
     }
-    if ( not parameters.targetName.size() ) {
+    if ( not parameters.targetNames.size() ) {
         throw std::runtime_error( "Multiview() requires target name." );
     }
     // Ensure that params are validated so columnNames are populated
@@ -670,11 +670,11 @@ void MultiviewClass::CheckParameters() {
         }
     }
     auto ti = find( data.ColumnNames().begin(),
-                    data.ColumnNames().end(), parameters.targetName );
+                    data.ColumnNames().end(), parameters.targetNames.front() );
     if ( ti == data.ColumnNames().end() ) {
         std::stringstream errMsg;
         errMsg << "Multiview(): Failed to find target "
-               << parameters.targetName << " in dataFrame with columns: [ ";
+               << parameters.targetNames.front() << " in dataFrame with columns: [ ";
         for ( auto col : data.ColumnNames() ) {
             errMsg << col << " ";
         } errMsg << " ]\n";

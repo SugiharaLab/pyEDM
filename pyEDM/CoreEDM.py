@@ -363,6 +363,7 @@ def CCM( pathIn           = "./",
          random           = True,
          replacement      = False,
          seed             = 0,
+         embedded         = False,
          includeData      = False,
          parameterList    = False,
          verbose          = False,
@@ -379,11 +380,13 @@ def CCM( pathIn           = "./",
     else :
         raise Exception( "CCM(): Invalid data input." )
 
-    # If columns, libSizes are not string, but iterable, convert to string
+    # If columns, libSizes, target are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str, columns ) )
     if pyEDM.AuxFunc.NotStringIterable( libSizes ) :
         libSizes = ' '.join( map( str, libSizes ) )
+    if pyEDM.AuxFunc.NotStringIterable( target ) :
+        target = ' '.join( map( str, target ) )
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
@@ -403,6 +406,7 @@ def CCM( pathIn           = "./",
                        random,
                        replacement,
                        seed,
+                       embedded,
                        includeData,
                        parameterList,
                        verbose )

@@ -37,8 +37,8 @@ public: // No need for protected or private
 
     std::string                columns_str;
     std::string                target_str;
-    std::vector< std::string > columnNames; // column name(s)
-    std::string                targetName;  // target column name
+    std::vector< std::string > columnNames; // state-space column name(s)
+    std::vector< std::string > targetNames; // target column name(s)
 
     bool        embedded;          // true if data is already embedded/block
     bool        const_predict;     // true to compute non "predictor" stats

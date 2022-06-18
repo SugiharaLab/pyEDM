@@ -26,8 +26,8 @@ void EDM::Generate () {}
 // Set target (library) vector
 //----------------------------------------------------------------
 void EDM::GetTarget() {
-    if ( parameters.targetName.size() ) {
-        target = data.VectorColumnName( parameters.targetName );
+    if ( parameters.targetNames.size() ) {
+        target = data.VectorColumnName( parameters.targetNames.front() );
     }
     else {
         // Default to first column

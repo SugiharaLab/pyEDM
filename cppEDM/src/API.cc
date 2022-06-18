@@ -24,9 +24,9 @@
 //----------------------------------------------------------------
 DataFrame< double > Embed( std::string path,
                            std::string dataFile,
-                           int         E,         // embedding dimension
-                           int         tau,       // time step offset
-                           std::string columns,   // column names or indices
+                           int         E,       // embedding dimension
+                           int         tau,     // time step offset
+                           std::string columns, // column names or indices
                            bool        verbose ) {
 
     DataFrame< double > dataFrame( path, dataFile );
@@ -190,8 +190,8 @@ SimplexValues Simplex( std::string       pathIn,
                        int               knn,
                        int               tau,
                        int               exclusionRadius,
-                       std::string       colNames,
-                       std::string       targetName,
+                       std::string       columns,
+                       std::string       target,
                        bool              embedded,
                        bool              const_predict,
                        bool              verbose,
@@ -213,8 +213,8 @@ SimplexValues Simplex( std::string       pathIn,
                                knn,
                                tau,
                                exclusionRadius,
-                               colNames,
-                               targetName,
+                               columns,
+                               target,
                                embedded,
                                const_predict,
                                verbose,
@@ -238,8 +238,8 @@ SimplexValues Simplex( DataFrame< double > & DF,
                        int               knn,
                        int               tau,
                        int               exclusionRadius,
-                       std::string       colNames,
-                       std::string       targetName,
+                       std::string       columns,
+                       std::string       target,
                        bool              embedded,
                        bool              const_predict,
                        bool              verbose,
@@ -252,7 +252,7 @@ SimplexValues Simplex( DataFrame< double > & DF,
                                         pathOut, predictFile,
                                         lib, pred, E, Tp, knn, tau, 0,
                                         exclusionRadius,
-                                        colNames, targetName, embedded,
+                                        columns, target, embedded,
                                         const_predict, verbose, validLib,
                                         generateSteps, parameterList );
 
@@ -437,10 +437,10 @@ SMapValues SMap( DataFrame< double > & DF,
     std::vector< std::string > nanColsCheck = parameters.columnNames;
     // Add target to nanColsCheck for DF.NanRows()
     // Don't add empty or degenerate target
-    if ( not parameters.targetName.empty() and
-         find( nanColsCheck.begin(), nanColsCheck.end(), parameters.targetName )
-         == nanColsCheck.end() ) {
-        nanColsCheck.push_back( parameters.targetName );
+    if ( not parameters.targetNames.empty() and
+         find( nanColsCheck.begin(), nanColsCheck.end(),
+               parameters.targetNames.front() ) == nanColsCheck.end() ) {
+        nanColsCheck.push_back( parameters.targetNames.front() );
     }
     bool nanFound = DF.NanRows( nanColsCheck ); // Look for nan
 
@@ -520,13 +520,14 @@ CCMValues CCM( std::string pathIn,
                int         knn,
                int         tau,
                int         exclusionRadius,
-               std::string colNames,
-               std::string targetName,
+               std::string columns,
+               std::string target,
                std::string libSizes_str,
                int         sample,
                bool        random,
                bool        replacement,
                unsigned    seed,
+               bool        embedded,
                bool        includeData,
                bool        parameterList,
                bool        verbose )
@@ -536,10 +537,10 @@ CCMValues CCM( std::string pathIn,
 
     CCMValues ccmValues = CCM( std::ref( DF ), pathOut, predictFile,
                                E, Tp, knn, tau, exclusionRadius,
-                               colNames, targetName, libSizes_str,
+                               columns, target, libSizes_str,
                                sample, random, replacement,
-                               seed, includeData, parameterList,
-                               verbose );
+                               seed, embedded, includeData,
+                               parameterList, verbose );
 
     return ccmValues;
 }
@@ -555,13 +556,14 @@ CCMValues CCM( DataFrame< double > & DF,
                int         knn,
                int         tau,
                int         exclusionRadius,
-               std::string colNames,
-               std::string targetName,
+               std::string columns,
+               std::string target,
                std::string libSizes_str,
                int         sample,
                bool        random,
                bool        replacement,
                unsigned    seed,
+               bool        embedded,
                bool        includeData,
                bool        parameterList,
                bool        verbose )
@@ -583,9 +585,9 @@ CCMValues CCM( DataFrame< double > & DF,
                                         tau,             // 
                                         0,               // theta
                                         exclusionRadius, //
-                                        colNames,        // 
-                                        targetName,      // 
-                                        false,           // embedded
+                                        columns,         // 
+                                        target,          // 
+                                        embedded,        // 
                                         false,           // const_predict
                                         verbose,         // 
                                         std::vector<bool>(), // validLib
@@ -682,7 +684,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
     //       Parameters constructor calls Validate()
     //       If embedded = true: Validate() will set E to number of columns
     //       We need E to pass to PrepareEmbedding() : EmbedData()
-    Parameters parameters = Parameters( Method::Simplex,
+    Parameters parameters = Parameters( Method::Multiview,
                                         "",           // pathIn
                                         "",           // dataFile
                                         pathOut,      // 

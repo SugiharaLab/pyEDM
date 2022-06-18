@@ -230,7 +230,7 @@ void SMapClass::Generate( Solver solver ) {
     // At each iteration, the prediction is added to a new DataFrame
     // that replaces the SMapClass::data object for the next Project()
     std::valarray< double >
-        valarrayData = data.VectorColumnName( parameters.targetName );
+        valarrayData = data.VectorColumnName( parameters.targetNames.front() );
 
     std::vector< double > columnData;
     columnData.assign( std::begin( valarrayData ), std::end( valarrayData ) );
@@ -352,7 +352,7 @@ void SMapClass::WriteOutput () {
 
     // coefficients column names
     std::vector<std::string> coefNames;
-    if ( parameters.columnNames.size() and parameters.targetName.size() ) {
+    if ( parameters.columnNames.size() and parameters.targetNames.size() ) {
         coefNames.push_back( "C0" );
 
         // Use parameters.columnNames  if embedded = true,
@@ -363,8 +363,8 @@ void SMapClass::WriteOutput () {
 
         for ( auto colName : columnNames ) {
             std::stringstream coefName;
-            //coefName << u8"∂" << parameters.targetName << u8"/∂" << colName;
-            coefName << "\u2202"  << parameters.targetName
+            //coefName << u8"∂" << parameters.targetNames.front() << u8"/∂" << colName;
+            coefName << "\u2202"  << parameters.targetNames.front()
                      << "/\u2202" << colName;
             coefNames.push_back( coefName.str() );
         }

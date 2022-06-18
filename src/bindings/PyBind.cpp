@@ -154,6 +154,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("random")          = true,
                py::arg("replacement")     = false,
                py::arg("seed")            = 0,
+               py::arg("embedded")        = false,
                py::arg("includeData")     = false,
                py::arg("parameterList")   = false,
                py::arg("verbose")         = false );
