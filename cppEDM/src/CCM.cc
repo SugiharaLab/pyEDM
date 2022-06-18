@@ -63,7 +63,23 @@ void CCMClass::Project () {
 void CCMClass::CCM () {
 
     if ( parameters.columnNames.size() > 1 ) {
-        std::cout << "WARNING: CCM() Only the first column will be mapped.\n";
+        std::cout << "WARNING: CCM() multiple columns.\n";
+    }
+    if ( parameters.targetNames.size() > 1 ) {
+        std::cout << "WARNING: CCM() multiple target (reverse mapping).\n";
+    }
+    if ( parameters.verbose ) {
+        if ( parameters.columnNames.size() > 1 or
+             parameters.targetNames.size() > 1  ) {
+            std::cout << "CCM(): embedding columns: ";
+            for ( auto col : colToTarget.embedding.ColumnNames() ) {
+                std::cout << col << " ";
+            } std::cout << std::endl;
+            std::cout << "CCM(): embedding target:  ";
+            for ( auto col : targetToCol.embedding.ColumnNames() ) {
+                std::cout << col << " ";
+            } std::cout << std::endl;
+        }
     }
 
 #ifdef CCM_THREADED
@@ -108,12 +124,12 @@ void CrossMap( SimplexClass   & S,
         std::stringstream msg;
         msg << "CrossMap(): Simplex cross mapping from "
             << S.parameters.columnNames[0]
-            << " to " << S.parameters.targetName << "  E=" << S.parameters.E
-            << "  knn=" << S.parameters.knn << "  Library range: ["
-            << S.parameters.libSizes_str << "] ";
+            << " to " << S.parameters.targetNames.front()
+            << "  E=" << S.parameters.E    << "  knn=" << S.parameters.knn
+            << "  Library: [ ";
         for ( size_t i = 0; i < S.parameters.librarySizes.size(); i++ ) {
             msg << S.parameters.librarySizes[ i ] << " ";
-        } msg << std::endl << std::endl;
+        } msg << "] "<< std::endl << std::endl;
         std::cout << msg.str();
     }
 
@@ -355,8 +371,8 @@ void CrossMap( SimplexClass   & S,
             {
             std::lock_guard<std::mutex> lck( EDM_CCM_Lock::mtx );
             std::cout << "CCM Simplex -------- Column: ";
-            std::cout << Simplex_.parameters.columnNames[0] << "  :  Target: "
-                      << Simplex_.parameters.targetName << " --------\n";
+            std::cout << Simplex_.parameters.columnNames.front()<<"  :  Target: "
+                      << Simplex_.parameters.targetNames.front()<<" --------\n";
             // Simplex_.projection.MaxRowPrint() = Simplex_.projection.NRows();
             // std::cout << Simplex_.projection;
             std::cout << "    rho " << ve.rho << "  RMSE " << ve.RMSE
@@ -415,8 +431,11 @@ void CrossMap( SimplexClass   & S,
 void CCMClass::SetupParameters() {
 
     // Swap column : target in targetToCol.parameters
-    targetToCol.parameters.columns_str = parameters.targetName;
-    targetToCol.parameters.target_str  = parameters.columnNames[0];
+    // NOTE: CCM allows multiple targets for multivariate or mixed
+    //       embeddings. The targets now become the state-space columns, 
+    //       and the first columns becomes the univariate target.
+    targetToCol.parameters.columns_str = parameters.target_str;
+    targetToCol.parameters.target_str  = parameters.columnNames.front();
     targetToCol.parameters.Validate();
 
     //------------------------------------------------------------------
@@ -462,8 +481,10 @@ void CCMClass::FormatOutput () {
     // Create unified column names of output DataFrame
     std::stringstream libRhoNames;
     libRhoNames << "LibSize "
-                << parameters.columnNames[0] <<":"<< parameters.targetName << " "
-                << parameters.targetName     <<":"<< parameters.columnNames[0];
+                << parameters.columnNames.front() << ":"
+                << parameters.targetNames.front() << " "
+                << parameters.targetNames.front() << ":"
+                << parameters.columnNames.front();
 
     // Allocate unified LibStats output DataFrame in EDM object
     allLibStats = DataFrame< double >( parameters.librarySizes.size(), 3,

@@ -16,7 +16,7 @@
 #endif
 
 // Enumerations
-enum class Method         { None, Embed, Simplex, SMap, CCM };
+enum class Method         { None, Embed, Simplex, SMap, CCM, Multiview };
 enum class DistanceMetric { Euclidean, Manhattan };
 
 #include "DataFrame.h"

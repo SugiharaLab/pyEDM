@@ -93,9 +93,10 @@ Parameters::Parameters(
     seed             ( seed ),
     includeData      ( includeData ),
 
-    // Set validated flag and instantiate Version
     validated        ( false ),
-    version          ( 1, 12, 3, "2022-06-12" )
+
+    // Instantiate Version
+    version( 1, 13, 0, "2022-06-17" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -149,16 +150,19 @@ void Parameters::Validate() {
 
     if ( not columnNames.size() ) {
         std::stringstream errMsg;
-        errMsg << "Parameters::Validate(): Simplex/CCM: "
-               << " No columns parsed." << std::endl;
+        errMsg << "Parameters::Validate(): No columns." << std::endl;
         throw std::runtime_error( errMsg.str() );
     }
 
     //--------------------------------------------------------------
-    // target
+    // target(s)
+    // Note: Only CCM allows multiple targets.
+    //       All other use targetName[0].
     //--------------------------------------------------------------
     if ( target_str.size() ) {
-        targetName = target_str;
+        std::vector<std::string> columns_vec = SplitString( target_str,
+                                                            " \t,\n" );
+        targetNames = columns_vec;
     }
 
     //--------------------------------------------------------------
@@ -261,7 +265,8 @@ void Parameters::Validate() {
     // Simplex: embedded true     : E set to number columns
     //          knn not specified : knn set to E+1
     //--------------------------------------------------------------------
-    if ( method == Method::Simplex or method == Method::CCM ) {
+    if ( method == Method::Simplex or method == Method::CCM or
+         method == Method::Multiview ) {
 
         // embedded = true: Set E to number of columns if not already set
         if ( embedded ) {
@@ -319,7 +324,8 @@ void Parameters::Validate() {
                                   "Prediction method error.\n" );
     }
 
-    if ( method == Method::Simplex or method == Method::SMap ) {
+    if ( method == Method::Simplex or method == Method::SMap or
+         method == Method::Multiview ) {
         if ( E < 1 ) {
             std::stringstream errMsg;
             errMsg << "Parameters::Validate() E = " << E
@@ -353,7 +359,8 @@ void Parameters::Validate() {
             size_t lib_end   = thisPair.second;
 
             // Validate end > stop indices
-            if ( method == Method::Simplex or method == Method::SMap ) {
+            if ( method == Method::Simplex or method == Method::SMap or
+                 method == Method::Multiview ) {
                 // Don't check if method == None, Embed or CCM since default
                 // of "1 1" is used.
                 if ( lib_start >= lib_end ) {
@@ -407,8 +414,8 @@ void Parameters::Validate() {
         }
 
         // Validate lib: E, tau, Tp combination
-        if ( method == Method::Simplex or
-             method == Method::SMap or method == Method::CCM ) {
+        if ( method == Method::Simplex or method == Method::SMap or
+             method == Method::CCM     or method == Method::Multiview ) {
             int vectorStart  = std::max( (E - 1) * tau, 0 );
             vectorStart      = std::max( vectorStart, Tp );
             int vectorEnd    = std::min( (E - 1) * tau, Tp );
@@ -460,7 +467,8 @@ void Parameters::Validate() {
             nPred += pred_end - pred_start + 1;
 
             // Validate end > stop indices
-            if ( method == Method::Simplex or method == Method::SMap ) {
+            if ( method == Method::Simplex or method == Method::SMap or
+                 method == Method::Multiview ) {
                 // Don't check if method == None, Embed or CCM since default
                 // of "1 1" is used.
                 if ( pred_start >= pred_end ) {
@@ -510,7 +518,8 @@ void Parameters::Validate() {
     // Validate library & prediction
     // Set SMap knn default based on E and library size
     //--------------------------------------------------------------
-    if ( method == Method::Simplex or method == Method::SMap ) {
+    if ( method == Method::Simplex or method == Method::SMap or
+         method == Method::Multiview ) {
         if ( not library.size() ) {
             std::string errMsg( "Parameters::Validate(): "
                                 "library indices not found.\n" );
@@ -575,7 +584,7 @@ void Parameters::Validate() {
             throw std::runtime_error( errMsg );
         }
 
-        if ( columnNames.front() != targetName ) {
+        if ( columnNames.front() != targetNames.front() ) {
             std::string errMsg("Parameters::Validate(): generateSteps "
                                "columns and target disjoint. "
                                "Only univariate data allowed.\n");
@@ -589,7 +598,7 @@ void Parameters::Validate() {
                       << columnNames.front() << " used as column data."
                       << std::endl;
             columnNames.clear();
-            columnNames.push_back( targetName );
+            columnNames.push_back( targetNames.front() );
         }
     }
 
@@ -693,11 +702,12 @@ void Parameters::FillMap() {
     Map[ "version" ] = ss.str();
     ss.str( std::string() ); // clear the ss string
 
-    if      ( method == Method::Simplex ) { ss <<  "Simplex"; }
-    else if ( method == Method::SMap    ) { ss <<  "SMap";    }
-    else if ( method == Method::CCM     ) { ss <<  "CCM";     }
-    else if ( method == Method::None    ) { ss <<  "None";    }
-    else if ( method == Method::Embed   ) { ss <<  "Embed";   }
+    if      ( method == Method::Simplex   ) { ss <<  "Simplex";   }
+    else if ( method == Method::SMap      ) { ss <<  "SMap";      }
+    else if ( method == Method::CCM       ) { ss <<  "CCM";       }
+    else if ( method == Method::Multiview ) { ss <<  "Multiview"; }
+    else if ( method == Method::None      ) { ss <<  "None";      }
+    else if ( method == Method::Embed     ) { ss <<  "Embed";     }
     Map[ "method" ] = ss.str();
     ss.str( std::string() );
 
@@ -840,11 +850,12 @@ std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
     os << "Parameters: -------------------------------------------\n";
 
     std::string method("Unknown");
-    if      ( p.method == Method::Simplex ) { method = "Simplex"; }
-    else if ( p.method == Method::SMap    ) { method = "SMap";    }
-    else if ( p.method == Method::CCM     ) { method = "CCM";     }
-    else if ( p.method == Method::None    ) { method = "None";    }
-    else if ( p.method == Method::Embed   ) { method = "Embed";   }
+    if      ( p.method == Method::Simplex   ) { method = "Simplex";  }
+    else if ( p.method == Method::SMap      ) { method = "SMap";     }
+    else if ( p.method == Method::CCM       ) { method = "CCM";      }
+    else if ( p.method == Method::Multiview ) { method = "Multiview";}
+    else if ( p.method == Method::None      ) { method = "None";     }
+    else if ( p.method == Method::Embed     ) { method = "Embed";    }
 
     os << "Method: " << method
        << " E=" << p.E << " Tp=" << p.Tp
@@ -859,8 +870,8 @@ std::ostream& operator<< ( std::ostream &os, Parameters &p ) {
         } os << "]" << std::endl;
     }
 
-    if ( p.targetName.size() ) {
-        os << "Target: " << p.targetName << std::endl;
+    if ( p.targetNames.size() ) {
+        os << "Target: " << p.targetNames.front() << std::endl;
     }
 
     os << "Library: [" << p.library[0] << " : "

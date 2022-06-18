@@ -1,4 +1,3 @@
-
 #include "EDM_Neighbors.h"
 
 namespace EDM_Neighbors_Lock {
@@ -83,15 +82,6 @@ void EDM::FindNeighbors() {
         throw( std::runtime_error( errMsg ) );
     }
 
-    if ( parameters.embedded and parameters.E != (int) embedding.NColumns() ) {
-        std::stringstream errMsg;
-        errMsg << "WARNING: FindNeighbors() Multivariate data "
-               << "(embedded = true): The number of embedding columns ("
-               << embedding.NColumns() << ") does not equal the specified "
-               << "dimension E (" << parameters.E << ")\n";
-        std::cout << errMsg.str();
-    }
-
     size_t N_library_rows    = parameters.library.size();
     size_t N_prediction_rows = parameters.prediction.size();
 
@@ -99,7 +89,8 @@ void EDM::FindNeighbors() {
     // Identify degenerate library : prediction points by
     // set_intersection() of lib & pred indices, needs a result vector
     //-----------------------------------------------------------------
-    if ( parameters.verbose and parameters.method != Method::CCM ) {
+    if ( parameters.verbose and parameters.method != Method::CCM and
+         parameters.method != Method::Multiview ) {
         std::vector< double > result( N_library_rows + N_prediction_rows, 0 );
 
         std::vector< double >::iterator ii = set_intersection (
@@ -114,7 +105,8 @@ void EDM::FindNeighbors() {
                 << " prediction data found. Overlap indices: ";
             for ( auto ri = result.begin(); ri != ii; ++ri ) {
                 msg << *ri << " ";
-            } msg << std::endl;
+            }
+            msg << "No further warnings to be issued." << std::endl;
             std::cout << msg.str();
         }
     }
@@ -212,6 +204,8 @@ void EDM::FindNeighbors() {
 
     knnSmap = std::vector< size_t > ( N_prediction_rows, parameters.knn );
 
+    bool knnNotFoundWarn = true;
+
     //-------------------------------------------------------------------
     // For each prediction vector (row in prediction DataFrame) find
     // library indices that are within knn points
@@ -237,7 +231,7 @@ void EDM::FindNeighbors() {
         std::valarray< double > knnDistances( nan("knn"), parameters.knn );
         std::valarray< size_t > knnLibRows  ( (size_t) 0, parameters.knn );
 
-        int k = 0;
+        int  k = 0;
 
         while ( k < parameters.knn ) {
 
@@ -255,12 +249,14 @@ void EDM::FindNeighbors() {
                                << " for prediction row " << predictionRow
                                << std::endl;
                     }
-                    else {
+                    else if ( knnNotFoundWarn ) {
+                        knnNotFoundWarn = false; // Only one warning
                         errMsg << "WARNING: FindNeighbors(): "
                                << "knn search failed to find " << parameters.knn
                                << " neighbors in the library at prediction row "
                                << predictionRow << ". Found "
-                               << k << "." << std::endl;
+                               << k << ". No further warnings to be issued."
+                               << std::endl;
                     }
                     std::cout << errMsg.str();
                 }
