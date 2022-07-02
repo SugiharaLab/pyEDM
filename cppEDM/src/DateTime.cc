@@ -58,8 +58,9 @@ void ParseDatetimeString( struct tm & tmStruct,
 
     if ( err < 0 ) {
         std::stringstream errMsg;
-        errMsg << "ParseDatetimeString() mktime failed on " << datetime;
-        throw( errMsg.str() );
+        errMsg << "ParseDatetimeString() mktime failed on " << datetime
+               << " err = " << err << std::endl;
+        throw std::runtime_error( errMsg.str() );
     }
 }
 
@@ -78,19 +79,19 @@ DatetimeInfo ParseDatetime( std::string datetime ) {
     //    [ '-' and '-' and ':' and ':' ] YMD_HMS
     //    [ '-' and '-' and ':' and ':' and 'T' ] YMD_T_HMS
 
-    size_t nHypen = std::count( datetime.begin(), datetime.end(), '-' );
-    size_t nColon = std::count( datetime.begin(), datetime.end(), ':' );
-    size_t nT     = std::count( datetime.begin(), datetime.end(), 'T' );
+    size_t NHyphen = std::count( datetime.begin(), datetime.end(), '-' );
+    size_t nColon  = std::count( datetime.begin(), datetime.end(), ':' );
+    size_t nT      = std::count( datetime.begin(), datetime.end(), 'T' );
     
-    if ( nHypen == 2 and nColon == 0 ) {
+    if ( NHyphen == 2 and nColon == 0 ) {
         output.format = YMD;
         ParseDatetimeString( output.time, datetime, true );
     }
-    else if ( nHypen == 0 and nColon == 2 ) {
+    else if ( NHyphen == 0 and nColon == 2 ) {
         output.format = HMS;
         ParseDatetimeString( output.time, datetime, false );
     }
-    else if ( nHypen == 2 and nColon == 2 and nT == 0 ) {
+    else if ( NHyphen == 2 and nColon == 2 and nT == 0 ) {
         output.format = YMD_HMS; 
         // split by " ", then split first by - second by :
         int delim_pos    = datetime.find(' ');
@@ -99,7 +100,7 @@ DatetimeInfo ParseDatetime( std::string datetime ) {
         ParseDatetimeString( output.time, date, true );
         ParseDatetimeString( output.time, time, false );
     }
-    else if ( nHypen == 2 and nColon == 2 and nT == 1 ) {
+    else if ( NHyphen == 2 and nColon == 2 and nT == 1 ) {
         output.format = YMD_T_HMS; 
         // split by T, then split first by - second by :
         int delim_pos    = datetime.find('T');

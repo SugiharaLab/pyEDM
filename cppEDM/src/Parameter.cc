@@ -96,7 +96,7 @@ Parameters::Parameters(
     validated        ( false ),
 
     // Instantiate Version
-    version( 1, 13, 0, "2022-06-17" )
+    version( 1, 13, 1, "2022-07-01" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -163,6 +163,16 @@ void Parameters::Validate() {
         std::vector<std::string> columns_vec = SplitString( target_str,
                                                             " \t,\n" );
         targetNames = columns_vec;
+    }
+
+    if ( not targetNames.size() ) {
+        // Set target to columnNames[0]
+        targetNames.push_back( columnNames.front() );
+
+        if ( verbose ) {
+            std::cout << "Parameters::Validate(): Set target from columns: "
+                      << targetNames.front() << std::endl;
+        }
     }
 
     //--------------------------------------------------------------
