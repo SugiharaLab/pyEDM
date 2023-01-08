@@ -197,6 +197,7 @@ SimplexValues Simplex( std::string       pathIn,
                        bool              verbose,
                        std::vector<bool> validLib,
                        int               generateSteps,
+                       bool              generateLibrary,
                        bool              parameterList )
 {
     // DataFrame constructor loads data
@@ -220,6 +221,7 @@ SimplexValues Simplex( std::string       pathIn,
                                verbose,
                                validLib,
                                generateSteps,
+                               generateLibrary,
                                parameterList );
 
     return S;
@@ -245,6 +247,7 @@ SimplexValues Simplex( DataFrame< double > & DF,
                        bool              verbose,
                        std::vector<bool> validLib,
                        int               generateSteps,
+                       bool              generateLibrary,
                        bool              parameterList )
 {
     // Instantiate Parameters
@@ -254,7 +257,8 @@ SimplexValues Simplex( DataFrame< double > & DF,
                                         exclusionRadius,
                                         columns, target, embedded,
                                         const_predict, verbose, validLib,
-                                        generateSteps, parameterList );
+                                        generateSteps, generateLibrary,
+                                        parameterList );
 
     // Instantiate EDM::SimplexClass object
     SimplexClass SimplexModel = SimplexClass( DF, std::ref( parameters ) );
@@ -298,6 +302,7 @@ SMapValues SMap( std::string pathIn,
                  bool        verbose,
                  std::vector<bool> validLib,
                  int         generateSteps,
+                 bool        generateLibrary,
                  bool        parameterList )
 {
     // DataFrame constructor loads data
@@ -309,7 +314,8 @@ SMapValues SMap( std::string pathIn,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
                                   embedded, const_predict, verbose, validLib,
-                                  generateSteps, parameterList );
+                                  generateSteps, generateLibrary,
+                                  parameterList );
     return SMapOutput;
 }
 
@@ -337,6 +343,7 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        verbose,
                  std::vector<bool> validLib,
                  int         generateSteps,
+                 bool        generateLibrary,
                  bool        parameterList )
 {
     // Call overload 4) with default SVD function
@@ -346,7 +353,8 @@ SMapValues SMap( DataFrame< double > & DF,
                                   columns, target, smapFile, derivatives,
                                   & SVD, // LAPACK SVD default
                                   embedded, const_predict, verbose, validLib,
-                                  generateSteps, parameterList );
+                                  generateSteps, generateLibrary,
+                                  parameterList );
 
     return SMapOutput;
 }
@@ -377,6 +385,7 @@ SMapValues SMap( std::string pathIn,
                  bool        verbose,
                  std::vector<bool> validLib,
                  int         generateSteps,
+                 bool        generateLibrary,
                  bool        parameterList )
 {
     // DataFrame constructor loads data
@@ -388,7 +397,8 @@ SMapValues SMap( std::string pathIn,
                                   exclusionRadius,
                                   columns, target, smapFile, derivatives, 
                                   solver, embedded, const_predict, verbose,
-                                  validLib, generateSteps, parameterList );
+                                  validLib, generateSteps, generateLibrary,
+                                  parameterList );
     return SMapOutput;
 }
 
@@ -417,6 +427,7 @@ SMapValues SMap( DataFrame< double > & DF,
                  bool        verbose,
                  std::vector<bool> validLib,
                  int         generateSteps,
+                 bool        generateLibrary,
                  bool        parameterList )
 {
     if ( derivatives.size() ) {} // -Wunused-parameter
@@ -427,7 +438,8 @@ SMapValues SMap( DataFrame< double > & DF,
                                         exclusionRadius,
                                         columns, target, embedded,
                                         const_predict, verbose, validLib,
-                                        generateSteps, parameterList, smapFile );
+                                        generateSteps, generateLibrary,
+                                        parameterList, smapFile );
 
     // Handle nan
     // If nan are found in library or prediction rows of columns or target,
@@ -592,6 +604,7 @@ CCMValues CCM( DataFrame< double > & DF,
                                         verbose,         // 
                                         std::vector<bool>(), // validLib
                                         0,               // generateSteps
+                                        false,           // generateLibrary
                                         parameterList,   //
                                         "",              // SmapFile
                                         "",              // blockFile
@@ -704,6 +717,7 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         verbose,      // 
                                         std::vector<bool>(), // validLib
                                         0,            // generateSteps
+                                        false,        // generateLibrary
                                         parameterList,//
                                         "",           // SmapFile
                                         "",           // blockFile

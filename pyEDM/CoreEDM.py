@@ -98,6 +98,7 @@ def Simplex( pathIn          = "./",
              showPlot        = False,
              validLib        = [],
              generateSteps   = 0,
+             generateLibrary = False,
              parameterList   = False
              ):
     '''Simplex prediction on path/file.'''
@@ -141,6 +142,7 @@ def Simplex( pathIn          = "./",
                            verbose,
                            validLib,
                            generateSteps,
+                           generateLibrary,
                            parameterList )
 
     df = DataFrame( D['predictions'] ) # Convert to pandas DataFrame
@@ -184,6 +186,7 @@ def SMap( pathIn          = "./",
           showPlot        = False,
           validLib        = [],
           generateSteps   = 0,
+          generateLibrary = False,
           parameterList   = False
           ):
     '''S-Map prediction on path/file.'''
@@ -239,6 +242,7 @@ def SMap( pathIn          = "./",
                         verbose,
                         validLib,
                         generateSteps,
+                        generateLibrary,
                         parameterList )
 
     df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame

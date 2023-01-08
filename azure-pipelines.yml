@@ -1,5 +1,5 @@
 variables:
-    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-*
+    CIBW_BUILD: cp37-* cp38-* cp39-* cp310-* cp311-*
 
     # Skip musllinux and 32-bit builds
     CIBW_SKIP: "*-musllinux_* *-win32 *-manylinux_i686"
@@ -31,6 +31,10 @@ strategy:
       vmImage: 'windows-latest'
       build_name: 'Windows_310'
       python.version: '3.10'
+    Windows_3.11:
+      vmImage: 'windows-latest'
+      build_name: 'Windows_311'
+      python.version: '3.11'
     MacOS_3.7:
       vmImage: 'macos-latest'
       build_name: 'MacOS_37'
@@ -47,6 +51,10 @@ strategy:
       vmImage: 'macos-latest'
       build_name: 'MacOS_310'
       python.version: '3.10'
+    MacOS_3.11:
+      vmImage: 'macos-latest'
+      build_name: 'MacOS_311'
+      python.version: '3.11'
     Linux_3.7:
       vmImage: 'ubuntu-latest'
       build_name: 'manylinux37'
@@ -63,6 +71,10 @@ strategy:
       vmImage: 'ubuntu-latest'
       build_name: 'manylinux310'
       python.version: '3.10'
+    Linux_3.11:
+      vmImage: 'ubuntu-latest'
+      build_name: 'manylinux311'
+      python.version: '3.11'
 
 pool:
 

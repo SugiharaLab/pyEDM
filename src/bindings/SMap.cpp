@@ -70,6 +70,7 @@ std::map< std::string, py::dict >
                  bool        verbose,
                  std::vector<bool> validLib,
                  int         generateSteps,
+                 bool        generateLibrary,
                  bool        parameterList
  ) {
     SmapSolverObject = solver;
@@ -106,6 +107,7 @@ std::map< std::string, py::dict >
                    verbose,
                    validLib,
                    generateSteps,
+                   generateLibrary,
                    parameterList );
     }
     else if ( df.dataList.size() ) {
@@ -132,6 +134,7 @@ std::map< std::string, py::dict >
                    verbose,
                    validLib,
                    generateSteps,
+                   generateLibrary,
                    parameterList );
     }
     else {

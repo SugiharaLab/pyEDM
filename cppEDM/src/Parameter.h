@@ -31,22 +31,23 @@ public: // No need for protected or private
     int         E;                  // dimension
     int         Tp;                 // prediction interval
     int         knn;                // k nearest neighbors
-    int         tau;                // block embedding delay
-    double      theta;              // S Map localization
+    int         tau;                // embedding delay
+    double      theta;              // S-Map localization
     int         exclusionRadius;    // temporal rows to ignore in predict
 
-    std::string                columns_str;
-    std::string                target_str;
+    std::string                columns_str; // multi argument parameters
+    std::string                target_str;  // argument parameter(s)
     std::vector< std::string > columnNames; // state-space column name(s)
     std::vector< std::string > targetNames; // target column name(s)
 
-    bool        embedded;          // true if data is already embedded/block
+    bool        embedded;          // true if data is already embedded
     bool        const_predict;     // true to compute non "predictor" stats
     bool        verbose;
 
     std::vector<bool> validLib;    // maps row to valid library flag
 
     int         generateSteps;     // Number of timesteps to feedback generate
+    bool        generateLibrary;   // Increment library with generated data
 
     bool        parameterList;     // Add parameter list to output
 
@@ -102,6 +103,7 @@ public: // No need for protected or private
         std::vector<bool> validLib    = std::vector<bool>(),
 
         int         generateSteps     = 0,
+        bool        generateLibrary   = false,
         bool        parameterList     = false,
 
         std::string SmapOutputFile    = "",
