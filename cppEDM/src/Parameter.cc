@@ -32,6 +32,7 @@ Parameters::Parameters(
     std::vector<bool> validLib,
 
     int         generateSteps,
+    bool        generateLibrary,
     bool        parameterList,
     
     std::string SmapOutputFile,
@@ -76,6 +77,7 @@ Parameters::Parameters(
     validLib         ( validLib ),
 
     generateSteps    ( generateSteps ),
+    generateLibrary  ( generateLibrary ),
     parameterList    ( parameterList ),
 
     SmapOutputFile   ( SmapOutputFile ),
@@ -96,7 +98,7 @@ Parameters::Parameters(
     validated        ( false ),
 
     // Instantiate Version
-    version( 1, 13, 1, "2022-07-01" )
+    version( 1, 14, 0, "2023-01-07" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -817,6 +819,10 @@ void Parameters::FillMap() {
 
     ss << generateSteps;
     Map[ "generateSteps" ] = ss.str();
+    ss.str( std::string() );
+
+    ss << generateLibrary;
+    Map[ "generateLibrary" ] = ss.str();
     ss.str( std::string() );
 
     ss << parameterList;

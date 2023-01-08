@@ -180,6 +180,16 @@ void SMapClass::Generate( Solver solver ) {
     std::cout << "     data.Time() end: " << data.Time().back() << std::endl;
 #endif
 
+    // Replace SMap object data with one containing only lib rows
+    // -- The data becomes a data library from which predictions are generated
+    // NOTE : JP Presume library starts at index 0 : Should be lib parameter
+    std::vector<size_t> dataLibRows;
+    for ( size_t i = 0; i <= parameters.library.back(); i++ ) {
+        dataLibRows.push_back( i );
+    }
+    DataFrame<double> dataLib = data.DataFrameFromRowIndex( dataLibRows );
+    this->data = dataLib; // JP is this a leak?
+
     // Override prediction to have max( 2,Tp ) points at end of data.
     // We need Tp points if Tp > 1 to prevent nan gaps in prediction.
     // prediction & library are zero-offset in Parameters::Validate()
@@ -282,7 +292,9 @@ void SMapClass::Generate( Solver solver ) {
         generatedTime.push_back( newTime );
 
         // 3) Increment library by adding another row index ------------
-        parameters.library.push_back( parameters.library.back() + 1 );
+        if ( parameters.generateLibrary ) {
+            parameters.library.push_back( parameters.library.back() + 1 );
+        }
 
         // 4) Increment prediction indices -----------------------------
         for ( auto pi  = parameters.prediction.begin();

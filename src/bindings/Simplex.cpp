@@ -24,6 +24,7 @@ std::map< std::string, py::dict >
                     bool        verbose,
                     std::vector<bool> validLib,
                     int         generateSteps,
+                    bool        generateLibrary,
                     bool        parameterList ) {
 
     SimplexValues S;
@@ -48,6 +49,7 @@ std::map< std::string, py::dict >
                      verbose,
                      validLib,
                      generateSteps,
+                     generateLibrary,
                      parameterList );
     }
     else if ( df.dataList.size() ) {
@@ -70,6 +72,7 @@ std::map< std::string, py::dict >
                      verbose,
                      validLib,
                      generateSteps,
+                     generateLibrary,
                      parameterList );
     }
     else {
@@ -81,7 +84,7 @@ std::map< std::string, py::dict >
     std::map< std::string, py::dict > S_;
 
     S_["predictions"] = DFtoDict( df_pred );
-    
+
     if ( parameterList ) {
         S_["parameters"]  = ParamMaptoDict( S.parameterMap );
     }

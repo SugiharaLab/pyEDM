@@ -85,6 +85,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("verbose")         = false,
                py::arg("validLib")        = std::vector<bool>(),
                py::arg("generateSteps")   = 0,
+               py::arg("generateLibrary") = 0,
                py::arg("parameterList")   = false );
 
     pyMod.def( "SMap", &SMap_pybind,
@@ -111,6 +112,7 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("verbose")         = false,
                py::arg("validLib")        = std::vector<bool>(),
                py::arg("generateSteps")   = 0,
+               py::arg("generateLibrary") = 0,
                py::arg("parameterList")   = false );
 
     pyMod.def( "Multiview", &Multiview_pybind,

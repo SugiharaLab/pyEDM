@@ -57,6 +57,7 @@ SimplexValues Simplex( std::string pathIn          = "./data/",
                        bool        verbose         = true,
                        std::vector<bool> validLib  = std::vector<bool>(),
                        int         generateSteps   = 0,
+                       bool        generateLibrary = false,
                        bool        parameterList   = false );
 
 SimplexValues Simplex( DataFrame< double > & dataFrameIn,
@@ -76,6 +77,7 @@ SimplexValues Simplex( DataFrame< double > & dataFrameIn,
                        bool        verbose         = true,
                        std::vector<bool> validLib  = std::vector<bool>(),
                        int         generateSteps   = 0,
+                       bool        generateLibrary = false,
                        bool        parameterList   = false );
 
 // SMap is a special case since it can be called with a function pointer
@@ -103,6 +105,7 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        verbose         = true,
                  std::vector<bool> validLib  = std::vector<bool>(),
                  int         generateSteps   = 0,
+                 bool        generateLibrary = false,
                  bool        parameterList   = false );
 
 // 2) DataFrame with default SVD (LAPACK) assigned in Smap.cc 2)
@@ -126,6 +129,7 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  bool        verbose         = true,
                  std::vector<bool> validLib  = std::vector<bool>(),
                  int         generateSteps   = 0,
+                 bool        generateLibrary = false,
                  bool        parameterList   = false );
 
 // 3) Data path/file with external solver object, init to default SVD
@@ -153,6 +157,7 @@ SMapValues SMap( std::string pathIn          = "./data/",
                  bool        verbose         = true,
                  std::vector<bool> validLib  = std::vector<bool>(),
                  int         generateSteps   = 0,
+                 bool        generateLibrary = false,
                  bool        parameterList   = false );
 
 
@@ -180,6 +185,7 @@ SMapValues SMap( DataFrame< double > &dataFrameIn,
                  bool        verbose         = true,
                  std::vector<bool> validLib  = std::vector<bool>(),
                  int         generateSteps   = 0,
+                 bool        generateLibrary = false,
                  bool        parameterList   = false );
 
 CCMValues CCM( std::string pathIn          = "./data/",

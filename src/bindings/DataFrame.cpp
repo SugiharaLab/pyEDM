@@ -161,9 +161,10 @@ py::dict ParamMaptoDict( std::map< std::string, std::string > m ) {
                   pi->first == "includeData" or
                   pi->first == "multiviewTrainLib"      or
                   pi->first == "multiviewExcludeTarget" or
-                  pi->first == "embedded"      or
-                  pi->first == "const_predict" or
-                  pi->first == "parameterList" or
+                  pi->first == "embedded"        or
+                  pi->first == "const_predict"   or
+                  pi->first == "generateLibrary" or
+                  pi->first == "parameterList"   or
                   pi->first == "verbose" ) {
             if ( pi->second == "0" ) {
                 D[ py::str( pi->first ) ] = false;
