@@ -219,8 +219,9 @@ setup(
     ext_modules      = Extension_modules,
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
     #test_suite      = "tests", # ??? [1]
-    install_requires = ['pybind11>=2.3', 'pandas>=1.1', 'matplotlib>=2.2'],
-    python_requires  = '>=3.6',
+    install_requires = ['pybind11>=2.3', 'pandas>=1.1', 'matplotlib>=3.1',
+                         'scipy>=1.5'], # [2] install_requires : requirements.txt
+    python_requires  = '>=3.8',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
     zip_safe         = False,
 )
@@ -233,4 +234,8 @@ setup(
 #           #test-build-package-and-run-a-unittest-suite
 #
 #     One can run the tests in EDM/tests: python -m unittest discover
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
+# [2] https://packaging.python.org/en/latest/discussions/
+#             install-requires-vs-requirements/
 #----------------------------------------------------------------------
