@@ -50,8 +50,14 @@ cppLibName = "libEDM.a"
 if not os.path.exists(EDM_Lib_Path): # in case of sdist build, mkdir lib
     os.makedirs(EDM_Lib_Path)
 
-build_libEDM = subprocess.Popen(["make", "-C", "./cppEDM/src"], 
-                                stderr=subprocess.STDOUT)
+env = os.environ.copy()
+
+if sys.platform == "darwin":
+    env["CFLAGS"] = "-arch x86_64 -arch arm64"
+
+build_libEDM = subprocess.Popen( ["make", "-C", "./cppEDM/src"],
+                                 stderr = subprocess. STDOUT, env = env )
+
 build_libEDM.wait()
 
 # Check that libEDM exists
@@ -153,7 +159,8 @@ class BuildExt( build_ext ):
         print( ">>>>>>>>>>> sys.platform: ", sys.platform )
 
     if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7',
+                           '-arch x86_64', '-arch arm64']
 
     def build_extensions(self):
         ct   = self.compiler.compiler_type
