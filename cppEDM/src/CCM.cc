@@ -62,15 +62,10 @@ void CCMClass::Project () {
 //----------------------------------------------------------------
 void CCMClass::CCM () {
 
-    if ( parameters.columnNames.size() > 1 ) {
-        std::cout << "WARNING: CCM() multiple columns.\n";
-    }
-    if ( parameters.targetNames.size() > 1 ) {
-        std::cout << "WARNING: CCM() multiple target (reverse mapping).\n";
-    }
     if ( parameters.verbose ) {
         if ( parameters.columnNames.size() > 1 or
              parameters.targetNames.size() > 1  ) {
+            std::cout << "CCM() multiple columns/target.\n";
             std::cout << "CCM(): embedding columns: ";
             for ( auto col : colToTarget.embedding.ColumnNames() ) {
                 std::cout << col << " ";
