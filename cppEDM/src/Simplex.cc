@@ -58,7 +58,7 @@ void SimplexClass::Simplex () {
             // Handle cases of distanceRow = 0
             for ( int i = 0; i < parameters.knn; i++ ) {
                 if ( distanceRow[i] > 0 ) {
-                    weightedDistances[i] = exp( -distanceRow[i] / minDistance );
+                    weightedDistances[ i ] = 0; // set to minWeight in weights
                 }
                 else {
                     // Setting weight = 1 implies that the corresponding
