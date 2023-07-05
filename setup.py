@@ -195,10 +195,10 @@ Extension_modules = [
             EDM_H_Path            # Path to cppEDM headers
         ],
 
-        language           = 'c++',
-        extra_compile_args = ['-std=c++11'],
-        library_dirs       = [ EDM_Lib_Path, '/usr/lib/' ],
-        
+        language     = 'c++',
+        library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
+        ### extra_compile_args = ['-std=c++11'],
+
         # Note PEP 308: <expression1> if <condition> else <expression2>
         libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
