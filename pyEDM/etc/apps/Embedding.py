@@ -13,8 +13,9 @@ def main():
     Create time-delay embedding with time column for EDM. 
     Useful to create mixed multivariate embeddings for SMap and
     embeddings with time-advanced vectors.  
-    Presume negative tau. Rename V(t-0) to V. Add Time column.
-    If args.forward create time-advanced columns, remove V(t+0).
+    Add Time column. Replace V(t+0) and V(t-0) with V.
+    If args.plusminus create both time-delay and time-advanced columns,
+    require args.tau < 0.
     '''
 
     args = ParseCmdLine()
@@ -35,7 +36,7 @@ def main():
 
     # Create embeddings of columns
     # There will be redundancies vis V1(t-0), V1(t+0)
-    if args.forward :
+    if args.plusminus :
         embed_minus = Embed( dataFrame = data, E = args.E, tau = args.tau,
                              columns = args.columns )
         embed_plus = Embed( dataFrame = data, E = args.E, tau = abs( args.tau ),
@@ -51,6 +52,11 @@ def main():
                         columns = args.columns )
         df = concat( [ timeSeries, embed_ ], axis = 1 )
 
+    # Rename *(t+0) to original column names
+    cols_tplus0 = [ c for c in df.columns if '(t+0)' in c ]
+    cols_orig   = [ c.replace( '(t+0)', '', 1 ) for c in cols_tplus0 ]
+    df.rename( columns = dict( zip( cols_tplus0, cols_orig ) ), inplace = True )
+
     # Rename *(t-0) to original column names
     cols_tminus0 = [ c for c in df.columns if '(t-0)' in c ]
     cols_orig    = [ c.replace( '(t-0)', '', 1 ) for c in cols_tminus0 ]
@@ -62,6 +68,7 @@ def main():
     if args.verbose :
         print( "Columns:", df.columns, "\n-------------------------------" )
         print( df.head( 4 ) )
+        print( df.tail( 4 ) )
 
     if args.outputFile :
         df.to_csv( args.outputFile, index = False )
@@ -81,10 +88,10 @@ def ParseCmdLine():
                         action = 'store',      default = 'out.csv',
                         help = 'Output file name.')
 
-    parser.add_argument('-f', '--forward',
-                        dest   = 'forward',
+    parser.add_argument('-p', '--plusminus',
+                        dest   = 'plusminus',
                         action = 'store_true', default = False,
-                        help = 'Add time-advanced columns.')
+                        help = 'Both time-delay & time-advanced columns.')
 
     parser.add_argument('-c', '--columns', nargs = '*',
                         dest   = 'columns', type = str, 
@@ -108,10 +115,9 @@ def ParseCmdLine():
 
     args = parser.parse_args()
 
-    if args.tau > 0 :
-        # Presume time-delay embedding
+    if args.plusminus and args.tau > 0 :
+        print( 'tau changed to {} with --plusminus'.format( -args.tau ) )
         args.tau = -args.tau
-        print( "tau changed to {}".format( args.tau ) )
 
     return args
 
