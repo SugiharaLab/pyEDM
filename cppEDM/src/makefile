@@ -13,7 +13,7 @@ OBJ = $(SRCS:%.cc=%.o)
 
 LIB = libEDM.a
 
-CFLAGS += -std=c++11 -Wpedantic -Wall -Wextra -Wreorder -O3
+CFLAGS += -Wpedantic -Wall -Wextra -Wreorder -O3
 CFLAGS += -DCCM_THREADED -fPIC
 # CFLAGS += -g # -DDEBUG_ALL
 # LFLAGS = -L./ -lstdc++ -lEDM -lpthread -llapacke -llapack -lblas 
