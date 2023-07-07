@@ -13,6 +13,8 @@ OBJ = $(SRCS:%.cc=%.o)
 
 LIB = libEDM.a
 
+# OSX compilers require -std to get c++11 extensions
+CFLAGS += -std=c++17
 CFLAGS += -Wpedantic -Wall -Wextra -Wreorder -O3
 CFLAGS += -DCCM_THREADED -fPIC
 # CFLAGS += -g # -DDEBUG_ALL

@@ -197,7 +197,7 @@ Extension_modules = [
 
         language     = 'c++',
         library_dirs = [ EDM_Lib_Path, '/usr/lib/' ],
-        extra_compile_args = ['-std=c++11'],
+        extra_compile_args = ['-std=c++17'],
 
         # Note PEP 308: <expression1> if <condition> else <expression2>
         libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
