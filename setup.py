@@ -216,7 +216,6 @@ setup(
     version          = read_version( 'pyEDM', '__init__.py' ),
     author           = 'Joseph Park & Cameron Smith',
     author_email     = 'Sugihara.Lab@gmail.com',
-    url              = 'https://github.com/SugiharaLab/pyEDM',
     description      = 'Python wrapper for cppEDM using pybind11',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
@@ -231,6 +230,11 @@ setup(
     python_requires  = '>=3.8',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
     zip_safe         = False,
+    project_urls = {
+        'Sugihara Lab' : 'https://deepeco.ucsd.edu/',
+        'Documentation': 'https://sugiharalab.github.io/EDM_Documentation/',
+        'Github'       : 'https://github.com/SugiharaLab/pyEDM',
+    },
 )
 #----------------------------------------------------------------------
 # [1] This test_suite doesn't seem terribly useful here in that its use
