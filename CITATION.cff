@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: pyEDM
+message: >-
+  If you use this software please cite. Licensed by the
+  University of California for educational, research and
+  non-profit purposes.
+type: software
+authors:
+  - given-names: Joseph
+    family-names: Park
+    email: josephpark@ieee.org
+    orcid: 'https://orcid.org/0000-0001-5411-1409'
+  - given-names: Cameron
+    family-names: Smith
+    orcid: 'https://orcid.org/0000-0003-0020-5607'
+    email: omid.smith.cameron@gmail.com
+  - {}
+identifiers:
+  - type: url
+    value: 'https://github.com/SugiharaLab/pyEDM'
+repository-code: 'https://github.com/SugiharaLab/pyEDM'
+url: 'https://github.com/SugiharaLab/pyEDM#readme'
+repository: 'https://pypi.org/project/pyEDM/'
+abstract: >-
+  Python wrapper of C++ EDM tools. UCSD Scripps Institution
+  of Oceanography, Sugihara Lab.
