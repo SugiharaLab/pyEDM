@@ -38,7 +38,8 @@ void SMapClass::SMap ( Solver solver ) {
 
     // Allocate output vectors to populate EDM class projections DataFrame.
     // Must be after FindNeighbors()
-    size_t Npred = knn_neighbors.NRows();
+    size_t Npred            = knn_neighbors.NRows();
+    size_t N_SingularValues = (size_t) parameters.E + 1;
 
     predictions       = std::valarray< double > ( 0., Npred );
     const_predictions = std::valarray< double > ( 0., Npred );
@@ -49,10 +50,40 @@ void SMapClass::SMap ( Solver solver ) {
     coefficients = DataFrame< double >( Npred + abs( parameters.Tp ),
                                         parameters.E + 1 );
 
+    singularValues = DataFrame< double >( Npred + abs( parameters.Tp ),
+                                          N_SingularValues );
+
     // Process each prediction row in neighbors : distances
     for ( size_t row = 0; row < Npred; row++ ) {
 
         size_t knn = knnSmap[ row ]; // knn is variable...
+
+        // Ensure E + 1 knn have been found, else continue
+        if ( (int) knn < parameters.E + 1 ) {
+            std::stringstream msg;
+            msg << "WARNING: SMap() Only " << knn << " knn at prediction row "
+                << parameters.prediction[ row ] << ". No prediction made.\n";
+            std::cout << msg.str();
+
+            RecordNan( row, N_SingularValues );
+            continue;
+        }
+
+        // if nan in pred, continue
+        if ( data.NanFound() ) {
+            bool nanPresent = false;
+
+            for ( size_t k = 0; k < knn; k++ ) {
+                if ( std::isnan( knn_distances( row, k ) ) ) {
+                    nanPresent = true;
+                    break;
+                }
+            }
+            if ( nanPresent ) {
+                RecordNan( row, N_SingularValues );
+                continue;
+            }
+        }
 
         // Average distance for knn
         double Dsum = 0;
@@ -90,7 +121,7 @@ void SMapClass::SMap ( Solver solver ) {
         for ( size_t k = 0; k < knn; k++ ) {
             libRowBase = knn_neighbors( row, k );
             libRow     = libRowBase + targetLibRowOffset;
-            
+
             B[ k ] = target[ libRow ];
 
             //---------------------------------------------------------------
@@ -114,7 +145,10 @@ void SMapClass::SMap ( Solver solver ) {
         B = w * B;      // Weight target/boundary condition vector for solver
 
         // Estimate linear mapping of predictions A onto target B
-        std::valarray < double > C = solver( A, B );
+        SVDValues SVD_ = solver( A, B );
+
+        std::valarray < double > C  = SVD_.coefficients;
+        std::valarray < double > SV = SVD_.singularValues;
 
         // Prediction is local linear projection
         double prediction = C[ 0 ]; // C[ 0 ] is the bias term
@@ -126,6 +160,7 @@ void SMapClass::SMap ( Solver solver ) {
 
         predictions[ row ] = prediction;
         coefficients.WriteRow( row, C );
+        singularValues.WriteRow( row, SV );
 
         // "Variance" estimate assuming weights are probabilities
         std::valarray< double > deltaSqr =
@@ -352,13 +387,30 @@ void SMapClass::Generate( Solver solver ) {
 //----------------------------------------------------------------
 // 
 //----------------------------------------------------------------
+void SMapClass::RecordNan( size_t row, size_t nSV ) {
+    // Record nan for prediction, variance and coefficients
+    predictions[ row ] = nan("SMap");
+    variance   [ row ] = nan("SMap");
+
+    std::valarray <double> nanCoef( nan("SMap"), parameters.E + 1 );
+    coefficients.WriteRow( row, nanCoef );
+
+    std::valarray <double> nanSV( nan("SMap"), nSV );
+    singularValues.WriteRow( row, nanSV );
+}
+
+//----------------------------------------------------------------
+// 
+//----------------------------------------------------------------
 void SMapClass::WriteOutput () {
 
-    // Process SMap coefficients output
+    // Process SMap coefficients and singularValues output
     // Set time from: data -> FormatOutput() -> FillTimes() -> projection
     if ( projection.Time().size() ) {
-        coefficients.Time()     = projection.Time();
-        coefficients.TimeName() = projection.TimeName();
+        coefficients.Time()       = projection.Time();
+        coefficients.TimeName()   = projection.TimeName();
+        singularValues.Time()     = projection.Time();
+        singularValues.TimeName() = projection.TimeName();
     }
     // else { throw ? }  JP
 
@@ -375,7 +427,8 @@ void SMapClass::WriteOutput () {
 
         for ( auto colName : columnNames ) {
             std::stringstream coefName;
-            //coefName << u8"∂" << parameters.targetNames.front() << u8"/∂" << colName;
+            //coefName << u8"∂" << parameters.targetNames.front()
+            //         << u8"/∂" << colName;
             coefName << "\u2202"  << parameters.targetNames.front()
                      << "/\u2202" << colName;
             coefNames.push_back( coefName.str() );
@@ -391,12 +444,23 @@ void SMapClass::WriteOutput () {
     }
     coefficients.ColumnNames() = coefNames;
 
+    // singularValues column names
+    std::vector<std::string> SVNames;
+    // Default: S0, S1, S2, ...
+    for ( size_t col = 0; col < singularValues.NColumns(); col++ ) {
+        std::stringstream SVName;
+        SVName << "S" << col;
+        SVNames.push_back( SVName.str() );
+    }
+    singularValues.ColumnNames() = SVNames;
+
     // coefficients has Npred + Tp rows, but coef were written in first Npred
     // Create coefficient column vector with Tp nan rows at the
     // beginning/end of coefficients as in FormatOutput()
-    std::valarray< double > coefColumnVec( NAN, coefficients.NRows() );
+    std::valarray< double > coefColumnVec( NAN, coefficients.NRows()   );
+    std::valarray< double > SVColumnVec  ( NAN, singularValues.NRows() );
 
-    // Copy/shift coefficients vectors
+    // Copy/shift coefficients & singularValues vectors
     std::slice slice_in = std::slice( 0, knn_neighbors.NRows(), 1 );
     std::slice slice_out;
     if ( parameters.Tp > -1 ) {
@@ -409,21 +473,28 @@ void SMapClass::WriteOutput () {
         coefColumnVec[ slice_out ] = coefficients.Column( col )[ slice_in ];
         coefficients.WriteColumn( col, coefColumnVec );
     }
+    for ( size_t col = 0; col < singularValues.NColumns(); col++ ) {
+        SVColumnVec[ slice_out ] = singularValues.Column( col )[ slice_in ];
+        singularValues.WriteColumn( col, SVColumnVec );
+    }
 
     if ( parameters.predictOutputFile.size() ) {
         projection.WriteData( parameters.pathOut,
                               parameters.predictOutputFile );
     }
-    if ( parameters.SmapOutputFile.size() ) {
-        coefficients.WriteData( parameters.pathOut, parameters.SmapOutputFile );
+    if ( parameters.SmapCoefFile.size() ) {
+        coefficients.WriteData( parameters.pathOut, parameters.SmapCoefFile );
+    }
+    if ( parameters.SmapSVFile.size() ) {
+        singularValues.WriteData( parameters.pathOut, parameters.SmapSVFile );
     }
 }
 
 //----------------------------------------------------------------
 // Singular Value Decomposition : wrapper for Lapack_SVD()
 //----------------------------------------------------------------
-std::valarray < double > SVD( DataFrame    < double > A,
-                              std::valarray< double > B ) {
+SVDValues SVD( DataFrame    < double > A,
+               std::valarray< double > B ) {
 
     // NOTE: A elements are Row Major format
     // Convert A to column major for LAPACK dgelss()
@@ -433,12 +504,11 @@ std::valarray < double > SVD( DataFrame    < double > A,
 
     double *b = &( B[0] );
 
-    std::valarray < double > C =
-        Lapack_SVD( A.NRows(),     // number of rows
-                    A.NColumns(),  // number of columns
-                    a,             // A
-                    b,             // b
-                    1.E-9 );       // rcond
+    SVDValues SVD_ =  Lapack_SVD( A.NRows(),     // number of rows
+                                  A.NColumns(),  // number of columns
+                                  a,             // A
+                                  b,             // b
+                                  1.E-9 );       // rcond
 
 #ifdef DEBUG_ALL
     std::cout << "SVD------------------------\n";
@@ -446,7 +516,7 @@ std::valarray < double > SVD( DataFrame    < double > A,
     std::cout << A << std::endl;
 #endif
 
-    return C;
+    return SVD_;
 }
 
 //-------------------------------------------------------------------------
@@ -498,11 +568,11 @@ extern "C" {
 //-----------------------------------------------------------------------
 // Wrapper for LAPACK dgelss_()
 //-----------------------------------------------------------------------
-std::valarray< double > Lapack_SVD( int     m, // rows in matrix
-                                    int     n, // columns in matrix
-                                    double *a, // ptr to top-left
-                                    double *b,
-                                    double  rcond )
+SVDValues Lapack_SVD( int     m, // rows in matrix
+                      int     n, // columns in matrix
+                      double *a, // ptr to top-left
+                      double *b,
+                      double  rcond )
 {
     int N_SingularValues = m < n ? m : n;
 
@@ -575,9 +645,15 @@ std::valarray< double > Lapack_SVD( int     m, // rows in matrix
     // Copy solution vector in b to C
     std::valarray< double > C( b, N_SingularValues );
 
+    // Copy singularValues in s to SV
+    std::valarray< double > SV( s, N_SingularValues );
+    SVDValues SVD_;
+    SVD_.coefficients   = C;
+    SVD_.singularValues = SV;
+
     delete[] s;
     delete[] work;
     delete[] iwork;
 
-    return C;
+    return SVD_;
 }

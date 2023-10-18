@@ -139,25 +139,32 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
 #
 # pybind Py   [ ( string, array ), ..., ]
 #------------------------------------------------------------------------
-def PandasDataFrametoDF( df ):
-    '''Convert Pandas DataFrame to DF struct.'''
+def PandasDataFrametoDF( df, noTime ):
+    '''Convert Pandas DataFrame to DF struct.
+       If noTime True, no time is present in 1st column, create index col.
+    '''
 
     if df is None :
         raise RuntimeError( "PandasDataFrametoDF() empty DataFrame" )
 
-    # Here is a fundamental problem/incompatability between cppEDM and pyEDM
-    # cppEDM DataFrame stores time vector as strings, and data as valarray
+    # Note:
+    # cppEDM DataFrame store time vector as strings, and data as valarray
     # time values are not strictly required DataFrame( noTime = true )
-    # Here, we don't have a way to know if the Pandas dataframe passed in
-    # will have a time vector or not... So... We will just require/assume
-    # that the first column is ALWAYS a time or index vector.
-    # Validate that at least 2 columns are provided
-    if df.shape[1] < 2:
+    # Validate that at least 2 columns are provided if noTime True
+    if not noTime and df.shape[1] < 2:
         raise RuntimeError( "PandasDataFrametoDF() DataFrame must have"
-                            " at least 2 columns. First column is time." )
-    timeName = df.columns[0]
-    timeVec  = df.get( timeName )
-    time     = [ str( x ) for x in timeVec ] # convert to list of strings
+                            " at least 2 columns with first column as time"
+                            " if noTime is False.")
+
+    if noTime :
+        # Insert first column of index from Pandas DataFrame.index
+        timeName = 'index'
+        time     = [ str( x + 1 ) for x in df.index ] # Unity-offset
+    else :
+        # Get time vector from first column
+        timeName = df.columns[0]
+        timeVec  = df.get( timeName )
+        time     = [ str( x ) for x in timeVec ] # convert to list of strings
 
     # Also require data homogeneity : all numeric, no mixed-data
     # but allow a Time first column that is an object...
@@ -169,8 +176,13 @@ def PandasDataFrametoDF( df ):
 
     dataList = []
 
-    # Add time series data, Skipping the first column!!!
-    for column in df.columns[1:] :
+    # Add time series data, Skipping first column if noTime False
+    if noTime :
+        start_i = 0
+    else:
+        start_i = 1
+
+    for column in df.columns[start_i:] :
         dataList.append( ( column, df.get( column ).tolist() ) )
 
     # cppEDM DF struct

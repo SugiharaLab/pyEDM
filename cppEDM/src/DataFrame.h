@@ -11,7 +11,7 @@
 #include <iomanip>
 #include <fstream>
 #include <iterator>
-#include <unordered_set>
+#include <set>
 
 // Common.cc
 extern std::vector<std::string> SplitString( std::string inString, 
@@ -41,8 +41,9 @@ class DataFrame {
     std::string                timeName;
     NamedData                  namedData;
 
-    std::vector< size_t > nanRows;   // SMap DataFrameRemoveNanRows
-    std::vector< size_t > validRows; // SMap DataFrameRemoveNanRows
+    bool                  nanFound;
+    std::vector< size_t > nanRows;
+    std::vector< size_t > validRows;
 
     size_t maxRowPrint;
     bool   noTime;
@@ -138,6 +139,8 @@ public:
         return columnNameToIndex;
     }
 
+    bool                   NanFound()  const { return nanFound;  }
+    bool                  &NanFound()        { return nanFound;  }
     std::vector< size_t >  NanRows()   const { return nanRows;   }
     std::vector< size_t > &NanRows()         { return nanRows;   }
     std::vector< size_t >  ValidRows() const { return validRows; }
@@ -323,16 +326,16 @@ public:
 
     //-----------------------------------------------------------------
     // Scan columns for nan
-    // If no nan: return false, do not set DataFrame nanRows & validRows
-    // If nan:    return true,  set DataFrame nanRows & validRows
+    // If no nan: nanFound false, do not set DataFrame nanRows & validRows
+    // If nan:    nanFound true,  set DataFrame nanRows & validRows
     //-----------------------------------------------------------------
-    bool NanRows( std::vector< std::string > columns ) {
+    void FindNan( std::vector< std::string > columns ) {
 
         nanRows.clear();  // JP instead: throw warn/error if already set?
         validRows.clear();
 
-        bool nanFound = false;
-        std::unordered_set< size_t > nanSetRows; // unique nan rows
+        nanFound = false;
+        std::set< size_t > nanSetRows; // unique nan rows
 
         // Scan each column
         for ( auto col : columns ) {
@@ -352,7 +355,7 @@ public:
             nanRows.insert( nanRows.end(), nanSetRows.begin(), nanSetRows.end());
 
             // validRows is compliment of nanRows
-            std::unordered_set< size_t >::const_iterator usi;
+            std::set< size_t >::const_iterator usi;
             for ( size_t row = 0; row < n_rows; row++ ) {
                 usi = nanSetRows.find( row );
                 if ( usi == nanSetRows.end() ) {
@@ -360,20 +363,16 @@ public:
                 }
             }
         }
-
-        return nanFound;
     }
 
     //-----------------------------------------------------------------
     // Return (sub)DataFrame with rows removed having nan in columns
     //-----------------------------------------------------------------
-    DataFrame< T > DataFrameRemoveNanRows() {
-
-        // NOTE: Call NanRows( columns ) first to set validRows
-        DataFrame< T > M = DataFrameFromRowIndex( validRows );
-
-        return M;
-    }
+    //DataFrame< T > DataFrameRemoveNanRows() {
+    //    // NOTE: Call FindNan( columns ) first to set validRows
+    //    DataFrame< T > M = DataFrameFromRowIndex( validRows );
+    //    return M;
+    //}
 
     //-----------------------------------------------------------------
     // Return Elements in Column Major order (Fortran)

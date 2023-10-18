@@ -26,8 +26,9 @@ public: // No need for private or protected
     DataFrame< size_t > allLibRows;   // 1 row,       N lib columns
     DataFrame< double > allDistances; // N pred rows  N lib columns
 
-    DataFrame< double > projection;   // Simplex & SMap Output
-    DataFrame< double > coefficients; // SMap Output
+    DataFrame< double > projection;     // Simplex & SMap Output
+    DataFrame< double > coefficients;   // SMap Output
+    DataFrame< double > singularValues; // SMap Output
 
     // Project() vectors to populate projection DataFrame in FormatData()
     // JP Can we do away with these and write directly to projection (+Tp)?

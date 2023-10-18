@@ -257,6 +257,7 @@ SimplexValues Simplex( DataFrame< double > & DF,
                                         exclusionRadius,
                                         columns, target, embedded,
                                         const_predict, verbose, validLib,
+                                        true,
                                         generateSteps, generateLibrary,
                                         parameterList );
 
@@ -279,7 +280,7 @@ SimplexValues Simplex( DataFrame< double > & DF,
 
 //----------------------------------------------------------------------------
 // 1) SMap with pathIn/dataFile input. Calls overload 2)
-//    Default SVD (LAPACK) assigned in SMap() overload 2)
+//    Default SVD (LAPACK) solver assigned in SMap() overload 2)
 //----------------------------------------------------------------------------
 SMapValues SMap( std::string pathIn,
                  std::string dataFile,
@@ -295,12 +296,13 @@ SMapValues SMap( std::string pathIn,
                  int         exclusionRadius,
                  std::string columns,
                  std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
+                 std::string smapCoefFile,
+                 std::string smapSVFile,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
                  std::vector<bool> validLib,
+                 bool        ignoreNan,
                  int         generateSteps,
                  bool        generateLibrary,
                  bool        parameterList )
@@ -312,16 +314,16 @@ SMapValues SMap( std::string pathIn,
     SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
-                                  columns, target, smapFile, derivatives, 
+                                  columns, target, smapCoefFile, smapSVFile, 
                                   embedded, const_predict, verbose, validLib,
-                                  generateSteps, generateLibrary,
+                                  ignoreNan, generateSteps, generateLibrary,
                                   parameterList );
     return SMapOutput;
 }
 
 //----------------------------------------------------------------------------
 // 2) SMap with DataFrame. Calls overload 4)
-//    Default SVD (LAPACK) was assigned in Smap.cc overload 2)
+//    Default SVD (LAPACK) solver is assigned here in the function call to 4)
 //----------------------------------------------------------------------------
 SMapValues SMap( DataFrame< double > & DF,
                  std::string pathOut,
@@ -336,12 +338,13 @@ SMapValues SMap( DataFrame< double > & DF,
                  int         exclusionRadius,
                  std::string columns,
                  std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
+                 std::string smapCoefFile,
+                 std::string smapSVFile,
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
                  std::vector<bool> validLib,
+                 bool        ignoreNan,
                  int         generateSteps,
                  bool        generateLibrary,
                  bool        parameterList )
@@ -350,10 +353,10 @@ SMapValues SMap( DataFrame< double > & DF,
     SMapValues SMapOutput = SMap( DF, pathOut, predictFile,
                                   lib, pred, E, Tp, knn, tau, theta, 
                                   exclusionRadius,
-                                  columns, target, smapFile, derivatives,
-                                  & SVD, // LAPACK SVD default
+                                  columns, target, smapCoefFile, smapSVFile,
+                                  & SVD, // Assign LAPACK SVD default solver
                                   embedded, const_predict, verbose, validLib,
-                                  generateSteps, generateLibrary,
+                                  ignoreNan, generateSteps, generateLibrary,
                                   parameterList );
 
     return SMapOutput;
@@ -376,14 +379,15 @@ SMapValues SMap( std::string pathIn,
                  int         exclusionRadius,
                  std::string columns,
                  std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 std::valarray< double > (*solver)(DataFrame < double >,
-                                               std::valarray < double >),
+                 std::string smapCoefFile,
+                 std::string smapSVFile,
+                 SVDValues  (*solver)(DataFrame < double >,
+                                      std::valarray < double >),
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
                  std::vector<bool> validLib,
+                 bool        ignoreNan,
                  int         generateSteps,
                  bool        generateLibrary,
                  bool        parameterList )
@@ -395,15 +399,16 @@ SMapValues SMap( std::string pathIn,
     SMapValues SMapOutput = SMap( std::ref( DF ), pathOut, predictFile,
                                   lib, pred, E, Tp, knn, tau, theta,
                                   exclusionRadius,
-                                  columns, target, smapFile, derivatives, 
+                                  columns, target, smapCoefFile, smapSVFile, 
                                   solver, embedded, const_predict, verbose,
-                                  validLib, generateSteps, generateLibrary,
+                                  validLib, ignoreNan,
+                                  generateSteps, generateLibrary,
                                   parameterList );
     return SMapOutput;
 }
 
 //----------------------------------------------------------------------------
-// 4) DataFrame with external solver object
+// 4) DataFrame with default SVD/BLAS or external solver object
 //----------------------------------------------------------------------------
 SMapValues SMap( DataFrame< double > & DF,
                  std::string pathOut,
@@ -418,92 +423,161 @@ SMapValues SMap( DataFrame< double > & DF,
                  int         exclusionRadius,
                  std::string columns,
                  std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
-                 std::valarray< double > (*solver)(DataFrame < double >,
-                                               std::valarray < double >),
+                 std::string smapCoefFile,
+                 std::string smapSVFile,
+                 SVDValues  (*solver)(DataFrame < double >,
+                                      std::valarray < double >),
                  bool        embedded,
                  bool        const_predict,
                  bool        verbose,
                  std::vector<bool> validLib,
+                 bool        ignoreNan,
                  int         generateSteps,
                  bool        generateLibrary,
                  bool        parameterList )
 {
-    if ( derivatives.size() ) {} // -Wunused-parameter
-
     Parameters parameters = Parameters( Method::SMap, "", "",
                                         pathOut, predictFile,
                                         lib, pred, E, Tp, knn, tau, theta,
                                         exclusionRadius,
                                         columns, target, embedded,
                                         const_predict, verbose, validLib,
+                                        ignoreNan,
                                         generateSteps, generateLibrary,
-                                        parameterList, smapFile );
+                                        parameterList, smapCoefFile, smapSVFile);
 
-    // Handle nan
-    // If nan are found in library or prediction rows of columns or target,
-    // remove them from DataFrame DF
-    //   nan rows are saved in DF nanRows, validRows
-    //   JP: Seems silly to do this check as a default...
+    //-----------------------------------------------------------------
+    // Detect nan : BLAS solver does not allow nan
+    //-----------------------------------------------------------------
     std::vector< std::string > nanColsCheck = parameters.columnNames;
     // Add target to nanColsCheck for DF.NanRows()
-    // Don't add empty or degenerate target
     if ( not parameters.targetNames.empty() and
          find( nanColsCheck.begin(), nanColsCheck.end(),
                parameters.targetNames.front() ) == nanColsCheck.end() ) {
         nanColsCheck.push_back( parameters.targetNames.front() );
     }
-    bool nanFound = DF.NanRows( nanColsCheck ); // Look for nan
+    DF.FindNan( nanColsCheck ); // If nan, set DF.nanFound, DF.nanRows
 
-    // Reference to DF or DataFrameRemoveNanRows
-    DataFrame< double > DF_ = std::ref( DF );
-
-    if ( nanFound ) {
-        // Remove DF nanRows from parameters.library and prediction
-        // If any nan are found, set nanRemovedLibPred true
-        bool nanRemovedLibPred = false;
-        
-        // First, sort nanRows to delete from lib/pred in reverse order
-        std::sort( DF.NanRows().begin(), DF.NanRows().end() );
-
-        // Now erase in reverse order
-        std::vector< size_t >::iterator         vi;
-        std::vector< size_t >::reverse_iterator ri;
-
-        for ( ri = DF.NanRows().rbegin(); ri != DF.NanRows().rend(); ++ri ) {
-            vi = std::find( parameters.library.begin(),
-                            parameters.library.end(), *ri );
-            if ( vi != parameters.library.end() ) {
-                parameters.library.erase( vi );
-                if ( not nanRemovedLibPred ){ nanRemovedLibPred = true; }
-            }
-            vi = std::find( parameters.prediction.begin(),
-                            parameters.prediction.end(), *ri );
-            if ( vi != parameters.prediction.end() ) {
-                parameters.prediction.erase( vi );
-                if ( not nanRemovedLibPred ){ nanRemovedLibPred = true; }
-            }
+    if ( DF.NanFound() ) {
+        // Issue warning
+        std::stringstream msg;
+        msg << "WARNING: SMap() " << DF.NanRows().size()
+            << " nan rows detected in columns or target. "
+            << "Original number of rows " << DF.NRows() << ".\n";
+        if ( not parameters.embedded ) {
+            msg << "Time delay embedding presumption violated.\n";
         }
+        std::cout << msg.str();
 
-        if ( nanRemovedLibPred ) {
-            // JP: If DF is large, it is dumb to create a new DF
-            DataFrame< double > DFNanRemove = DF.DataFrameRemoveNanRows();
-            DF_ = std::ref( DFNanRemove );
-            
-            std::stringstream msg;
-            msg << "WARNING: SMap() nan rows detected in columns or target. "
-                << DF.NanRows().size() << " deleted. "
-                << "Original number of rows " << DF.NRows() << ".\n";
-            if ( not parameters.embedded ) {
-                msg << "Time delay embedding presumption violated.\n";
-            }
+        if ( parameters.verbose ) {
+            msg.str( std::string() ); // clear msg 
+            msg << "WARNING: SMap() nan rows: ";
+            std::vector< size_t >::iterator ni;
+            for ( ni = DF.NanRows().begin(); ni != DF.NanRows().end(); ++ni ) {
+                msg << *ni + 1 << " ";
+            } msg << "\n";
             std::cout << msg.str();
         }
     }
 
+    //-----------------------------------------------------------------
+    // If NanFound : create new library with gaps for nan
+    //-----------------------------------------------------------------
+    if ( parameters.ignoreNan and DF.NanFound() ) {
+        // Use Parameters.Validate() to regenerate library with gaps
+
+        // Copy of full library indices (0-offset) from parameters
+        std::vector< size_t > libVec_0( parameters.library );
+
+        std::vector< size_t >::iterator ni;
+        std::vector< size_t >::iterator fi;
+        std::vector< size_t >::iterator li;
+
+        //------------------------------------------------------------
+        // Remove NanRows from libVec
+        //------------------------------------------------------------
+        for ( ni = DF.NanRows().begin(); ni != DF.NanRows().end(); ++ni ) {
+            size_t nanRow_0 = *ni; // 0-offset NanRow
+
+            fi = std::find( libVec_0.begin(), libVec_0.end(), nanRow_0 );
+
+            if ( fi !=  libVec_0.end() ) {
+                // Found nanRow_0 in libVec, erase it
+                libVec_0.erase( fi );
+            }
+        }
+
+        //------------------------------------------------------------
+        // Build new lib pairs from sequential values of libVec
+        //------------------------------------------------------------
+        std::vector< size_t > libNew_1;
+        libNew_1.push_back( libVec_0.front() + 1 ); // Insert first element
+
+        int previousLib_1    = (int) libVec_0.front() + 1;
+        int deltaRow         = 0;
+        int previousDeltaRow = 1;
+
+        for ( li = libVec_0.begin() + 1; li != libVec_0.end(); ++li ) {
+            size_t libRow_1 = *li + 1;
+
+            deltaRow = (int) libRow_1 - previousLib_1;
+
+            if ( deltaRow == 1 ) {
+                // sequential lib_i, do not add
+            }
+            else if ( previousDeltaRow != 1 ) {
+                // increment previous lib row
+                *(libNew_1.end() - 1) = libNew_1.back() + deltaRow;
+            }
+            else {
+                // Insert gap start : end
+                libNew_1.push_back((size_t) previousLib_1);
+                libNew_1.push_back( libRow_1 );
+            }
+
+            previousLib_1    = (int) libRow_1;
+            previousDeltaRow = deltaRow;
+        }
+
+        libNew_1.push_back( libVec_0.back() + 1 ); // Insert last element
+
+        // Edge case of redundant first two indices
+        if ( libNew_1[0] == libNew_1[1] ) {
+            libNew_1.erase( libNew_1.begin(), libNew_1.begin() + 2 );
+        }
+
+        // Edge case of redundant last two indices
+        if ( *(libNew_1.end()-1) == *(libNew_1.end() - 2) ) {
+            libNew_1.erase( libNew_1.end() - 2, libNew_1.end() );
+        }
+
+        // Parse numeric vector to string for Parameters.Validate()
+        std::stringstream libNew_1_ss;
+        for ( size_t i = 0; i < libNew_1.size(); i++ ) {
+            libNew_1_ss << libNew_1[i] << " ";
+        }
+        std::string libNew = libNew_1_ss.str();
+
+        if ( parameters.verbose ) {
+            std::stringstream msg;
+            msg << "WARNING: SMap() New library spec to avoid nan: "
+                << libNew << std::endl;
+            std::cout << msg.str();
+        }
+
+        // Using libNew string of library pairs, create new library
+        parameters = Parameters( Method::SMap, "", "",
+                                 pathOut, predictFile,
+                                 libNew, pred, E, Tp, knn, tau, theta,
+                                 exclusionRadius,
+                                 columns, target, embedded,
+                                 const_predict, verbose, validLib, ignoreNan,
+                                 generateSteps, generateLibrary,
+                                 parameterList, smapCoefFile, smapSVFile );
+    } // if ( DF.NanFound() )
+
     // Instantiate EDM::SMapClass object
-    SMapClass SMapModel = SMapClass( DF_, std::ref( parameters ) );
+    SMapClass SMapModel = SMapClass( DF, std::ref( parameters ) );
 
     if ( generateSteps ) {
         SMapModel.Generate( solver );
@@ -512,10 +586,11 @@ SMapValues SMap( DataFrame< double > & DF,
         SMapModel.Project( solver );
     }
 
-    SMapValues values   = SMapValues();
-    values.predictions  = SMapModel.projection;
-    values.coefficients = SMapModel.coefficients;
-    values.parameterMap = SMapModel.parameters.Map;
+    SMapValues values     = SMapValues();
+    values.predictions    = SMapModel.projection;
+    values.coefficients   = SMapModel.coefficients;
+    values.singularValues = SMapModel.singularValues;
+    values.parameterMap   = SMapModel.parameters.Map;
 
     return values;
 }
@@ -603,11 +678,13 @@ CCMValues CCM( DataFrame< double > & DF,
                                         false,           // const_predict
                                         verbose,         // 
                                         std::vector<bool>(), // validLib
+                                        true,            // ignoreNan
                                         0,               // generateSteps
                                         false,           // generateLibrary
                                         parameterList,   //
-                                        "",              // SmapFile
-                                        "",              // blockFile
+                                        "",              // SmapOutputFile
+                                        "",              // SmapSVFile
+                                        "",              // blockOutputFile
                                         0,               // multiviewEnsemble
                                         0,               // multiviewD
                                         false,           // multiviewTrainLib
@@ -716,11 +793,13 @@ MultiviewValues Multiview( DataFrame< double > & DF,
                                         false,        // const_predict
                                         verbose,      // 
                                         std::vector<bool>(), // validLib
+                                        true,         // ignoreNan
                                         0,            // generateSteps
                                         false,        // generateLibrary
                                         parameterList,//
-                                        "",           // SmapFile
-                                        "",           // blockFile
+                                        "",           // SmapOutputFile
+                                        "",           // SmapSVFile
+                                        "",           // blockOutputFile
                                         multiview,    // multiviewEnsemble,
                                         D,            // multiviewD
                                         trainLib,     // multiviewTrainLib

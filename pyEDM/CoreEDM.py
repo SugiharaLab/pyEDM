@@ -10,6 +10,27 @@ import pyEDM.AuxFunc
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
+def GetDF( dataFile, dataFrame, noTime, func ):
+    '''Establish DF as empty list or create from Pandas DataFrame 
+       DF is a C++ struct to hold cppEDM DataFrame values 
+       see: src/bindings/PyBind.h
+       If the API function is passed dataFile, dataFile is
+       passed directly to cppEDM API, no need to create DF.
+    '''
+    if dataFile :
+        DF = pyBindEDM.DF() 
+    elif isinstance( dataFrame, DataFrame ) :
+        if dataFrame.empty :
+            raise Exception( func + "(): dataFrame is empty." )
+        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame, noTime )
+    else :
+        raise Exception( func + "(): Invalid data input." )
+
+    return DF
+
+#------------------------------------------------------------------------
+# 
+#------------------------------------------------------------------------
 def MakeBlock( dataFrame,
                E             = 0, 
                tau           = -1,
@@ -49,14 +70,7 @@ def Embed( pathIn    = "./",
        Calls MakeBlock() after validation and column subset selection.'''
 
     # Establish DF as empty list or Pandas DataFrame for Embed()
-    if dataFile :
-        DF = pyBindEDM.DF() 
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "Embed(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "Embed(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, False, "Embed" )
 
     # If columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
@@ -99,19 +113,13 @@ def Simplex( pathIn          = "./",
              validLib        = [],
              generateSteps   = 0,
              generateLibrary = False,
-             parameterList   = False
+             parameterList   = False,
+             noTime          = False
              ):
     '''Simplex prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
-    if dataFile :
-        DF = pyBindEDM.DF()
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "Simplex(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "Simplex(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "Simplex" )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -177,29 +185,24 @@ def SMap( pathIn          = "./",
           exclusionRadius = 0,
           columns         = "",
           target          = "",
-          smapFile        = "",
-          jacobians       = "",
+          smapCoefFile    = "",
+          smapSVFile      = "",
           solver          = None,
           embedded        = False,
           verbose         = False,
           const_pred      = False,
           showPlot        = False,
           validLib        = [],
+          ignoreNan       = True,
           generateSteps   = 0,
           generateLibrary = False,
-          parameterList   = False
+          parameterList   = False,
+          noTime          = False
           ):
     '''S-Map prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
-    if dataFile :
-        DF = pyBindEDM.DF() 
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "SMap(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "SMap(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "SMap" )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -218,7 +221,8 @@ def SMap( pathIn          = "./",
             raise Exception( "SMap(): Invalid solver." )
 
     # D is a Python dict from pybind11 < cppEDM SMap:
-    #  { "predictions" : {}, "coefficients" : {}, ["parameters" : {}] }
+    #  { "predictions" : {}, "coefficients" : {},
+    #    "singularValues : {}, ["parameters" : {}] }
     D = pyBindEDM.SMap( pathIn,
                         dataFile,
                         DF,
@@ -234,21 +238,25 @@ def SMap( pathIn          = "./",
                         exclusionRadius,
                         columns,
                         target,
-                        smapFile,
-                        jacobians,
+                        smapCoefFile,
+                        smapSVFile,
                         solver,
                         embedded,
                         const_pred,
                         verbose,
                         validLib,
+                        ignoreNan,
                         generateSteps,
                         generateLibrary,
                         parameterList )
 
-    df_pred = DataFrame( D['predictions']  ) # Convert to pandas DataFrame
-    df_coef = DataFrame( D['coefficients'] ) # Convert to pandas DataFrame
+    df_pred = DataFrame( D['predictions']    ) # Convert to pandas DataFrame
+    df_coef = DataFrame( D['coefficients']   ) # Convert to pandas DataFrame
+    df_SV   = DataFrame( D['singularValues'] ) # Convert to pandas DataFrame
 
-    SMapDict = { 'predictions' : df_pred, 'coefficients' : df_coef }
+    SMapDict = { 'predictions'    : df_pred,
+                 'coefficients'   : df_coef,
+                 'singularValues' : df_SV }
 
     if parameterList :
         SMapDict[ 'parameters' ] = D[ 'parameters' ]
@@ -285,18 +293,12 @@ def Multiview( pathIn          = "./",
                parameterList   = False,
                verbose         = False,
                numThreads      = 4,
-               showPlot        = False ):
+               showPlot        = False,
+               noTime          = False ):
     '''Multiview prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
-    if dataFile :
-        DF = pyBindEDM.DF() 
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "Multiview(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "Multiview(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "Multiview" )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -371,20 +373,14 @@ def CCM( pathIn           = "./",
          includeData      = False,
          parameterList    = False,
          verbose          = False,
-         showPlot         = False ) :
+         showPlot         = False,
+         noTime           = False ) :
     '''Convergent Cross Mapping on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for CCM()
-    if dataFile :
-        DF = pyBindEDM.DF()
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "CCM(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "CCM(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "CCM" )
 
-    # If columns, libSizes, target are not string, but iterable, convert to string
+    # If columns, libSizes, target are not string, but iterable convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
         columns = ' '.join( map( str, columns ) )
     if pyEDM.AuxFunc.NotStringIterable( libSizes ) :
@@ -463,18 +459,12 @@ def EmbedDimension( pathIn          = "./",
                     verbose         = False,
                     validLib        = [],
                     numThreads      = 4,
-                    showPlot        = True ):
+                    showPlot        = True,
+                    noTime          = False ):
     '''Estimate optimal embedding dimension [1:maxE].'''
 
     # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
-    if dataFile :
-        DF = pyBindEDM.DF()
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "EmbedDimension(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "EmbedDimension(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "EmbedDimension" )
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -535,20 +525,14 @@ def PredictInterval( pathIn          = "./",
                      verbose         = False,
                      validLib        = [],
                      numThreads      = 4,
-                     showPlot        = True ):
+                     showPlot        = True,
+                     noTime          = False ):
     '''Estimate optimal prediction interval [1:maxTp]'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictInterval()
-    if dataFile :
-        DF = pyBindEDM.DF()
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "PredictInterval(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "PredictInterval(): Invalid data input." )
-
-     # If lib, pred, columns are not string, but iterable, convert to string
+    DF = GetDF( dataFile, dataFrame, noTime, "PredictInterval" )
+    
+    # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
@@ -611,18 +595,12 @@ def PredictNonlinear( pathIn          = "./",
                       verbose         = False,
                       validLib        = [],
                       numThreads      = 4,
-                      showPlot        = True ):
+                      showPlot        = True,
+                      noTime          = False ):
     '''Estimate S-map localisation over theta.'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
-    if dataFile :
-        DF = pyBindEDM.DF()
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( "PredictNonlinear(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame )
-    else :
-        raise Exception( "PredictNonlinear(): Invalid data input." )
+    DF = GetDF( dataFile, dataFrame, noTime, "PredictNonlinear" )
 
     # If lib,pred,columns,theta are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :

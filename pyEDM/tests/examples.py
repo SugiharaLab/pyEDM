@@ -10,8 +10,8 @@ def main():
        df denotes a Pandas DataFrame.
        S and M denote dictionaries of Pandas DataFrames'''
 
-    dataFiles = [ "TentMap_rEDM.csv",
-                  "TentMapNoise_rEDM.csv",
+    dataFiles = [ "TentMap.csv",
+                  "TentMapNoise.csv",
                   "circle.csv",
                   "block_3sp.csv",
                   "sardine_anchovy_sst.csv" ]
@@ -29,20 +29,20 @@ def main():
                              file + " in EDM package" )
 
     # Note the path argument is empty "", file path is in Files{}
-    df = EDM.EmbedDimension( pathIn = "", dataFile = Files["TentMap_rEDM.csv"],
+    df = EDM.EmbedDimension( pathIn = "", dataFile = Files["TentMap.csv"],
                              lib = "1 100", pred = "201 500", maxE = 10,
                              Tp = 1, tau = -1, exclusionRadius = 0,
                              columns = "TentMap", target = "TentMap",
                              validLib = [], numThreads = 4 )
     
-    df = EDM.PredictInterval( pathIn = "", dataFile = Files["TentMap_rEDM.csv"],
+    df = EDM.PredictInterval( pathIn = "", dataFile = Files["TentMap.csv"],
                               lib = "1 100", pred = "201 500", maxTp = 10,
                               E = 2, tau = -1, exclusionRadius = 0,
                               columns = "TentMap", target = "TentMap",
                               validLib = [], numThreads = 4 );
 
     df = EDM.PredictNonlinear( pathIn = "",
-                               dataFile = Files[ "TentMapNoise_rEDM.csv" ],
+                               dataFile = Files[ "TentMapNoise.csv" ],
                                lib = "1 100", pred = "201 500", E = 2,
                                Tp = 1, knn = 0, tau = -1,
                                columns = "TentMap", target = "TentMap",

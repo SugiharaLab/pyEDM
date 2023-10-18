@@ -38,7 +38,13 @@ struct SimplexValues {
 struct SMapValues {
     DataFrame< double >                  predictions;
     DataFrame< double >                  coefficients;
+    DataFrame< double >                  singularValues;
     std::map< std::string, std::string > parameterMap;
+};
+
+struct SVDValues {
+    std::valarray< double > coefficients;
+    std::valarray< double > singularValues;
 };
 
 // Return object for CrossMap() worker function

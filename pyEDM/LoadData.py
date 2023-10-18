@@ -4,9 +4,10 @@ import pkg_resources # Get data file pathnames from EDM package
 
 from pandas import read_csv
 
-dataFileNames = [ ("TentMap_rEDM.csv",        "TentMap"),
-                  ("TentMapNoise_rEDM.csv",   "TentMapNoise"),
+dataFileNames = [ ("TentMap.csv",             "TentMap"),
+                  ("TentMapNoise.csv",        "TentMapNoise"),
                   ("circle.csv",              "circle"),
+                  ("circle_noise.csv",        "circleNoise"),
                   ("block_3sp.csv",           "block_3sp"),
                   ("sardine_anchovy_sst.csv", "sardine_anchovy_sst"),
                   ("LorenzData1000.csv",      "Lorenz5D"),

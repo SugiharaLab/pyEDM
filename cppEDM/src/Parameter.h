@@ -45,13 +45,15 @@ public: // No need for protected or private
     bool        verbose;
 
     std::vector<bool> validLib;    // maps row to valid library flag
+    bool        ignoreNan;         // SMap create new library to ignore nan
 
     int         generateSteps;     // Number of timesteps to feedback generate
     bool        generateLibrary;   // Increment library with generated data
 
     bool        parameterList;     // Add parameter list to output
 
-    std::string SmapOutputFile;    // path for output file
+    std::string SmapCoefFile;      // path for output file
+    std::string SmapSVFile;        // path for output file
     std::string blockOutputFile;   // Embed() output file
 
     int         multiviewEnsemble; // Number of ensembles in multiview
@@ -101,12 +103,14 @@ public: // No need for protected or private
         bool        verbose           = false,
 
         std::vector<bool> validLib    = std::vector<bool>(),
+        bool              ignoreNan   = true,
 
         int         generateSteps     = 0,
         bool        generateLibrary   = false,
         bool        parameterList     = false,
 
-        std::string SmapOutputFile    = "",
+        std::string SmapCoefFile      = "",
+        std::string SmapSVFile        = "",
         std::string blockOutputFile   = "",        
 
         int         multiviewEnsemble      = 0,
