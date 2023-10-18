@@ -10,8 +10,8 @@ py::object SmapSolverObject = pybind11::cast<pybind11::none>(Py_None);
 //----------------------------------------------------------
 // Wrapper for the SMap solver from sklearn.linear_model
 //----------------------------------------------------------
-std::valarray<double> SmapSolver( DataFrame< double >     A,
-                                  std::valarray< double > B ) {
+SVDValues SmapSolver( DataFrame< double >     A,
+                      std::valarray< double > B ) {
 
     // The construction of coefficient marix A in cppEDM::SMap inserts
     // a unity vector in the first column to create a bias (intercept)
@@ -38,9 +38,42 @@ std::valarray<double> SmapSolver( DataFrame< double >     A,
     // Insert intercept bias vector as leading coefficient as in cppEDM::SMap
     coeffs.insert( coeffs.begin(), intercept );
 
-    std::valarray<double> solutionValArr( coeffs.data(), coeffs.size() );
+    std::valarray<double> coefficients( coeffs.data(), coeffs.size() );
 
-    return solutionValArr;
+    // Only LinearRegression has singular_
+    std::vector<double> SV;
+    bool singularFound = false;
+    // JP There must be a better way to check if the generic Python object
+    // has attribute singular_. pybind11 does not have a c++ equivalent of
+    // python builtin hasattr()
+    try {    
+        SV = SmapSolverObject.attr("singular_").cast< std::vector<double> >();
+        singularFound = true;
+    }
+    catch ( const std::exception& e ) {
+        singularFound = false;
+        //std::cout << e.what() << std::endl;
+    }
+
+    std::valarray<double> singularValues;
+    if ( singularFound ) {
+        // Since sklearn.linear_model's include an intercept term by default
+        // the first column in A was removed (intercept term in cppEDM),
+        // so LinearRegression returns E, not E+1 singular values
+        // cppEDM expects E+1. Add an E+1 entry at the intercept (first) col
+        SV.insert( SV.begin(), nan("SMap") );
+        singularValues = std::valarray<double>( SV.data(), SV.size() );
+    }
+    else {
+        // insert nan for singularValues
+        singularValues.resize( coeffs.size(), nan("SMap") );
+    }
+
+    SVDValues SVD_;
+    SVD_.coefficients   = coefficients;
+    SVD_.singularValues = singularValues;
+    
+    return SVD_;
 };
 
 //----------------------------------------------------------
@@ -62,13 +95,14 @@ std::map< std::string, py::dict >
                  int         exclusionRadius,
                  std::string columns,
                  std::string target,
-                 std::string smapFile,
-                 std::string derivatives,
+                 std::string smapCoefFile,
+                 std::string smapSVFile,
                  py::object  solver,
                  bool        embedded,
                  bool        const_predcit,
                  bool        verbose,
                  std::vector<bool> validLib,
+                 bool        ignoreNan,
                  int         generateSteps,
                  bool        generateLibrary,
                  bool        parameterList
@@ -99,13 +133,14 @@ std::map< std::string, py::dict >
                    exclusionRadius,
                    columns, 
                    target,
-                   smapFile,
-                   derivatives,
+                   smapCoefFile,
+                   smapSVFile,
                    solver_,
                    embedded,
                    const_predcit,
                    verbose,
                    validLib,
+                   ignoreNan,
                    generateSteps,
                    generateLibrary,
                    parameterList );
@@ -126,13 +161,14 @@ std::map< std::string, py::dict >
                    exclusionRadius,
                    columns, 
                    target,
-                   smapFile,
-                   derivatives,
+                   smapCoefFile,
+                   smapSVFile,
                    solver_,
                    embedded,
                    const_predcit,
                    verbose,
                    validLib,
+                   ignoreNan,
                    generateSteps,
                    generateLibrary,
                    parameterList );
@@ -141,13 +177,15 @@ std::map< std::string, py::dict >
         throw std::runtime_error( "SMap_pybind(): Invalid input.\n" );
     }
 
-    DF df_pred = DataFrameToDF( SM.predictions  );
-    DF df_coef = DataFrameToDF( SM.coefficients );
+    DF df_pred = DataFrameToDF( SM.predictions    );
+    DF df_coef = DataFrameToDF( SM.coefficients   );
+    DF df_SV   = DataFrameToDF( SM.singularValues );
 
     std::map< std::string, py::dict > SMap_;
 
-    SMap_["predictions" ] = DFtoDict( df_pred );
-    SMap_["coefficients"] = DFtoDict( df_coef );
+    SMap_["predictions" ]   = DFtoDict( df_pred );
+    SMap_["coefficients"]   = DFtoDict( df_coef );
+    SMap_["singularValues"] = DFtoDict( df_SV   );
 
     if ( parameterList ) {
         SMap_["parameters"] = ParamMaptoDict( SM.parameterMap );

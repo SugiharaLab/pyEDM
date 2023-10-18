@@ -139,7 +139,8 @@ py::dict ParamMaptoDict( std::map< std::string, std::string > m ) {
              pi->first == "target"   or pi->first == "pathIn"  or
              pi->first == "dataFile" or pi->first == "pathOut" or
              pi->first == "predictOutputFile" or
-             pi->first == "SmapOutputFile"    or
+             pi->first == "SmapCoefFile"      or
+             pi->first == "SmapSVFile"        or
              pi->first == "blockOutputFile" ) {
             // Why is cast required for string key but not valarray?
             D[ py::str( pi->first ) ] = pi->second;
@@ -165,7 +166,9 @@ py::dict ParamMaptoDict( std::map< std::string, std::string > m ) {
                   pi->first == "const_predict"   or
                   pi->first == "generateLibrary" or
                   pi->first == "parameterList"   or
-                  pi->first == "verbose" ) {
+                  pi->first == "verbose"         or
+                  pi->first == "noTime"          or
+                  pi->first == "ignoreNan" ) {
             if ( pi->second == "0" ) {
                 D[ py::str( pi->first ) ] = false;
             }

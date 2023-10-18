@@ -30,12 +30,14 @@ Parameters::Parameters(
     bool        verbose,
 
     std::vector<bool> validLib,
+    bool              ignoreNan,
 
     int         generateSteps,
     bool        generateLibrary,
     bool        parameterList,
-    
-    std::string SmapOutputFile,
+
+    std::string SmapCoefFile,
+    std::string SmapSVFile,
     std::string blockOutputFile,
 
     int         multiviewEnsemble,
@@ -75,12 +77,14 @@ Parameters::Parameters(
     verbose          ( verbose ),
 
     validLib         ( validLib ),
+    ignoreNan        ( ignoreNan ),
 
     generateSteps    ( generateSteps ),
     generateLibrary  ( generateLibrary ),
     parameterList    ( parameterList ),
 
-    SmapOutputFile   ( SmapOutputFile ),
+    SmapCoefFile     ( SmapCoefFile ),
+    SmapSVFile       ( SmapSVFile ),
     blockOutputFile  ( blockOutputFile ),
 
     multiviewEnsemble     ( multiviewEnsemble ),
@@ -98,7 +102,7 @@ Parameters::Parameters(
     validated        ( false ),
 
     // Instantiate Version
-    version( 1, 14, 3, "2023-07-05" )
+    version( 1, 15, 0, "2023-10-21" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -808,6 +812,10 @@ void Parameters::FillMap() {
     Map[ "validLib" ] = ss.str();
     ss.str( std::string() );
 
+    ss << ignoreNan;
+    Map[ "ignoreNan" ] = ss.str();
+    ss.str( std::string() );
+
     ss << const_predict;
     Map[ "const_predict" ] = ss.str();
     ss.str( std::string() );
@@ -844,11 +852,15 @@ void Parameters::FillMap() {
     Map[ "predictOutputFile" ] = ss.str();
     ss.str( std::string() );
 
-    ss << SmapOutputFile;
-    Map[ "SmapOutputFile" ] = ss.str();
+    ss << SmapCoefFile;
+    Map[ "SmapCoefFile" ] = ss.str();
     ss.str( std::string() );
 
-    ss << blockOutputFile;
+    ss << SmapSVFile;
+    Map[ "SmapSVFile" ] = ss.str();
+    ss.str( std::string() );
+
+   ss << blockOutputFile;
     Map[ "blockOutputFile" ] = ss.str();
     ss.str( std::string() );
 }

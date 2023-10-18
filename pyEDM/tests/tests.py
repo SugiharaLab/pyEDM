@@ -9,7 +9,10 @@ from pandas import read_csv
 # Suite of tests
 #----------------------------------------------------------------
 class test_EDM( unittest.TestCase ):
-
+    '''Note these tests are minimal, only intended to exercise the API.
+       Numerical tests are performed in cppEDM unit tests.
+       The examples.py and smapSolverTest.py must also run.
+    '''
     #def __init__(self, *args, **kwargs):
     #    super( test_EDM, self ).__init__( *args, **kwargs )
 
@@ -35,7 +38,8 @@ class test_EDM( unittest.TestCase ):
                       "Multiview_pred_valid.csv",
                       "Multiview_combos_valid.csv",
                       "sardine_anchovy_sst.csv",
-                      "CCM_anch_sst_cppEDM_valid.csv" ]
+                      "CCM_anch_sst_cppEDM_valid.csv",
+                      "Smap_circle_noTime_valid.csv" ]
         
         # Create map of module dataFiles pathnames in Files
         for file in dataFiles:
@@ -101,7 +105,7 @@ class test_EDM( unittest.TestCase ):
         SM = EDM.SMap( "", "", dfc, "", "",
                        "1 100", "101 198", 2, 1, 0, -1, 4, 0,
                        "x y", "x", "", "",
-                       None, True, False, False, False, [], 0, False )
+                       None, True, False, False, False, [], True, 0, False )
         
         df = SM['predictions']
         
@@ -120,12 +124,36 @@ class test_EDM( unittest.TestCase ):
         SM = EDM.SMap( "", self.Files[ "block_3sp.csv" ], None, "./", "", 
                        "1 99", "100 198", 3, 1, 0, -1, 2, 0,
                        "x_t y_t z_t", "x_t", "", "",
-                       None, True, False, False, False, [], 0, False )
+                       None, True, False, False, False, [], True, 0, False )
 
         df = SM['predictions']
 
         dfv = EDM.ReadDataFrame( "",
                                  self.Files[ "Smap_embd_block_3sp_pyEDM.csv" ] )
+
+        S1 =       dfv.get('Predictions')
+        S2 = round( df.get('Predictions'), 4 ) 
+        self.assertTrue( S1.equals( S2 ) )
+
+    #------------------------------------------------------------
+    def test_smap3( self ):
+        #--------------------------------------------------------
+        # circle noTime = True
+        #--------------------------------------------------------
+        print ( "--- S-map circle noTime = True ---" )
+        dfcirc = read_csv( self.Files[ "circle.csv" ] )
+        dfcirc = dfcirc[['x']]
+        
+        SM = EDM.SMap( "", "", dfcirc, "./", "", 
+                       "1 100", "101 190", 2, 1, 0, -1, 2, 0,
+                       "x", "x", "", "", 
+                       None, False, False, False, False, [],
+                       True, 0, False, False, True )
+
+        df = SM['predictions']
+
+        dfv = EDM.ReadDataFrame( "",
+                                 self.Files[ "Smap_circle_noTime_valid.csv" ] )
 
         S1 =       dfv.get('Predictions')
         S2 = round( df.get('Predictions'), 4 ) 
