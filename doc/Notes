@@ -1,9 +1,9 @@
 
 Python interface to C++ EDM (cppEDM) using pybind11.
 
-To install the Python EDM package: python -m pip install EDM
+To install the Python pyEDM package: python -m pip install pyEDM
 
-To install a local EDM module: python -m pip install . --user
+To install a local pyEDM module: python -m pip install . --user
 
 To build the wheel distribution: python setup.py sdist bdist_wheel
 
@@ -17,6 +17,10 @@ libEDM.a must be compiled with -fPIC.
 
 2022-01-21 : Note. We now use mingw in an Azure DevOps pipeline to
 build Windows.  Notes below on MSVC are retained for information.
+
+Windows is PITA. We use a prebuilt libopenblas.a (dll), which is of
+course not optimized for specific arch.
+Source: https://sourceforge.net/projects/openblas/
 
 Build/system differences to support Windows MSVC.
 ------------------------------------------------------------------------
