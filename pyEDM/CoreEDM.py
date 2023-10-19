@@ -10,27 +10,6 @@ import pyEDM.AuxFunc
 #------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------
-def GetDF( dataFile, dataFrame, noTime, func ):
-    '''Establish DF as empty list or create from Pandas DataFrame 
-       DF is a C++ struct to hold cppEDM DataFrame values 
-       see: src/bindings/PyBind.h
-       If the API function is passed dataFile, dataFile is
-       passed directly to cppEDM API, no need to create DF.
-    '''
-    if dataFile :
-        DF = pyBindEDM.DF() 
-    elif isinstance( dataFrame, DataFrame ) :
-        if dataFrame.empty :
-            raise Exception( func + "(): dataFrame is empty." )
-        DF = pyEDM.AuxFunc.PandasDataFrametoDF( dataFrame, noTime )
-    else :
-        raise Exception( func + "(): Invalid data input." )
-
-    return DF
-
-#------------------------------------------------------------------------
-# 
-#------------------------------------------------------------------------
 def MakeBlock( dataFrame,
                E             = 0, 
                tau           = -1,
@@ -70,7 +49,7 @@ def Embed( pathIn    = "./",
        Calls MakeBlock() after validation and column subset selection.'''
 
     # Establish DF as empty list or Pandas DataFrame for Embed()
-    DF = GetDF( dataFile, dataFrame, False, "Embed" )
+    DF = pyEDM.AuxFunc.GetDF( dataFile, dataFrame, False, "Embed" )
 
     # If columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
@@ -119,7 +98,9 @@ def Simplex( pathIn          = "./",
     '''Simplex prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Simplex()
-    DF = GetDF( dataFile, dataFrame, noTime, "Simplex" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "Simplex" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -202,7 +183,9 @@ def SMap( pathIn          = "./",
     '''S-Map prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for SMap()
-    DF = GetDF( dataFile, dataFrame, noTime, "SMap" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "SMap" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -298,7 +281,9 @@ def Multiview( pathIn          = "./",
     '''Multiview prediction on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for Multiview()
-    DF = GetDF( dataFile, dataFrame, noTime, "Multiview" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "Multiview" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -378,7 +363,9 @@ def CCM( pathIn           = "./",
     '''Convergent Cross Mapping on path/file.'''
 
     # Establish DF as empty list or Pandas DataFrame for CCM()
-    DF = GetDF( dataFile, dataFrame, noTime, "CCM" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "CCM" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If columns, libSizes, target are not string, but iterable convert to string
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
@@ -464,7 +451,10 @@ def EmbedDimension( pathIn          = "./",
     '''Estimate optimal embedding dimension [1:maxE].'''
 
     # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
-    DF = GetDF( dataFile, dataFrame, noTime, "EmbedDimension" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
+                              "EmbedDimension" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
@@ -530,8 +520,11 @@ def PredictInterval( pathIn          = "./",
     '''Estimate optimal prediction interval [1:maxTp]'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictInterval()
-    DF = GetDF( dataFile, dataFrame, noTime, "PredictInterval" )
-    
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
+                              "PredictInterval" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
+
     # If lib, pred, columns are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
@@ -600,7 +593,10 @@ def PredictNonlinear( pathIn          = "./",
     '''Estimate S-map localisation over theta.'''
 
     # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
-    DF = GetDF( dataFile, dataFrame, noTime, "PredictNonlinear" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
+                              "PredictNonlinear" )
+    if dataFile and noTime :
+        dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib,pred,columns,theta are not string, but iterable, convert to string
     if pyEDM.AuxFunc.NotStringIterable( lib ) :

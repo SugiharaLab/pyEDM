@@ -9,7 +9,7 @@ from random import sample, uniform, normalvariate
 
 from numpy             import mean, std, fft, arange, zeros, ptp
 from scipy.interpolate import UnivariateSpline
-from pandas            import DataFrame
+from pandas            import DataFrame, read_csv
 from matplotlib.pyplot import show, axhline
 
 import pyBindEDM
@@ -17,7 +17,7 @@ import pyEDM.CoreEDM
 from   pyEDM.LoadData import sampleData
 
 #------------------------------------------------------------------------
-# 
+#
 #------------------------------------------------------------------------
 def Examples():
 
@@ -134,6 +134,42 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
     show( block = block )
 
 #------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------
+def GetDF( pathIn, dataFile, dataFrame, noTime, func ):
+    '''Wrapper for PandasDataFrametoDF.
+
+       If dataFrame : call PandasDataFrametoDF() to convert
+       to DF struct for the pyBindEDM.Simplex, or other, function.
+
+       If dataFile : noTime False : return empty pyBindEDM.DF() :
+       dataFile will be passed to pyBindEDM.Simplex, etc, then to
+       the cppEDM API to read the dataFile into a DataFrame in cppEDM.
+
+       If dataFile : noTime True : cannot pass dataFile to cppEDM.
+       Create the pandas DataFrame from read_csv( dataFile ), then
+       call PandasDataFrametoDF() to convert to DF struct.
+       The dataFile is then set to '' in the calling function to
+       prevent cppEDM function from reading the flat file.
+    '''
+    if dataFile :
+        if noTime:
+            dataFrame = read_csv( pathIn + dataFile )
+            DF = PandasDataFrametoDF( dataFrame, noTime )
+        else:
+            DF = pyBindEDM.DF() # Empty DF
+
+    elif isinstance( dataFrame, DataFrame ) :
+        if dataFrame.empty :
+            raise Exception( func + "(): dataFrame is empty." )
+        DF = PandasDataFrametoDF( dataFrame, noTime )
+
+    else :
+        raise Exception( func + "(): Invalid data input." )
+
+    return DF
+
+#------------------------------------------------------------------------
 # pybind C++  DF = struct { string timeName, vector<string> time, DataList }
 #             DataList = list< pair< string, valarray > >
 #
@@ -141,7 +177,7 @@ def PlotCoeff( df, dataFile = None, E = None, Tp = None, block = True ):
 #------------------------------------------------------------------------
 def PandasDataFrametoDF( df, noTime ):
     '''Convert Pandas DataFrame to DF struct.
-       If noTime True, no time is present in 1st column, create index col.
+       If noTime True, create index col and assign to timeName, time.
     '''
 
     if df is None :
