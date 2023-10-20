@@ -26,6 +26,7 @@ Windows is PITA. We use a prebuilt libopenblas.a (dll), which is of
 course not optimized for specific arch.
 Source: https://sourceforge.net/projects/openblas/
 **** NOTE: Do NOT use the libopenblas.dll : it is dynamically loaded.
+           The libopenblas.a does not link properly in windows, use .lib.
 
 Build/system differences to support Windows MSVC.
 ------------------------------------------------------------------------

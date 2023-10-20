@@ -82,10 +82,10 @@ steps:
   displayName: manylinux build
   condition: eq( variables['Agent.OS'], 'Linux' )
 
-#--------- Windows_NT : Copy openblas.a
+#--------- Windows_NT : Copy openblas.lib
 - powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
-  displayName: 'move window openblas binary'
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
+  displayName: 'move windows openblas binary library'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT : Setup mingw
