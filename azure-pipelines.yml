@@ -85,6 +85,7 @@ steps:
 #--------- Windows_NT : Copy openblas.lib
 - powershell: |
     cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.lib
   displayName: 'move windows openblas binary library'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
