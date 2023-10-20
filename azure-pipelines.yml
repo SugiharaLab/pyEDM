@@ -74,6 +74,7 @@ steps:
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '$(python.version)'
+    addToPath:   true
 
 #--------- Linux : Install manylinux dependencies
 - bash: |
@@ -82,10 +83,9 @@ steps:
   displayName: manylinux build
   condition: eq( variables['Agent.OS'], 'Linux' )
 
-#--------- Windows_NT : Copy openblas.lib
+#--------- Windows_NT : Copy openblas.a
 - powershell: |
     cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.lib
   displayName: 'move windows openblas binary library'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
@@ -106,7 +106,7 @@ steps:
 #--------- Windows_NT : Build extension Force mingw32
 - script: |
     python setup.py build_ext "--compiler=mingw32"
-  displayName: 'Build extension'
+  displayName: 'Build extension mingw32'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT & MacOS : Build pyEDM wheel
