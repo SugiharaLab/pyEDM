@@ -18,9 +18,14 @@ libEDM.a must be compiled with -fPIC.
 2022-01-21 : Note. We now use mingw in an Azure DevOps pipeline to
 build Windows.  Notes below on MSVC are retained for information.
 
+Azure DevOps hosted agents:
+---------------------------
+https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/hosted?view=azure-devops&tabs=yaml#software
+
 Windows is PITA. We use a prebuilt libopenblas.a (dll), which is of
 course not optimized for specific arch.
 Source: https://sourceforge.net/projects/openblas/
+**** NOTE: Do NOT use the libopenblas.dll : it is dynamically loaded.
 
 Build/system differences to support Windows MSVC.
 ------------------------------------------------------------------------
