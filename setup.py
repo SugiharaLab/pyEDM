@@ -224,7 +224,9 @@ setup(
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
     ext_modules      = Extension_modules,
+
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
+
     #test_suite      = "tests", # ??? [1]
     install_requires = ['pybind11>=2.3', 'pandas>=1.1', 'matplotlib>=3.1',
                          'scipy>=1.5'], # [2] install_requires : requirements.txt
