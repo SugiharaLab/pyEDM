@@ -204,7 +204,7 @@ Extension_modules = [
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
         extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc",
-                           "-Wl,--retain-symbols-file=export_sym"] \
+                        f"-Wl,--retain-symbols-file={EDM_Lib_Path}export_sym"] \
                           if sys.platform.startswith('win') else [],
     ),
 ]
