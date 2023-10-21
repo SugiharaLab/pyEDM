@@ -204,7 +204,7 @@ Extension_modules = [
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
         extra_link_args = ["-static", "-static-libgfortran",
-                           "-static-libgcc", "-lopenblas"] \
+                           "-static-libgcc", "--libs openblas"] \
                           if sys.platform.startswith('win') else [],
     ),
 ]
@@ -228,7 +228,7 @@ setup(
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
 
     #test_suite      = "tests", # ??? [1]
-    install_requires = ['pybind11>=2.3', 'pandas>=1.1', 'matplotlib>=3.1',
+    install_requires = ['pybind11>=2.5', 'pandas>=1.5', 'matplotlib>=3.5',
                          'scipy>=1.5'], # [2] install_requires : requirements.txt
     python_requires  = '>=3.8',
     cmdclass         = { 'build_ext' : BuildExt }, # Command/class to build .so
