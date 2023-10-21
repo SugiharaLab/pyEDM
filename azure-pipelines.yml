@@ -85,8 +85,14 @@ steps:
 
 #--------- Windows_NT : Copy openblas.a
 - powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
   displayName: 'move windows openblas binary library'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+#--------- Windows_NT : Copy linker export file
+- powershell: |
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\export_sym $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\
+  displayName: 'copy export_sym'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT : Setup mingw
