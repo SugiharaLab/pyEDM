@@ -89,12 +89,6 @@ steps:
   displayName: 'move windows openblas binary library'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-#--------- Windows_NT : Copy linker export file
-- powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\export_sym $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\
-  displayName: 'copy export_sym'
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
 #--------- Windows_NT : Setup mingw
 - bash: |
     distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
