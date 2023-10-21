@@ -203,9 +203,9 @@ Extension_modules = [
         libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
-        extra_link_args = ["-static", "-static-libgfortran",
-                           "-static-libgcc", "--libs openblas"] \
-                          if sys.platform.startswith('win') else [],
+        #extra_link_args = ["-static", "-static-libgfortran",
+        #                   "-static-libgcc"] \
+        #                  if sys.platform.startswith('win') else [],
     ),
 ]
 
