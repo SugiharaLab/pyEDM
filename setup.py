@@ -200,11 +200,13 @@ Extension_modules = [
         extra_compile_args = ['-std=c++17'],
 
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+        ###libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+        libraries = ['EDM','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
-        extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
-                          if sys.platform.startswith('win') else [],
+        #extra_link_args = ["-static", "-static-libgfortran", "-static-libgcc"] \
+        #extra_link_args = ["-static", "-static-libgcc"] \
+        #                  if sys.platform.startswith('win') else [],
     ),
 ]
 
@@ -223,9 +225,7 @@ setup(
                        'of California.',
     packages         = setuptools.find_packages(), # Enable ./EDM Python module
     ext_modules      = Extension_modules,
-
     package_data     = { 'pyEDM' : ['data/*.csv', 'tests/*.py' ]},
-
     #test_suite      = "tests", # ??? [1]
     install_requires = ['pybind11>=2.5', 'pandas>=1.5', 'matplotlib>=3.5',
                          'scipy>=1.5'], # [2] install_requires : requirements.txt

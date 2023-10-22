@@ -11,11 +11,16 @@ using Solver = SVDValues (*) ( DataFrame     < double >,
 // Prototype declaration of general functions
 SVDValues SVD( DataFrame < double > A, std::valarray< double > B );
 
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// Do not use LAPACK on Windog: use scikit-learn LinearRegression
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#if !defined _WIN32 || defined USING_R
 SVDValues Lapack_SVD( int     m, // number of rows in matrix
                       int     n, // number of columns in matrix
                       double *a, // pointer to top-left corner
                       double *b,
                       double  rcond );
+#endif
 
 //----------------------------------------------------------------
 // SMap class inherits from EDM class and defines
