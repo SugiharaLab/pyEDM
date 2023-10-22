@@ -662,7 +662,16 @@ SVDValues Lapack_SVD( int     m, // rows in matrix
 
     return SVD_;
 }
-
+#else
+//-----------------------------------------------------------------
+// Singular Value Decomposition : SVD() dummy function: Replaced by 
+// scikit-learn LinearRegression on Windog. LAPACK is not feasible.
+//-----------------------------------------------------------------
+SVDValues SVD( DataFrame    < double > A,
+               std::valarray< double > B ) {
+    SVDValues SVD_();
+    return SVD_;
+}
 #endif
 //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // Do not use LAPACK on Windog: use scikit-learn LinearRegression
