@@ -84,10 +84,10 @@ steps:
   condition: eq( variables['Agent.OS'], 'Linux' )
 
 #--------- Windows_NT : Copy openblas.a
-- powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
-  displayName: 'move windows openblas binary library'
-  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+#- powershell: |
+#    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
+#  displayName: 'move windows openblas binary library'
+#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT : Setup mingw
 - bash: |
