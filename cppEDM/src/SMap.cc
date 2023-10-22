@@ -669,7 +669,9 @@ SVDValues Lapack_SVD( int     m, // rows in matrix
 //-----------------------------------------------------------------
 SVDValues SVD( DataFrame    < double > A,
                std::valarray< double > B ) {
-    SVDValues SVD_();
+    size_t nRow = A.NRows(); // Avoid compiler unused warn
+    size_t len  = B.size();  // Avoid compiler unused warn
+    SVDValues SVD_;
     return SVD_;
 }
 #endif
