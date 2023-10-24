@@ -16,6 +16,11 @@
 #include "PredictInterval.cpp"
 #include "PredictNL.cpp"
 
+#if defined _WIN32
+//void __imp__cprintf( const char * format ) { }
+#define __imp__cprintf printf
+#endif
+
 //-------------------------------------------------------------------------
 // PYBIND11_MODULE macro creates entry points invoked when the Python
 // interpreter imports the extension module. The module name is given as the
