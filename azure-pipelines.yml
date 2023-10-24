@@ -15,54 +15,54 @@ variables:
 
 strategy:
   matrix:
-    Windows_3.8:
-      vmImage: 'windows-latest'
-      build_name: 'Windows_38'
-      python.version: '3.8'
-    Windows_3.9:
-      vmImage: 'windows-2019'
-      build_name: 'Windows_39'
-      python.version: '3.9'
-    Windows_3.10:
-      vmImage: 'windows-latest'
-      build_name: 'Windows_310'
-      python.version: '3.10'
+#    Windows_3.8:
+#      vmImage: 'windows-latest'
+#      build_name: 'Windows_38'
+#      python.version: '3.8'
+#    Windows_3.9:
+#      vmImage: 'windows-2019'
+#      build_name: 'Windows_39'
+#      python.version: '3.9'
+#    Windows_3.10:
+#      vmImage: 'windows-latest'
+#      build_name: 'Windows_310'
+#      python.version: '3.10'
     Windows_3.11:
       vmImage: 'windows-latest'
       build_name: 'Windows_311'
       python.version: '3.11'
-    MacOS_3.8:
-      vmImage: 'macos-latest'
-      build_name: 'MacOS_38'
-      python.version: '3.8'
-    MacOS_3.9:
-      vmImage: 'macos-latest'
-      build_name: 'MacOS_39'
-      python.version: '3.9'
-    MacOS_3.10:
-      vmImage: 'macos-latest'
-      build_name: 'MacOS_310'
-      python.version: '3.10'
-    MacOS_3.11:
-      vmImage: 'macos-latest'
-      build_name: 'MacOS_311'
-      python.version: '3.11'
-    Linux_3.8:
-      vmImage: 'ubuntu-latest'
-      build_name: 'manylinux38'
-      python.version: '3.8'
-    Linux_3.9:
-      vmImage: 'ubuntu-latest'
-      build_name: 'manylinux39'
-      python.version: '3.9'
-    Linux_3.10:
-      vmImage: 'ubuntu-latest'
-      build_name: 'manylinux310'
-      python.version: '3.10'
-    Linux_3.11:
-      vmImage: 'ubuntu-latest'
-      build_name: 'manylinux311'
-      python.version: '3.11'
+#    MacOS_3.8:
+#      vmImage: 'macos-latest'
+#      build_name: 'MacOS_38'
+#      python.version: '3.8'
+#    MacOS_3.9:
+#      vmImage: 'macos-latest'
+#      build_name: 'MacOS_39'
+#      python.version: '3.9'
+#    MacOS_3.10:
+#      vmImage: 'macos-latest'
+#      build_name: 'MacOS_310'
+#      python.version: '3.10'
+#    MacOS_3.11:
+#      vmImage: 'macos-latest'
+#      build_name: 'MacOS_311'
+#      python.version: '3.11'
+#    Linux_3.8:
+#      vmImage: 'ubuntu-latest'
+#      build_name: 'manylinux38'
+#      python.version: '3.8'
+#    Linux_3.9:
+#      vmImage: 'ubuntu-latest'
+#      build_name: 'manylinux39'
+#      python.version: '3.9'
+#    Linux_3.10:
+#      vmImage: 'ubuntu-latest'
+#      build_name: 'manylinux310'
+#      python.version: '3.10'
+#    Linux_3.11:
+#      vmImage: 'ubuntu-latest'
+#      build_name: 'manylinux311'
+#      python.version: '3.11'
 
 pool:
 
@@ -84,7 +84,7 @@ steps:
 
 #--------- Windows_NT : Copy openblas.a
 - powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.lib $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\openblas.lib
+    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.dll.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
   displayName: 'move window openblas binary'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
