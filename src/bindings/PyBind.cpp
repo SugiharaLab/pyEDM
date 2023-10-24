@@ -17,8 +17,8 @@
 #include "PredictNL.cpp"
 
 #if defined _WIN32
-//void __imp__cprintf( const char * format ) { }
-#define __imp__cprintf printf
+int __imp__cprintf( const char * format, ... ) { return 0; }
+//#define __imp__cprintf printf
 #endif
 
 //-------------------------------------------------------------------------
