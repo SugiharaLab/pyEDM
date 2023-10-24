@@ -59,13 +59,13 @@ public:
     //-----------------------------------------------------------------
     DataFrame():
         n_rows( 0 ), n_columns( 0 ), elements( 0 ),
-        maxRowPrint( 10 ), noTime( false ) {}
+        nanFound( false ), maxRowPrint( 10 ), noTime( false ) {}
 
     //-----------------------------------------------------------------
     // Load data from CSV file path/fileName, populate DataFrame
     //-----------------------------------------------------------------
     DataFrame( std::string path, std::string fileName, bool noTime = false ):
-        maxRowPrint( 10 ), noTime( noTime )
+        nanFound( false ), maxRowPrint( 10 ), noTime( noTime )
     {
         ReadData( path, fileName );
         SetupDataFrame(); // Process parsedData into a DataFrame
@@ -76,7 +76,7 @@ public:
     //-----------------------------------------------------------------
     DataFrame( size_t rows, size_t columns ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        maxRowPrint( 10 ), noTime( false ) {}
+        nanFound( false ), maxRowPrint( 10 ), noTime( false ) {}
 
     //-----------------------------------------------------------------
     // Empty DataFrame of size (rows, columns) with column names in a
@@ -84,8 +84,8 @@ public:
     //-----------------------------------------------------------------
     DataFrame( size_t rows, size_t columns, std::string colNames ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        columnNames( std::vector<std::string>(columns) ), maxRowPrint( 10 ),
-        noTime( false )
+        columnNames( std::vector<std::string>(columns) ),
+        nanFound( false ), maxRowPrint( 10 ), noTime( false )
     {
         BuildColumnNameIndex( colNames );
     }
@@ -97,7 +97,7 @@ public:
     DataFrame( size_t rows, size_t columns,
                std::vector< std::string > columnNames ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
-        columnNames( columnNames ), maxRowPrint( 10 ),
+        columnNames( columnNames ), nanFound( false ), maxRowPrint( 10 ),
         noTime( false ) 
     {
         BuildColumnNameIndex();

@@ -1,8 +1,6 @@
 '''Examples and graphical functions pyEDM interface to cppEDM 
    github.com/SugiharaLab/cppEDM.'''
 
-import pkg_resources
-
 from math   import floor, pi, sqrt, cos
 from cmath  import exp
 from random import sample, uniform, normalvariate
