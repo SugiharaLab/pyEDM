@@ -200,7 +200,7 @@ Extension_modules = [
         extra_compile_args = ['-std=c++17'],
 
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','openblas','openblas2',
+        libraries = ['EDM','openblas',
                      'gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
