@@ -16,10 +16,11 @@
 #include "PredictInterval.cpp"
 #include "PredictNL.cpp"
 
-#if defined _WIN32
+//#if defined _WIN32
 int __imp__cprintf( const char * format, ... ) { return 0; }
+int cprintf( const char * format, ... ) { return 0; }
 //#define __imp__cprintf printf
-#endif
+//#endif
 
 //-------------------------------------------------------------------------
 // PYBIND11_MODULE macro creates entry points invoked when the Python
