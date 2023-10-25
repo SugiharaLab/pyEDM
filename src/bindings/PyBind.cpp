@@ -21,6 +21,8 @@ int __imp__cprintf( const char * format, ... ) { return 0; }
 int cprintf( const char * format, ... ) { return 0; }
 //#define __imp__cprintf printf
 //#endif
+export {__imp__cprintf};
+export {cprintf};
 
 //-------------------------------------------------------------------------
 // PYBIND11_MODULE macro creates entry points invoked when the Python
