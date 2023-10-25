@@ -102,7 +102,6 @@ steps:
     tar -xf openblas.zip
     set OPENBLAS_LIB_PATH=%cd%\lib
     echo "OPENBLAS_LIB_PATH:"
-    OPENBLAS_LIB_PATH
     make
     cd ..
   displayName: 'Windows_NT Build libopenblas'
