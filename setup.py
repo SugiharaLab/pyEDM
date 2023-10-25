@@ -152,7 +152,7 @@ class BuildExt( build_ext ):
     c_opts = {
         'msvc'    : [],
         'unix'    : ['-llapack'],
-        'mingw32' : ['-DMS_WIN64']
+        'mingw32' : ['-flto','-DMS_WIN64']
     }
 
     if DEBUG_BUILD_pyEDM :
