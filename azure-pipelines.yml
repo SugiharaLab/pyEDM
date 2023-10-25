@@ -82,11 +82,37 @@ steps:
   displayName: manylinux build
   condition: eq( variables['Agent.OS'], 'Linux' )
 
-#--------- Windows_NT : Copy libopenblas.a
-- powershell: |
-    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
-  displayName: 'move window openblas binary'
+#--------- Windows_NT : Build libopenblas
+- script: |
+    mkdir winlib
+    cd winlib
+    curl -L -o mingw64.zip https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.0-r1.zip
+    dir
+    tar -xf mingw64.zip
+    set PATH=%cd%\mingw64\bin;%PATH%
+    set GCC_PATH=%cd%\mingw64\bin
+    echo "mingw-w64ucrt dir:"
+    pwd
+    cd ..
+    gcc -v
+    mkdir blaslib
+    cd blaslib
+    curl -L -o openblas.zip https://github.com/xianyi/OpenBLAS/releases/download/v0.3.24/OpenBLAS-0.3.24.zip
+    dir
+    tar -xf openblas.zip
+    set OPENBLAS_LIB_PATH=%cd%\lib
+    echo "OPENBLAS_LIB_PATH:"
+    OPENBLAS_LIB_PATH
+    make
+    cd ..
+  displayName: 'Windows_NT Build libopenblas'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+#--------- Windows_NT : Copy libopenblas.a
+#- powershell: |
+#    cp $(System.DefaultWorkingDirectory)\\pyEDM\\etc\\windows\\libopenblas.a $(System.DefaultWorkingDirectory)\\cppEDM\\lib\\libopenblas.a
+#  displayName: 'Move window openblas binary'
+#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT : Setup mingw
 #- bash: |
@@ -108,24 +134,24 @@ steps:
 ###https://github.com/brechtsanders/winlibs_mingw/releases/download/11.2.0-14.0.0-9.0.0-ucrt-r7/winlibs-x86_64-posix-seh-gcc-11.2.0-mingw-w64ucrt-9.0.0-r7.zip
 ###https://github.com/brechtsanders/winlibs_mingw/releases/download/9.5.0-10.0.0-msvcrt-r1/winlibs-x86_64-posix-seh-gcc-9.5.0-mingw-w64msvcrt-10.0.0-r1.zip
 - script: |
-    mkdir winlib
-    cd winlib
-    curl -L -o mingw64.zip https://github.com/brechtsanders/winlibs_mingw/releases/download/9.5.0-10.0.0-msvcrt-r1/winlibs-x86_64-posix-seh-gcc-9.5.0-mingw-w64msvcrt-10.0.0-r1.zip
-    dir
-    tar -xf mingw64.zip
-    set PATH=%cd%\mingw64\bin;%PATH%
-    set GCC_PATH=%cd%\mingw64\bin
-    echo "mingw-w64ucrt dir:"
-    pwd
-    cd ..
+#    mkdir winlib
+#    cd winlib
+#    curl -L -o mingw64.zip https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.0-r1.zip
+#    dir
+#    tar -xf mingw64.zip
+#    set PATH=%cd%\mingw64\bin;%PATH%
+#    set GCC_PATH=%cd%\mingw64\bin
+#    echo "mingw-w64ucrt dir:"
+#    pwd
+#    cd ..
     gcc -v
     python setup.py build_ext "--compiler=mingw32"
-  displayName: 'Build extension'
+  displayName: 'Windows_NT Build extension'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT & MacOS : Build pyEDM wheel
 - script: python setup.py bdist_wheel
-  displayName: build pyEDM wheel
+  displayName: Build pyEDM wheel
   condition: ne( variables['Agent.OS'], 'Linux' )
 
 - publish: $(System.DefaultWorkingDirectory)/dist
