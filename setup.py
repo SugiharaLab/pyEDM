@@ -152,7 +152,7 @@ class BuildExt( build_ext ):
     c_opts = {
         'msvc'    : [],
         'unix'    : ['-llapack'],
-        'mingw32' : ['-flto','-DMS_WIN64']
+        'mingw32' : ['-DMS_WIN64']
     }
 
     if DEBUG_BUILD_pyEDM :
@@ -200,10 +200,11 @@ Extension_modules = [
         extra_compile_args = ['-std=c++17'],
 
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','openblas','gfortran','pthread','m','quadmath'] \
+        libraries = ['EDM','openblas','openblas2',
+                     'gfortran','pthread','m','quadmath'] \
                     if sys.platform.startswith('win') else ['EDM','lapack'],
         
-        extra_link_args = ["-flto", "-static",
+        extra_link_args = ["-static",
                            "-static-libgfortran", "-static-libgcc"] \
                           if sys.platform.startswith('win') else [],
     ),
