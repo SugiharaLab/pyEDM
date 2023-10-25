@@ -89,12 +89,25 @@ steps:
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 #--------- Windows_NT : Setup mingw
-- bash: |
-    distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
-    echo $'[build]\ncompiler=mingw64-ucrt' > $distutils_path/distutils.cfg
+#- bash: |
+#    distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
+#    echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
 ##    echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
-  displayName: setup mingw compiler option for windows build
+#  displayName: setup mingw compiler option for windows build
+#  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+#--------- Windows_NT : Setup mingw
+- script: |
+      mkdir winlib
+      cd winlib
+      wget https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0mcf-16.0.6-11.0.1-ucrt-r2/winlibs-x86_64-mcf-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r2.zip
+      tar -xf winlibs-x86_64-mcf-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r2.zip
+      set PATH=%cd%\mingw64\bin:%PATH%
+      cd
+      mingw32-make CC=gcc FC=gfortran
+  displayName: Install mingw-w64ucrt
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
 
 #--------- Install dependencies
 - script: |
