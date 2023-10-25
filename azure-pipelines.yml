@@ -81,7 +81,7 @@ steps:
       tar -xf mingw64.zip
       set PATH=%cd%\mingw64\bin;%PATH%
       cd ..
-      echo gcc -v
+      gcc -v
   displayName: Get mingw32-ucrt
 
 - task: UsePythonVersion@0
@@ -117,6 +117,7 @@ steps:
 
 #--------- Windows_NT : Build extension Force mingw32
 - script: |
+    gcc -v
     python setup.py build_ext "--compiler=mingw32"
   displayName: 'Build extension'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
