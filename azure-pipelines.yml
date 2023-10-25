@@ -91,7 +91,8 @@ steps:
 #--------- Windows_NT : Setup mingw
 - bash: |
     distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
-    echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
+    echo $'[build]\ncompiler=mingw64-ucrt' > $distutils_path/distutils.cfg
+##    echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
