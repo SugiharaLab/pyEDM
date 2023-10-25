@@ -80,9 +80,13 @@ steps:
       dir
       tar -xf mingw64.zip
       set PATH=%cd%\mingw64\bin;%PATH%
+      set GCC_PATH=%cd%\mingw64\bin
+      echo "mingw-w64ucrt dir:"
+      pwd
       cd ..
       gcc -v
   displayName: Get mingw32-ucrt
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
 - task: UsePythonVersion@0
   inputs:
@@ -103,7 +107,8 @@ steps:
 
 #--------- Windows_NT : Setup mingw
 - bash: |
-    distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
+    #distutils_path=`echo "import distutils,os;print(os.path.dirname(distutils.__file__))"|python`
+    distutils_path=`echo $GCC_PATH`
     echo $'[build]\ncompiler=mingw32' > $distutils_path/distutils.cfg
   displayName: setup mingw compiler option for windows build
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
