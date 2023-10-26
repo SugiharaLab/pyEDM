@@ -79,7 +79,8 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                  std::string            target,
                  bool                   embedded,
                  bool                   verbose,
-                 std::vector<bool>      validLib );
+                 std::vector<bool>      validLib,
+                 bool                   ignoreNan );
 
 //----------------------------------------------------------------
 // EmbedDimension() : Evaluate Simplex rho vs. dimension E
@@ -497,6 +498,7 @@ DataFrame< double > PredictNonlinear( std::string       pathIn,
                                       bool              embedded,
                                       bool              verbose,
                                       std::vector<bool> validLib,
+                                      bool              ignoreNan,
                                       unsigned          nThreads ) {
 
     // Create DataFrame (constructor loads data)
@@ -518,6 +520,7 @@ DataFrame< double > PredictNonlinear( std::string       pathIn,
                                                       embedded,
                                                       verbose,
                                                       validLib,
+                                                      ignoreNan,
                                                       nThreads );
     return Theta_rho;
 }
@@ -542,6 +545,7 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & data,
                                       bool                  embedded,
                                       bool                  verbose,
                                       std::vector<bool>     validLib,
+                                      bool                  ignoreNan,
                                       unsigned              nThreads ) {
 
     std::vector<double> ThetaValues( { 0.01, 0.1, 0.3, 0.5, 0.75, 1,
@@ -600,7 +604,8 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & data,
                                         target,
                                         embedded,
                                         verbose,
-                                        validLib ) );
+                                        validLib,
+                                        ignoreNan ) );
     }
 
     // join threads
@@ -647,7 +652,8 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                  std::string            target,
                  bool                   embedded,
                  bool                   verbose,
-                 std::vector<bool>      validLib )
+                 std::vector<bool>      validLib,
+                 bool                   ignoreNan )
 {
     std::size_t i =
         std::atomic_fetch_add( &EDM_Eval::smap_count_i, std::size_t(1) );
@@ -679,7 +685,8 @@ void SMapThread( EDM_Eval::WorkQueue   &workQ,
                                  embedded,
                                  false,     // const_predict
                                  verbose,
-                                 validLib );
+                                 validLib,
+                                 ignoreNan );
 
             DataFrame< double > predictions  = S.predictions;
             DataFrame< double > coefficients = S.coefficients;
