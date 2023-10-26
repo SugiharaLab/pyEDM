@@ -490,6 +490,11 @@ void SMapClass::WriteOutput () {
     }
 }
 
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// Do not use LAPACK on Windog: use scikit-learn LinearRegression
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#if !defined _WIN32 || defined USING_R
+
 //----------------------------------------------------------------
 // Singular Value Decomposition : wrapper for Lapack_SVD()
 //----------------------------------------------------------------
@@ -504,11 +509,11 @@ SVDValues SVD( DataFrame    < double > A,
 
     double *b = &( B[0] );
 
-    SVDValues SVD_ =  Lapack_SVD( A.NRows(),     // number of rows
-                                  A.NColumns(),  // number of columns
-                                  a,             // A
-                                  b,             // b
-                                  1.E-9 );       // rcond
+    SVDValues SVD_ = Lapack_SVD( A.NRows(),    // number of rows
+                                 A.NColumns(), // number of columns
+                                 a,            // A
+                                 b,            // b
+                                 1.E-9 );      // rcond
 
 #ifdef DEBUG_ALL
     std::cout << "SVD------------------------\n";
@@ -657,3 +662,18 @@ SVDValues Lapack_SVD( int     m, // rows in matrix
 
     return SVD_;
 }
+#else
+//-----------------------------------------------------------------
+// Singular Value Decomposition : SVD() dummy function: Replaced by 
+// scikit-learn LinearRegression on Windog. LAPACK is not feasible.
+//-----------------------------------------------------------------
+SVDValues SVD( DataFrame    < double > A,
+               std::valarray< double > B ) {
+    if ( A.NRows() == B.size() ) {} // Avoid compiler unused warn
+    SVDValues SVD_;
+    return SVD_;
+}
+#endif
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// Do not use LAPACK on Windog: use scikit-learn LinearRegression
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
