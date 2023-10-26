@@ -200,11 +200,10 @@ Extension_modules = [
         extra_compile_args = ['-std=c++17'],
 
         # Note PEP 308: <expression1> if <condition> else <expression2>
-        libraries = ['EDM','pthread','m','quadmath'] \
-                    if sys.platform.startswith('win') else ['EDM','lapack'],
-        
-        extra_link_args = ["-static",
-                           "-static-libgfortran", "-static-libgcc"] \
+        libraries = ['EDM'] if sys.platform.startswith('win') \
+                            else ['EDM','lapack'],
+
+        extra_link_args = ["-static","-static-libgcc"] \
                           if sys.platform.startswith('win') else [],
     ),
 ]
