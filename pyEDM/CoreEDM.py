@@ -596,6 +596,7 @@ def PredictNonlinear( pathIn          = "./",
                       embedded        = False,
                       verbose         = False,
                       validLib        = [],
+                      ignoreNan       = True,
                       numThreads      = 4,
                       showPlot        = True,
                       noTime          = False ):
@@ -636,6 +637,7 @@ def PredictNonlinear( pathIn          = "./",
                                     embedded,
                                     verbose,
                                     validLib,
+                                    ignoreNan,
                                     numThreads )
 
     df = DataFrame( D ) # Convert to pandas DataFrame

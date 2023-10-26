@@ -359,6 +359,7 @@ DataFrame< double > PredictNonlinear( std::string pathIn          = "./data/",
                                       bool        verbose         = true,
                                       std::vector<bool> validLib  =
                                                         std::vector<bool>(),
+                                      bool        ignoreNan       = true,
                                       unsigned    nThreads        = 4 );
 
 DataFrame< double > PredictNonlinear( DataFrame< double > & dataFrameIn,
@@ -378,5 +379,6 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & dataFrameIn,
                                       bool        verbose         = true,
                                       std::vector<bool> validLib  =
                                                         std::vector<bool>(),
+                                      bool        ignoreNan       = true,
                                       unsigned    nThreads        = 4 );
 #endif
