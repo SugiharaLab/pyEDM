@@ -4,6 +4,10 @@
 from pandas            import DataFrame
 from matplotlib.pyplot import show, axhline
 
+from os import name as osName # Windog do not use LAPACK
+if osName == 'nt':
+    from sklearn.linear_model import LinearRegression
+
 import pyBindEDM
 import pyEDM.AuxFunc
 
@@ -202,6 +206,11 @@ def SMap( pathIn          = "./",
                              'RidgeCV', 'LassoCV', 'ElasticNetCV' ]
         if not solver.__class__.__name__ in supportedSolvers :
             raise Exception( "SMap(): Invalid solver." )
+
+    elif osName == 'nt':
+        # No solver was specified. Default to LinearRegression/SVD
+        # since supporting LAPACK on Windog is a fools errand.
+        solver = LinearRegression()
 
     # D is a Python dict from pybind11 < cppEDM SMap:
     #  { "predictions" : {}, "coefficients" : {},
