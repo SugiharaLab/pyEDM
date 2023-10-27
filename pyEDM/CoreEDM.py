@@ -6,10 +6,11 @@ from matplotlib.pyplot import show, axhline
 
 from os import name as osName # Windog cannot use LAPACK/BLAS
 if osName == 'nt':
-    from multiprocessing import Pool # PredictNonlinearInternal
+    from multiprocessing import Pool
+    from itertools       import repeat
+    from pandas          import read_csv
+    from numpy           import zeros
     from sklearn.linear_model import LinearRegression
-    from pandas import read_csv
-    from numpy  import zeros
 
 import pyBindEDM
 import pyEDM.AuxFunc
