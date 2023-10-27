@@ -767,11 +767,11 @@ def PredictNonlinearInternal( pathIn          = "./",
 
     # SMapList is a list of SMap dictionaries, process rho values
     rho = zeros( len( SMapList ) )
-
     for i in range( len( SMapList ) ):
         SM           = SMapList[ i ]
-        observations = SM['observations']
-        predictions  = SM['predictions']
+        SM_df        = SM['predictions']
+        predictions  = SM_df['Predictions']
+        observations = SM_df['Observations']
         rho[ i ]     = pyBindEDM.ComputeError(observations, predictions)['rho']
 
     # Return pandas DataFrame of Theta : rho
