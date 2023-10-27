@@ -22,6 +22,7 @@ py::dict PredictNonlinear_pybind( std::string       pathIn,
                                   bool              embedded,
                                   bool              verbose,
                                   std::vector<bool> validLib,
+                                  bool              ignoreNan,
                                   unsigned          numThreads ) {
 
     DataFrame< double > PredictDF;
@@ -46,6 +47,7 @@ py::dict PredictNonlinear_pybind( std::string       pathIn,
                                        embedded,
                                        verbose,
                                        validLib,
+                                       ignoreNan,
                                        numThreads );
     }
     else if ( df.dataList.size() ) {
@@ -67,6 +69,7 @@ py::dict PredictNonlinear_pybind( std::string       pathIn,
                                        embedded,
                                        verbose,
                                        validLib,
+                                       ignoreNan,
                                        numThreads );
     }
     else {

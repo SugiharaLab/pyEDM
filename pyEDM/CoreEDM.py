@@ -4,9 +4,12 @@
 from pandas            import DataFrame
 from matplotlib.pyplot import show, axhline
 
-from os import name as osName # Windog do not use LAPACK
+from os import name as osName # Windog cannot use LAPACK/BLAS
 if osName == 'nt':
+    from multiprocessing import Pool # PredictNonlinearInternal
     from sklearn.linear_model import LinearRegression
+    from pandas import read_csv
+    from numpy  import zeros
 
 import pyBindEDM
 import pyEDM.AuxFunc
@@ -52,7 +55,7 @@ def Embed( pathIn    = "./",
        Embed DataFrame columns (subset) in E dimensions.
        Calls MakeBlock() after validation and column subset selection.'''
 
-    # Establish DF as empty list or Pandas DataFrame for Embed()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( dataFile, dataFrame, False, "Embed" )
 
     # If columns are not string, but iterable, convert to string
@@ -101,7 +104,7 @@ def Simplex( pathIn          = "./",
              ):
     '''Simplex prediction on path/file.'''
 
-    # Establish DF as empty list or Pandas DataFrame for Simplex()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "Simplex" )
     if dataFile and noTime :
         dataFile = '' # DF was created in GetDF(), disable dataFile read
@@ -186,7 +189,7 @@ def SMap( pathIn          = "./",
           ):
     '''S-Map prediction on path/file.'''
 
-    # Establish DF as empty list or Pandas DataFrame for SMap()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "SMap" )
     if dataFile and noTime :
         dataFile = '' # DF was created in GetDF(), disable dataFile read
@@ -209,7 +212,7 @@ def SMap( pathIn          = "./",
 
     elif osName == 'nt':
         # No solver was specified. Default to LinearRegression/SVD
-        # since supporting LAPACK on Windog is a fools errand.
+        # since supporting BLAS/LAPACK on Windog is a fools errand.
         solver = LinearRegression()
 
     # D is a Python dict from pybind11 < cppEDM SMap:
@@ -289,7 +292,7 @@ def Multiview( pathIn          = "./",
                noTime          = False ):
     '''Multiview prediction on path/file.'''
 
-    # Establish DF as empty list or Pandas DataFrame for Multiview()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "Multiview" )
     if dataFile and noTime :
         dataFile = '' # DF was created in GetDF(), disable dataFile read
@@ -371,7 +374,7 @@ def CCM( pathIn           = "./",
          noTime           = False ) :
     '''Convergent Cross Mapping on path/file.'''
 
-    # Establish DF as empty list or Pandas DataFrame for CCM()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime, "CCM" )
     if dataFile and noTime :
         dataFile = '' # DF was created in GetDF(), disable dataFile read
@@ -459,7 +462,7 @@ def EmbedDimension( pathIn          = "./",
                     noTime          = False ):
     '''Estimate optimal embedding dimension [1:maxE].'''
 
-    # Establish DF as empty list or Pandas DataFrame for EmbedDimension()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
                               "EmbedDimension" )
     if dataFile and noTime :
@@ -528,7 +531,7 @@ def PredictInterval( pathIn          = "./",
                      noTime          = False ):
     '''Estimate optimal prediction interval [1:maxTp]'''
 
-    # Establish DF as empty list or Pandas DataFrame for PredictInterval()
+    # Establish DF struct as empty list, or from Pandas DataFrame
     DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
                               "PredictInterval" )
     if dataFile and noTime :
@@ -600,47 +603,85 @@ def PredictNonlinear( pathIn          = "./",
                       numThreads      = 4,
                       showPlot        = True,
                       noTime          = False ):
-    '''Estimate S-map localisation over theta.'''
+    '''Estimate S-map localisation over theta.
 
-    # Establish DF as empty list or Pandas DataFrame for PredictNonlinear()
-    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
-                              "PredictNonlinear" )
-    if dataFile and noTime :
-        dataFile = '' # DF was created in GetDF(), disable dataFile read
+       This function has two implementations since Windog does not use
+       the BLAS SVD solver dgelss but sklearn LinearSolver by default.
+       Supporting OpenBLAS on Windog is not feasible.
 
-    # If lib,pred,columns,theta are not string, but iterable, convert to string
-    if pyEDM.AuxFunc.NotStringIterable( lib ) :
-        lib = ' '.join( map( str, lib ) )
-    if pyEDM.AuxFunc.NotStringIterable( pred ) :
-        pred = ' '.join( map( str, pred ) )
-    if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
-    if pyEDM.AuxFunc.NotStringIterable( theta ) :
-        theta = ' '.join( map( str, theta ) )
+       If the platform is Windog, perform the computations "manually"
+       using SMap above in a multiprocess wrapper. This allows
+       specification of the SMap solver from sklearn.linear_model.
 
-    # D is a Python dict from pybind11 < cppEDM PredictNonlinear
-    D = pyBindEDM.PredictNonlinear( pathIn,
-                                    dataFile,
-                                    DF,
-                                    pathOut,
-                                    predictFile,
-                                    lib,
-                                    pred, 
-                                    theta,
-                                    E,
-                                    Tp,
-                                    knn,
-                                    tau,
-                                    exclusionRadius,
-                                    columns,
-                                    target,
-                                    embedded,
-                                    verbose,
-                                    validLib,
-                                    ignoreNan,
-                                    numThreads )
+       If the platform is not Windog, call the pybind11 : cppEDM function.
+    '''
 
-    df = DataFrame( D ) # Convert to pandas DataFrame
+    if osName == 'nt':
+        # Manually implement PredictNonlinear with the sklearn solver
+        # Return Pandas DataFrame: 'Theta', 'rho'
+        df = PredictNonlinearInternal( pathIn,
+                                       dataFile,
+                                       dataFrame,
+                                       pathOut,
+                                       predictFile,
+                                       lib,
+                                       pred,
+                                       theta,
+                                       E,
+                                       Tp,
+                                       knn,
+                                       tau,
+                                       exclusionRadius,
+                                       columns,
+                                       target,
+                                       embedded,
+                                       verbose,
+                                       validLib,
+                                       ignoreNan,
+                                       numThreads )
+    else:
+        # Call pybind11 : cppEDM PredictNonlinear
+        # Establish DF struct as empty list, or from Pandas DataFrame
+        DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, noTime,
+                                  "PredictNonlinear" )
+        if dataFile and noTime :
+            dataFile = '' # DF was created in GetDF(), disable dataFile read
+
+        # If lib,pred,columns,theta are not string, but iterable,
+        # convert to string
+        if pyEDM.AuxFunc.NotStringIterable( lib ) :
+            lib = ' '.join( map( str, lib ) )
+        if pyEDM.AuxFunc.NotStringIterable( pred ) :
+            pred = ' '.join( map( str, pred ) )
+        if pyEDM.AuxFunc.NotStringIterable( columns ) :
+            columns = ' '.join( map( str, columns ) )
+        if pyEDM.AuxFunc.NotStringIterable( theta ) :
+            theta = ' '.join( map( str, theta ) )
+
+        # Call pybind11 : cppEDM PredictNonlinear
+        # D is a Python dict from pybind11 < cppEDM PredictNonlinear
+        D = pyBindEDM.PredictNonlinear( pathIn,
+                                        dataFile,
+                                        DF,
+                                        pathOut,
+                                        predictFile,
+                                        lib,
+                                        pred,
+                                        theta,
+                                        E,
+                                        Tp,
+                                        knn,
+                                        tau,
+                                        exclusionRadius,
+                                        columns,
+                                        target,
+                                        embedded,
+                                        verbose,
+                                        validLib,
+                                        ignoreNan,
+                                        numThreads )
+
+        df = DataFrame( D ) # Convert to pandas DataFrame
 
     if showPlot :
         if embedded :
@@ -653,3 +694,108 @@ def PredictNonlinear( pathIn          = "./",
         show()
 
     return df
+
+#------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------
+def PredictNonlinearInternal( pathIn          = "./",
+                              dataFile        = "",
+                              dataFrame       = None,
+                              pathOut         = "./",
+                              predictFile     = "",
+                              lib             = "",
+                              pred            = "",
+                              theta           = "",
+                              E               = 1,
+                              Tp              = 1,
+                              knn             = 0,
+                              tau             = -1,
+                              exclusionRadius = 0,
+                              columns         = "",
+                              target          = "",
+                              embedded        = False,
+                              verbose         = False,
+                              validLib        = [],
+                              ignoreNan       = True,
+                              numThreads      = 4,
+                              showPlot        = True,
+                              noTime          = False ) :
+
+    '''If the platform is Windog, perform computations "manually"
+       using SMap above in a multiprocess wrapper. This allows
+       specification of the SMap solver from sklearn.linear_model.
+    '''
+
+    # If pandas DataFrame not passed in, create one from dataFile
+    if dataFrame is None :
+        dataFrame = read_csv( pathIn + dataFile )
+
+    if not isinstance( dataFrame, DataFrame ) :
+        raise Exception( "PredictNonlinearInternal(): Failed to get dataFrame." )
+
+    if pyEDM.AuxFunc.NotStringIterable( theta ) :
+        # theta is a list
+        if len( theta ) > 0 :
+            thetaValues = theta
+        else :
+            raise Exception( "PredictNonlinearInternal(): Empty theta list." )
+    else :
+        # theta is a string
+        if len( theta ) == 0 : # string is empty
+            thetaValues = [ 0.01, 0.1, 0.3, 0.5, 0.75, 1,
+                            1.5, 2, 3, 4, 5, 6, 7, 8, 9 ]
+        else :
+            # Convert string to list
+            thetaValues = [ float(x) for x in theta.split() ]
+
+    # Create args dictionary for SMapFunc
+    args = { 'lib':lib, 'pred':pred, 'E':E, 'Tp':Tp, 'tau':tau,
+             'exclusionRadius':exclusionRadius, 'columns':columns,
+             'target':target, 'embedded':embedded, 'validLib':validLib,
+             'ignoreNan':ignoreNan, 'noTime':noTime }
+
+    # Create iterable for Pool.starmap, use repeated copies of args, data
+    poolArgs = zip( thetaValues, repeat( args ), repeat( dataFrame ) )
+
+    # Use pool.starmap to distribute among cores
+    pool = Pool( processes = numThreads )
+
+    # starmap: elements of the iterable argument are iterables
+    #          that are unpacked as arguments
+    SMapList = pool.starmap( SMapFunc, poolArgs )
+
+    # SMapList is a list of SMap dictionaries, process rho values
+    rho = zeros( len( SMapList ) )
+
+    for i in range( len( SMapList ) ):
+        SM           = SMapList[ i ]
+        observations = SM['observations']
+        predictions  = SM['predictions']
+        rho[ i ]     = pyBindEDM.ComputeError(observations, predictions)['rho']
+
+    # Return pandas DataFrame of Theta : rho
+    df = DataFrame( {'Theta':thetaValues, 'rho':rho} )
+
+    return df
+
+#----------------------------------------------------------------------------
+def SMapFunc( theta, args, data ):
+    '''Call pyEDM SMap using theta, args, and data'''
+
+    sm = SMap( dataFrame       = data,
+               lib             = args['lib'],
+               pred            = args['pred'],
+               E               = args['E'],
+               Tp              = args['Tp'],
+               tau             = args['tau'],
+               theta           = theta,
+               exclusionRadius = args['exclusionRadius'],
+               columns         = args['columns'],
+               target          = args['target'],
+               embedded        = args['embedded'],
+               validLib        = args['validLib'],
+               ignoreNan       = args['ignoreNan'],
+               noTime          = args['noTime'],
+               showPlot        = False )
+
+    return sm

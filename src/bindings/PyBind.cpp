@@ -219,5 +219,6 @@ PYBIND11_MODULE( pyBindEDM, pyMod ) {
                py::arg("embedded")        = false,
                py::arg("verbose")         = false,
                py::arg("validLib")        = std::vector<bool>(),
+               py::arg("ignoreNan")       = true,
                py::arg("numThreads")      = 4 );
 }
