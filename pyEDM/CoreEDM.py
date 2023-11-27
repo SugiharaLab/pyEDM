@@ -60,8 +60,9 @@ def Embed( pathIn    = "./",
     DF = pyEDM.AuxFunc.GetDF( dataFile, dataFrame, False, "Embed" )
 
     # If columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str,columns   ) )
+        columns = ','.join( map( str, columns ) )
 
     # D is a Python dict from pybind11 < cppEDM Embed
     D = pyBindEDM.Embed( pathIn,
@@ -111,12 +112,15 @@ def Simplex( pathIn          = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
+    if ' ' in target :
+        target = target + ',' # space in target: add , for cppEDM
 
     # D is a Python dict from pybind11 < cppEDM Simplex:
     #  { "predictions" : {}, ["parameters" : {}] }
@@ -196,12 +200,15 @@ def SMap( pathIn          = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
+    if ' ' in target :
+        target = target + ',' # space in target: add , for cppEDM
 
     # Validate the solver if one was passed in
     if solver :
@@ -299,12 +306,15 @@ def Multiview( pathIn          = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
+    if ' ' in target :
+        target = target + ',' # space in target: add , for cppEDM
 
     # D is a Python dict from pybind11 < cppEDM Multiview:
     #  { "View" : {}, "Predictions" : {}, ColumnNames : {} }
@@ -381,12 +391,16 @@ def CCM( pathIn           = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If columns, libSizes, target are not string, but iterable convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
     if pyEDM.AuxFunc.NotStringIterable( libSizes ) :
         libSizes = ' '.join( map( str, libSizes ) )
     if pyEDM.AuxFunc.NotStringIterable( target ) :
-        target = ' '.join( map( str, target ) )
+        target = ','.join( map( str, target ) )
+    else :
+        if ' ' in target :
+            target = target + ',' # space in target: add , for cppEDM
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.CCM( pathIn,
@@ -470,12 +484,15 @@ def EmbedDimension( pathIn          = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
+    if ' ' in target :
+        target = target + ',' # space in target: add , for cppEDM
 
     # D is a Python dict from pybind11 < cppEDM CCM
     D = pyBindEDM.EmbedDimension( pathIn,
@@ -539,12 +556,15 @@ def PredictInterval( pathIn          = "./",
         dataFile = '' # DF was created in GetDF(), disable dataFile read
 
     # If lib, pred, columns are not string, but iterable, convert to string
+    # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
     if pyEDM.AuxFunc.NotStringIterable( lib ) :
         lib = ' '.join( map( str, lib ) )
     if pyEDM.AuxFunc.NotStringIterable( pred ) :
         pred = ' '.join( map( str, pred ) )
     if pyEDM.AuxFunc.NotStringIterable( columns ) :
-        columns = ' '.join( map( str, columns ) )
+        columns = ','.join( map( str, columns ) )
+    if ' ' in target :
+        target = target + ',' # space in target: add , for cppEDM
 
     # D is a Python dict from pybind11 < cppEDM PredictInterval
     D = pyBindEDM.PredictInterval( pathIn,
@@ -648,16 +668,18 @@ def PredictNonlinear( pathIn          = "./",
         if dataFile and noTime :
             dataFile = '' # DF was created in GetDF(), disable dataFile read
 
-        # If lib,pred,columns,theta are not string, but iterable,
-        # convert to string
+        # If lib,pred,columns,theta are not string, but iterable, convert to str
+        # NOTE: columns joined on ',' to enable names with whitespace in cppEDM
         if pyEDM.AuxFunc.NotStringIterable( lib ) :
             lib = ' '.join( map( str, lib ) )
         if pyEDM.AuxFunc.NotStringIterable( pred ) :
             pred = ' '.join( map( str, pred ) )
         if pyEDM.AuxFunc.NotStringIterable( columns ) :
-            columns = ' '.join( map( str, columns ) )
+            columns = ','.join( map( str, columns ) )
         if pyEDM.AuxFunc.NotStringIterable( theta ) :
             theta = ' '.join( map( str, theta ) )
+        if ' ' in target :
+            target = target + ',' # space in target: add , for cppEDM
 
         # Call pybind11 : cppEDM PredictNonlinear
         # D is a Python dict from pybind11 < cppEDM PredictNonlinear

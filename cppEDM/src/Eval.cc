@@ -555,7 +555,7 @@ DataFrame< double > PredictNonlinear( DataFrame< double > & data,
         // Use theta values passed in as parameter string
         ThetaValues.clear();
 
-        std::vector< std::string > theta_vec = SplitString( theta, " \t,\n" );
+        std::vector< std::string > theta_vec = SplitString(theta," \t,\n",true);
 
         try {
             for ( auto ci =  theta_vec.begin(); ci != theta_vec.end(); ++ci ) {

@@ -13,9 +13,10 @@
 #include <iterator>
 #include <set>
 
-// Common.cc
+// Common.cc : default delimeters = "," for .csv
 extern std::vector<std::string> SplitString( std::string inString, 
-                                             std::string delimeters = "," );
+                                             std::string delimeters = ",",
+                                             bool removeWhitespace = true );
 
 // Type definition for CSV NamedData to pair column names & column data
 typedef std::vector<std::pair<std::string, std::vector<double>>> NamedData;
@@ -80,7 +81,7 @@ public:
 
     //-----------------------------------------------------------------
     // Empty DataFrame of size (rows, columns) with column names in a
-    // single whitespace delimited string. 
+    // single string. 
     //-----------------------------------------------------------------
     DataFrame( size_t rows, size_t columns, std::string colNames ):
         n_rows( rows ), n_columns( columns ), elements( columns * rows ),
@@ -247,7 +248,6 @@ public:
         std::vector< size_t > col_i_vec;
 
         // Map column names to indices
-        std::vector< std::string >::iterator si;
         for ( auto ci = colNames.begin(); ci != colNames.end(); ++ci ) {
             auto si = find( columnNames.begin(), columnNames.end(), *ci );
 
@@ -442,7 +442,16 @@ public:
     void BuildColumnNameIndex( std::string colNames ) {
         // If colNames provided populate columnNames, columnNameToIndex
         if ( colNames.size() ) {
-            columnNames = SplitString( colNames, " ,\t" );
+
+            // If ',' in colNames, ignore whitespace in delimeter
+            // to allow space in names
+            if ( colNames.find( ',' ) != colNames.npos ) {
+                columnNames = SplitString( colNames, ",", false );
+            }
+            else {
+                columnNames = SplitString( colNames, " \t,\n" );
+            }
+
             if ( columnNames.size() != n_columns ) {
                 std::stringstream errMsg;
                 errMsg << "DataFrame::BuildColumnNameIndex(s) "
@@ -693,7 +702,8 @@ private:
         std::vector< std::string > colNames;
 
         // First line of .csv is REQUIRED header / column names
-        std::vector<std::string> firstLineWords = SplitString( dataLines[0] );
+        std::vector<std::string> firstLineWords =
+            SplitString( dataLines[0], ",", false );
 
         // Get named columns from header line
         for (size_t colIdx = 0; colIdx < firstLineWords.size(); colIdx++){

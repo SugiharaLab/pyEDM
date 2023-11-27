@@ -102,7 +102,7 @@ Parameters::Parameters(
     validated        ( false ),
 
     // Instantiate Version
-    version( 1, 15, 1, "2023-10-27" )
+    version( 1, 15, 2, "2023-11-27" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -144,8 +144,16 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     if ( columns_str.size() ) {
 
-        std::vector<std::string> columns_vec = SplitString( columns_str,
-                                                            " \t,\n" );
+        std::vector<std::string> columns_vec;
+
+        // If ',' in columns_str, do not use whitespace delimeter
+        // to allow space in names
+        if ( columns_str.find( ',' ) != columns_str.npos ) {
+            columns_vec = SplitString( columns_str, ",", false );
+        }
+        else {
+            columns_vec = SplitString( columns_str, " \t,\n", true );
+        }
         columnNames = columns_vec;
     }
 
@@ -161,8 +169,16 @@ void Parameters::Validate() {
     //       All other use targetName[0].
     //--------------------------------------------------------------
     if ( target_str.size() ) {
-        std::vector<std::string> columns_vec = SplitString( target_str,
-                                                            " \t,\n" );
+        std::vector<std::string> columns_vec;
+
+        // If ',' in target_str, do not use whitespace delimeter
+        // to allow space in names
+        if ( target_str.find( ',' ) != target_str.npos ) {
+            columns_vec = SplitString( target_str, ",\n", false );
+        }
+        else {
+            columns_vec = SplitString( target_str, " \t,\n", true );
+        }
         targetNames = columns_vec;
     }
 
@@ -201,7 +217,8 @@ void Parameters::Validate() {
         //      if increment < stop generate the library sequence.
         //      if increment > stop presume list of 3 library sizes.
         //   2) Otherwise: "x y ..." : list of library sizes.
-        std::vector<std::string> libsize_vec = SplitString(libSizes_str," \t,");
+        std::vector<std::string> libsize_vec = SplitString( libSizes_str,
+                                                            " \t,", true );
 
         bool libSizeSequence = false;
         int  start;
@@ -351,7 +368,7 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     if ( lib_str.size() ) {
         // Parse lib_str into vector of strings
-        std::vector<std::string> lib_vec = SplitString( lib_str, " \t," );
+        std::vector<std::string> lib_vec = SplitString( lib_str, " \t,", true );
         if ( lib_vec.size() % 2 != 0 ) {
             std::string errMsg( "Parameters::Validate(): "
                                 "library must be even number of integers.\n" );
@@ -455,7 +472,7 @@ void Parameters::Validate() {
     //--------------------------------------------------------------
     if ( pred_str.size() ) {
         // Parse pred_str into vector of strings
-        std::vector<std::string> pred_vec = SplitString( pred_str, " \t," );
+        std::vector<std::string> pred_vec = SplitString(pred_str, " \t,", true);
         if ( pred_vec.size() % 2 != 0 ) {
             std::string errMsg( "Parameters::Validate(): "
                                 "prediction must be even number of integers.\n");
