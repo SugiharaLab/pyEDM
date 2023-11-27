@@ -464,9 +464,6 @@ SMapValues SMap( DataFrame< double > & DF,
         msg << "WARNING: SMap() " << DF.NanRows().size()
             << " nan rows detected in columns or target. "
             << "Original number of rows " << DF.NRows() << ".\n";
-        if ( not parameters.embedded ) {
-            msg << "Time delay embedding presumption violated.\n";
-        }
         std::cout << msg.str();
 
         if ( parameters.verbose ) {

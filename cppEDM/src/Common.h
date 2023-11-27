@@ -76,7 +76,8 @@ struct MultiviewValues {
 std::string ToLower( std::string str );
 
 std::vector<std::string> SplitString( std::string inString, 
-                                      std::string delimeters );
+                                      std::string delimeters,
+                                      bool        removeWhitespace );
 
 VectorError ComputeError( std::valarray< double > obs,
                           std::valarray< double > pred );

@@ -36,9 +36,9 @@ std::string ToLower( std::string str ) {
 //           
 // Return: vector of tokens
 //----------------------------------------------------------------
-std::vector<std::string> SplitString( std::string inString, 
-                                      std::string delimeters ) {
-
+std::vector<std::string> SplitString( std::string inString,
+                                      std::string delimeters,
+                                      bool removeWhitespace ) {
   size_t pos       = 0;
   size_t eos       = 0;
   size_t wordStart = 0;
@@ -78,9 +78,10 @@ std::vector<std::string> SplitString( std::string inString,
 
       word = inString.substr( wordStart, wordEnd - wordStart );
 
-      // remove whitespace
-      word.erase( std::remove_if( word.begin(), word.end(), ::isspace ),
-                  word.end() );
+      if ( removeWhitespace ) {
+          word.erase( std::remove_if( word.begin(), word.end(), ::isspace ),
+                      word.end() );
+      }
 
       splitString.push_back( word );
     }
