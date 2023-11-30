@@ -40,7 +40,6 @@ void CCMClass::Project () {
     // with calls to FindNeighbors(), Simplex() in CrossMap()
     colToTarget.PrepareEmbedding(); // embedding, target
     targetToCol.PrepareEmbedding(); // embedding, target
-
     colToTarget.Distances();        // allDistances, allLibRows
     targetToCol.Distances();        // allDistances, allLibRows
 
@@ -427,10 +426,22 @@ void CCMClass::SetupParameters() {
 
     // Swap column : target in targetToCol.parameters
     // NOTE: CCM allows multiple targets for multivariate or mixed
-    //       embeddings. The targets now become the state-space columns, 
+    //       embeddings. The targets become the state-space columns, 
     //       and the first columns becomes the univariate target.
+    
+    // To support whitespace in column names it is expected there
+    // is a ',' in the columns_str and target_str if the name has
+    // whitespace. Have to check for ',' in original columns_str
+    // and manually add ',' to columnNames for Validate()
+    if ( parameters.columns_str.find( ',' ) != parameters.columns_str.npos ) {
+        targetToCol.parameters.target_str =
+            parameters.columnNames.front().append(",");
+    }
+    else {
+        targetToCol.parameters.target_str = parameters.columnNames.front();
+    }
+
     targetToCol.parameters.columns_str = parameters.target_str;
-    targetToCol.parameters.target_str  = parameters.columnNames.front();
     targetToCol.parameters.Validate();
 
     //------------------------------------------------------------------
@@ -473,17 +484,30 @@ void CCMClass::SetupParameters() {
 // 
 //----------------------------------------------------------------
 void CCMClass::FormatOutput () {
-    // Create unified column names of output DataFrame
-    std::stringstream libRhoNames;
-    libRhoNames << "LibSize "
-                << parameters.columnNames.front() << ":"
-                << parameters.targetNames.front() << " "
-                << parameters.targetNames.front() << ":"
-                << parameters.columnNames.front();
+    // Create unified column names for output DataFrame
+    std::vector< std::string > libRhoNames;
+    libRhoNames.push_back( "LibSize" );
 
-    // Allocate unified LibStats output DataFrame in EDM object
+    // allLibStats column names use the first column or target names
+    std::string columnName = parameters.columnNames.front();
+    std::string targetName = parameters.targetNames.front();
+
+    if ( columnName.back() == ',' ) {
+        // Remove trailing ',' for allLibStats column name
+        columnName.erase( columnName.end() - 1 );
+    }
+
+    std::stringstream ssColTar;
+    ssColTar << columnName << ":" << targetName;
+    libRhoNames.push_back( ssColTar.str() );
+
+    std::stringstream ssTarCol;
+    ssTarCol << targetName << ":" << columnName;
+    libRhoNames.push_back( ssTarCol.str() );
+
+    // Create unified output DataFrame
     allLibStats = DataFrame< double >( parameters.librarySizes.size(), 3,
-                                       libRhoNames.str() );
+                                       libRhoNames );
 
     allLibStats.WriteColumn( 0, colToTargetValues.LibStats.Column( 0 ) );
     allLibStats.WriteColumn( 1, colToTargetValues.LibStats.Column( 1 ) );
