@@ -102,7 +102,7 @@ Parameters::Parameters(
     validated        ( false ),
 
     // Instantiate Version
-    version( 1, 15, 2, "2023-11-27" )
+    version( 1, 15, 3, "2023-11-31" )
 {
     // Constructor code
     if ( method != Method::None ) {
@@ -146,7 +146,7 @@ void Parameters::Validate() {
 
         std::vector<std::string> columns_vec;
 
-        // If ',' in columns_str, do not use whitespace delimeter
+        // If ',' in columns_str, do not use whitespace delimiter
         // to allow space in names
         if ( columns_str.find( ',' ) != columns_str.npos ) {
             columns_vec = SplitString( columns_str, ",", false );
@@ -171,10 +171,10 @@ void Parameters::Validate() {
     if ( target_str.size() ) {
         std::vector<std::string> columns_vec;
 
-        // If ',' in target_str, do not use whitespace delimeter
+        // If ',' in target_str, do not use whitespace delimiter
         // to allow space in names
         if ( target_str.find( ',' ) != target_str.npos ) {
-            columns_vec = SplitString( target_str, ",\n", false );
+            columns_vec = SplitString( target_str, ",", false );
         }
         else {
             columns_vec = SplitString( target_str, " \t,\n", true );
