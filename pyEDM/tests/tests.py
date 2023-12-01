@@ -95,7 +95,7 @@ class test_EDM( unittest.TestCase ):
         df = EDM.Simplex( "", self.Files[ "columnNameSpace.csv" ],
                           None, "./", "", 
                           "1 80", "81 85", 5, 1, 0, -1, 0,
-                          "Var 1,Var 2", "Var 5 1",
+                          "Var 1,Var 2", "Var 5 1,",
                           False, False, True, False, [], 0, False )
 
     #------------------------------------------------------------
@@ -105,7 +105,7 @@ class test_EDM( unittest.TestCase ):
         df = EDM.Simplex( "", self.Files[ "columnNameSpace.csv" ],
                           None, "./", "", 
                           "1 80", "81 85", 5, 1, 0, -1, 0,
-                          ['Var 1','Var 2'], "Var 5 1",
+                          ['Var 1','Var 2'], "Var 5 1,",
                           False, False, True, False, [], 0, False )
 
     #------------------------------------------------------------
@@ -240,7 +240,7 @@ class test_EDM( unittest.TestCase ):
         print ( "--- CCM column names with space ---" )
         df = EDM.CCM( "", self.Files[ "columnNameSpace.csv" ],
                       None, "./", "", 
-                      3, 0, 0, -1, 0, "Var 1,Var 2", "Var 5 1",
+                      3, 0, 0, -1, 0, "Var 1,Var 2", "Var 5 1,",
                       "20 50 90", 10, False, False, 0, False, False, False )
 
     #------------------------------------------------------------
