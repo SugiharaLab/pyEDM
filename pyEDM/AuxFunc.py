@@ -250,9 +250,11 @@ def ReadDataFrame( path, file, noTime = False ):
     return df
 
 #------------------------------------------------------------------------
-# Is an object iterable?
+#
 #------------------------------------------------------------------------
 def Iterable( obj ):
+    '''Is an object iterable?'''
+
     try:
         it = iter( obj )
     except TypeError: 
@@ -260,15 +262,35 @@ def Iterable( obj ):
     return True
 
 #------------------------------------------------------------------------
-# Is an object iterable and not a string?
+# 
 #------------------------------------------------------------------------
-def NotStringIterable( obj ):
+def IsIterable( obj ):
+    '''Is an object iterable and not a string?'''
+
     if Iterable( obj ) :
         if isinstance( obj, str ) :
             return False
         else :
             return True
     return False
+
+#------------------------------------------------------------------------
+# 
+#------------------------------------------------------------------------
+def ArgTo_cppEDM_String( arg ):
+    '''Flatten and mangle columns arg for cppEDM to handle whitespace.
+       arg can be string or iterable
+       arg joined on ',' to enable names with whitespace in cppEDM'''
+
+    cppEDMString = arg # default, no formatting needed
+
+    if IsIterable( arg ) :
+        if len( arg ) > 1 :
+            cppEDMString = ','.join( map( str, arg ) )
+        elif ' ' in arg[0] :
+            cppEDMString = arg[0] + ',' # Add ',' for cppEDM string
+
+    return cppEDMString
 
 #------------------------------------------------------------------------
 #
