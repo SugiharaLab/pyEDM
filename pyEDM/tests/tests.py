@@ -53,6 +53,65 @@ class test_EDM( unittest.TestCase ):
                                  file + " in EDM package" )
 
     #------------------------------------------------------------
+    # API tests with dataFrame & columns 
+    #------------------------------------------------------------
+    def test_API_1( self ):
+        '''API dataFrame & columns 1'''
+        print ( "--- API dataFrame & columns 1 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = 'V1,' )
+
+    def test_API_2( self ):
+        '''API dataFrame & columns 2'''
+        print ( "--- API dataFrame & columns 2 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ['V1'] )
+
+    def test_API_3( self ):
+        '''API dataFrame & columns 3'''
+        print ( "--- API dataFrame & columns 3 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ['V1',] )
+
+    def test_API_4( self ):
+        '''API dataFrame & columns 4'''
+        print ( "--- API dataFrame & columns 4 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ['V1','V3'] )
+
+    def test_API_5( self ):
+        '''API dataFrame & columns 5'''
+        print ( "--- API dataFrame & columns 5 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ['V1','V3',] )
+
+    def test_API_6( self ):
+        '''API dataFrame & columns 6'''
+        print ( "--- API dataFrame & columns 6 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ('V1') )
+
+    def test_API_7( self ):
+        '''API dataFrame & columns 7'''
+        print ( "--- API dataFrame & columns 7 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ('V1',) )
+
+    def test_API_8( self ):
+        '''API dataFrame & columns 8'''
+        print ( "--- API dataFrame & columns 8 ---" )
+        df_ = EDM.sampleData['Lorenz5D']
+        df  = EDM.Simplex( dataFrame = df_, lib = '1 300', pred = '301 310',
+                           E = 5, target = 'V5', columns = ('V1','V3') )
+
+    #------------------------------------------------------------
     # Embed
     #------------------------------------------------------------
     def test_embed( self ):
