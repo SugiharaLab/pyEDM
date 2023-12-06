@@ -289,6 +289,8 @@ def ArgTo_cppEDM_String( arg ):
             cppEDMString = ','.join( map( str, arg ) )
         elif ' ' in arg[0] :
             cppEDMString = arg[0] + ',' # Add ',' for cppEDM string
+        else :
+            cppEDMString = arg[0] # Single element iterable : extract str
 
     return cppEDMString
 
