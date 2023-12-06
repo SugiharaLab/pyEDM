@@ -57,7 +57,7 @@ def Embed( pathIn    = "./",
        Calls MakeBlock() after validation and column subset selection.'''
 
     # Establish DF struct as empty list, or from Pandas DataFrame
-    DF = pyEDM.AuxFunc.GetDF( dataFile, dataFrame, False, "Embed" )
+    DF = pyEDM.AuxFunc.GetDF( pathIn, dataFile, dataFrame, False, "Embed" )
 
     # Format columns as string for cppEDM
     columns = pyEDM.AuxFunc.ArgTo_cppEDM_String( columns )

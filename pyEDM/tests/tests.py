@@ -53,6 +53,22 @@ class test_EDM( unittest.TestCase ):
                                  file + " in EDM package" )
 
     #------------------------------------------------------------
+    # Embed
+    #------------------------------------------------------------
+    def test_embed( self ):
+        '''Embed'''
+        print ( "--- Embed ---" )
+        df = EDM.Embed( "", self.Files[ "circle.csv" ], None,
+                        3, -1, "x", False )
+
+    #------------------------------------------------------------
+    def test_embed2( self ):
+        '''Embed multivariate'''
+        print ( "--- Embed multivariate ---" )
+        df = EDM.Embed( "", self.Files[ "circle.csv" ], None,
+                        3, -1, "x y", False )
+
+    #------------------------------------------------------------
     # Simplex
     #------------------------------------------------------------
     def test_simplex( self ):
