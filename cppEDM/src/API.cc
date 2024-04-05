@@ -458,7 +458,7 @@ SMapValues SMap( DataFrame< double > & DF,
     }
     DF.FindNan( nanColsCheck ); // If nan, set DF.nanFound, DF.nanRows
 
-    if ( DF.NanFound() ) {
+    if ( parameters.verbose and DF.NanFound() ) {
         // Issue warning
         std::stringstream msg;
         msg << "WARNING: SMap() " << DF.NanRows().size()
@@ -466,15 +466,13 @@ SMapValues SMap( DataFrame< double > & DF,
             << "Original number of rows " << DF.NRows() << ".\n";
         std::cout << msg.str();
 
-        if ( parameters.verbose ) {
-            msg.str( std::string() ); // clear msg 
-            msg << "WARNING: SMap() nan rows: ";
-            std::vector< size_t >::iterator ni;
-            for ( ni = DF.NanRows().begin(); ni != DF.NanRows().end(); ++ni ) {
-                msg << *ni + 1 << " ";
-            } msg << "\n";
-            std::cout << msg.str();
-        }
+        msg.str( std::string() ); // clear msg 
+        msg << "WARNING: SMap() nan rows: ";
+        std::vector< size_t >::iterator ni;
+        for ( ni = DF.NanRows().begin(); ni != DF.NanRows().end(); ++ni ) {
+            msg << *ni + 1 << " ";
+        } msg << "\n";
+        std::cout << msg.str();
     }
 
     //-----------------------------------------------------------------

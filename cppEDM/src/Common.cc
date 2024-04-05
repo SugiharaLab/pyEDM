@@ -113,7 +113,7 @@ VectorError ComputeError( std::valarray< double > obsIn,
     // We need to find the appropriate slice parameters
 
     // To try and be efficient, we first scan for nans, if none: stats
-    // If there are nans, then assess the overlapping subset and slice
+    // If there are nans, copy from the overlapping values
     bool nanObs  = false;
     bool nanPred = false;
 
@@ -130,46 +130,34 @@ VectorError ComputeError( std::valarray< double > obsIn,
         pred = std::valarray< double >( predIn );
     }
     else {
-        // Handle nans...
+        // Handle nans
         // Build concurrent vector of bool pairs : isnan on obsIn, predIn
         std::vector< std::pair< bool, bool > > nanIndexPairs( Nin );
         for ( size_t i = 0; i < Nin; i++ ) {
             nanIndexPairs[ i ] = std::make_pair( std::isnan( obsIn[i]  ),
                                                  std::isnan( predIn[i] ) );
         }
-        // Find overlapping subset indices
+        // Find overlapping subset indices or use set::intersection
         // Condense pairs into one boolean value in nonNanOverlap
+        size_t Nout = 0;
         std::vector< bool > nonNanOverlap( Nin );
         for ( size_t i = 0; i < Nin; i++ ) {
             if ( not nanIndexPairs[ i ].first and
                  not nanIndexPairs[ i ].second ) {
                 nonNanOverlap[ i ] = true; // Both are not nan, valid index
+                Nout++;
             }
             else {
                 nonNanOverlap[ i ] = false;
             }
         }
-        // Get the slice parameters
-        auto firstValid = std::find( nonNanOverlap.begin(),
-                                     nonNanOverlap.end(), true );
-        auto lastValid  = std::find( nonNanOverlap.rbegin(),
-                                     nonNanOverlap.rend(), true );
-        size_t firstValidIndex = std::distance( nonNanOverlap.begin(),
-                                                firstValid );
-        size_t lastValidIndex = std::distance( nonNanOverlap.rbegin(),
-                                               lastValid );
 
-        lastValidIndex = Nin - lastValidIndex; // reverse iterator used...
-
-        int Nout = (int) lastValidIndex - (int) firstValidIndex;
-        
-        if ( Nout < 0 ) {
+        if ( Nout < 6 ) {
             std::stringstream msg;
-            msg << "WARNING: ComputeError(): nan predictions found"
-                << " error not computed." << std::endl;
+            msg << "WARNING: ComputeError(): nan found. Not enough data"
+                << " to compute error." << std::endl;
             std::cout << msg.str();
 
-            Nout = 0;
             obs  = std::valarray< double >( 0., 1 ); // vector [0.] N = 1
             pred = std::valarray< double >( 0., 1 ); // vector [0.] N = 1
         }
@@ -177,10 +165,16 @@ VectorError ComputeError( std::valarray< double > obsIn,
             // Allocate the output arrays and fill with slices
             obs  = std::valarray< double >( Nout );
             pred = std::valarray< double >( Nout );
-            
-            std::slice nonNan = std::slice( firstValidIndex, Nout, 1 );
-            obs [ std::slice( 0, Nout, 1 ) ] = obsIn [ nonNan ];
-            pred[ std::slice( 0, Nout, 1 ) ] = predIn[ nonNan ];
+
+            // Copy valid values into obs & pred
+            size_t n = 0;
+            for ( size_t i = 0; i < nonNanOverlap.size(); i++ ) {
+                if ( nonNanOverlap[ i ] ) {
+                    obs [ n ] = obsIn [ i ];
+                    pred[ n ] = predIn[ i ];
+                    n++;
+                }
+            }
         }
     }
 
