@@ -10,52 +10,58 @@ import matplotlib.pyplot as plt
 from pyEDM import SMap, sampleData
 
 #----------------------------------------------------------------------------
-# Main module
 #----------------------------------------------------------------------------
-def main():
+def SMap_Tp( data, TpList = None, target = None, column = None,
+             E = 2, tau = -1, theta = 0, exclusionRadius = 0,
+             lib = None, pred = None, cores = 5, embedded = False,
+             outputFile = None, noTime = False,
+             verbose = False, plot = False ):
+    
     '''Use multiprocessing Pool to process parallelise SMap.
        The TpList (-T) argument specifies a list of Tp.
     '''
     
     startTime = time.time()
     
-    args = ParseCmdLine()
-    
-    Process( args )
+    if not target :
+        raise( RuntimeError( 'target required' ) )
+    if not  column:
+        raise( RuntimeError( 'column required' ) )
+    if not  TpList:
+        raise( RuntimeError( 'TpList required' ) )
 
-    elapsedTime = time.time() - startTime
-    print( "Normal Exit elapsed time:", round( elapsedTime, 2 ) )
+    # Ignore first column, convert to list
+    if not noTime :
+        columns = data.columns[ 1 : len(data.columns) ].to_list()
 
-#----------------------------------------------------------------------------
-def Process( args ):
-
-    # If -i input file: load it, else look for inputData in sampleData
-    if args.inputFile:
-        data = read_csv( args.inputFile )
-    elif args.inputData:
-        data = sampleData[ args.inputData ]
-    else:
-        raise RuntimeError( "Invalid inputFile or inputData" )
+    # Dictionary of arguments for Pool : CrossMapFunc
+    argsD = { 'target' : target, 'column' : column,
+              'lib' : lib, 'pred' : pred, 'theta' : theta,
+              'E' : E, 'tau' : tau, 'exclusionRadius' : exclusionRadius, 
+              'embedded' : embedded, 'noTime' : noTime }
 
     # Create iterable for Pool.starmap, use repeated copies of args, data
-    poolArgs = zip( args.TpList, repeat( args ), repeat( data ) )
+    poolArgs = zip( TpList, repeat( argsD ), repeat( data ) )
 
     # Process pool
-    pool = Pool( processes = args.cores )
+    pool = Pool( processes = cores )
     
     # Use pool.starmap to distribute among cores
     # starmap: elements of the iterable argument are
     #          iterables unpacked as arguments in SMapFunc()
-    SMapList = pool.starmap( SMapFunc, poolArgs )
+    SMapList = pool.starmap( SMapTpFunc, poolArgs )
 
     # SMapList is a list of SMap dictionaries : create dict with TpX keys
-    keys = [ 'Tp' + str( k ) for k in args.TpList ]
+    keys = [ 'Tp' + str( k ) for k in TpList ]
     D = dict( zip( keys, SMapList ) )
-    
-    print( D.keys() )
+
+    print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+
+    if verbose :
+        print( D.keys() )
 
     # if -P : Plot Tp0 coefficients and predictions
-    if args.plot and 'Tp0' in  D.keys() :
+    if plot and 'Tp0' in  D.keys() :
         coeff_df = D[ 'Tp0' ][ 'coefficients' ]
         coeff_df.plot()
 
@@ -64,23 +70,55 @@ def Process( args ):
 
         plt.show()
 
+    return D
+
 #----------------------------------------------------------------------------
-def SMapFunc( Tp, args, data ):
+#----------------------------------------------------------------------------
+def SMapTpFunc( Tp, argsD, data ):
     '''Call pyEDM SMap using Tp, args, and data'''
     
     sm = SMap( dataFrame       = data,
-               lib             = args.lib,
-               pred            = args.pred,
-               E               = args.E,
-               Tp              = Tp,   # Not from args
-               exclusionRadius = args.exclusionRadius,
-               columns         = args.column,
-               target          = args.target,
-               embedded        = args.embedded,
+               lib             = argsD['lib'],
+               pred            = argsD['pred'],
+               E               = argsD['E'],
+               Tp              = Tp, # Single value of TpList
+               theta           = argsD['theta'],
+               exclusionRadius = argsD['exclusionRadius'],
+               columns         = argsD['column'],
+               target          = argsD['target'],
+               embedded        = argsD['embedded'],
+               noTime          = argsD['noTime'],
                showPlot        = False )
 
     return sm
 
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+def SMap_Tp_CmdLine():
+    '''Wrapper for SMap_Tp with command line parsing'''
+
+    args = ParseCmdLine()
+
+    # Read data
+    # If -i input file: load it, else look for inputData in sampleData
+    if args.inputFile:
+        dataFrame = read_csv( args.inputFile )
+    elif args.inputData:
+        dataFrame = sampleData[ args.inputData ]
+    else:
+        raise RuntimeError( "Invalid inputFile or inputData" )
+
+    # Call EmbedDim_Columns()
+    D = SMap_Tp( data = dataFrame, TpList = args.TpList, 
+                 target = args.target, column = args.column,
+                 E = args.E, tau = args.tau, theta = args.theta,
+                 exclusionRadius = args.exclusionRadius,
+                 lib = args.lib, pred = args.pred,
+                 embedded = args.embedded, cores = args.cores,
+                 outputFile = args.outputFile, noTime = args.noTime,
+                 verbose = args.verbose, plot = args.Plot )
+
+#----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 def ParseCmdLine():
     
@@ -115,6 +153,12 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 5,
                         help    = 'Embedding dimension E.')
+
+    parser.add_argument('-tau', '--tau',
+                        dest    = 'tau', type = int, 
+                        action  = 'store',
+                        default = -1,
+                        help    = 'tau.')
 
     parser.add_argument('-x', '--exclusionRadius',
                         dest    = 'exclusionRadius', type = int, 
@@ -158,14 +202,26 @@ def ParseCmdLine():
                         default = False,
                         help    = 'embedded flag.')
 
+    parser.add_argument('-nT', '--noTime',
+                        dest    = 'noTime',
+                        action  = 'store_true',
+                        default = False,
+                        help    = 'noTime.')
+
+    parser.add_argument('-v', '--verbose',
+                        dest    = 'verbose',
+                        action  = 'store_true',
+                        default = False,
+                        help    = 'verbose.')
+
     parser.add_argument('-C', '--cores',
                         dest    = 'cores', type = int, 
                         action  = 'store',
                         default = 4,
                         help    = 'Multiprocessing cores.')
 
-    parser.add_argument('-P', '--plot',
-                        dest    = 'plot',
+    parser.add_argument('-P', '--Plot',
+                        dest    = 'Plot',
                         action  = 'store_true',
                         default = False,
                         help    = 'Plot results.')
@@ -177,4 +233,4 @@ def ParseCmdLine():
 #----------------------------------------------------------------------------
 # Provide for cmd line invocation and clean module loading
 if __name__ == "__main__":
-    main()
+    SMap_Tp_CmdLine()

@@ -7,40 +7,38 @@ from pandas import concat, read_csv
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def main():
+def Embedding( data, columns = None, E = 2, tau = -1,
+               outputFile = None, plusminus = False, verbose = False ):
     '''
     EDM Embed wrapper
     Create time-delay embedding with time column for EDM. 
     Useful to create mixed multivariate embeddings for SMap and
-    embeddings with time-advanced vectors.  
+    embeddings with time-advanced vectors. 
+ 
     Add Time column. Replace V(t+0) and V(t-0) with V.
     If args.plusminus create both time-delay and time-advanced columns,
     require args.tau < 0.
     '''
-
-    args = ParseCmdLine()
-
-    data = read_csv( args.inputFile )
 
     # Presume time is first column
     timeName   = data.columns[0]
     timeSeries = data[ timeName ]
 
     # If no columns specified, use all except first
-    if not args.columns :
-        args.columns = data.columns[ 1: ]
+    if not columns :
+        columns = data.columns[ 1: ]
 
-    if args.verbose :
+    if verbose :
         print( "Input time column: ", timeName )
-        print( "Input columns: ", args.columns )
+        print( "Input columns: ", columns )
 
     # Create embeddings of columns
     # There will be redundancies vis V1(t-0), V1(t+0)
-    if args.plusminus :
-        embed_minus = Embed( dataFrame = data, E = args.E, tau = args.tau,
-                             columns = args.columns )
-        embed_plus = Embed( dataFrame = data, E = args.E, tau = abs( args.tau ),
-                            columns = args.columns )
+    if plusminus :
+        embed_minus = Embed( dataFrame = data, E = E, tau = tau,
+                             columns = columns )
+        embed_plus = Embed( dataFrame = data, E = E, tau = abs( tau ),
+                            columns = columns )
         df = concat( [ timeSeries, embed_minus, embed_plus ], axis = 1 )
 
         # Remove *(t+0) columns redundant with *(t-0)
@@ -48,8 +46,8 @@ def main():
         df = df.drop( columns = cols_tplus0 )
 
     else :
-        embed_ = Embed( dataFrame = data, E = args.E, tau = args.tau,
-                        columns = args.columns )
+        embed_ = Embed( dataFrame = data, E = E, tau = tau,
+                        columns = columns )
         df = concat( [ timeSeries, embed_ ], axis = 1 )
 
     # Rename *(t+0) to original column names
@@ -65,14 +63,35 @@ def main():
     # Rename first column to original time column name
     df.rename( columns = { df.columns[0] : timeName }, inplace = True )
 
-    if args.verbose :
+    if verbose :
         print( "Columns:", df.columns, "\n-------------------------------" )
         print( df.head( 4 ) )
         print( df.tail( 4 ) )
 
-    if args.outputFile :
-        df.to_csv( args.outputFile, index = False )
+    if outputFile :
+        df.to_csv( outputFile, index = False )
 
+    return df
+
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+def Embedding_CmdLine():
+    '''Wrapper for Embedding with command line parsing'''
+
+    args = ParseCmdLine()
+
+    # Read data
+    if not args.inputFile :
+        raise( RuntimeError( '-i inputFile argument required to read .csv' ) )
+
+    dataFrame = read_csv( args.inputFile )
+
+    # Call Embedding()
+    df = Embedding( data = dataFrame, columns = args.columns,
+                    E = args.E, tau = args.tau, plusminus = args.plusminus, 
+                    verbose = args.verbose )
+
+#----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 def ParseCmdLine():
 
@@ -85,7 +104,7 @@ def ParseCmdLine():
 
     parser.add_argument('-o', '--outputFile',
                         dest   = 'outputFile', type = str, 
-                        action = 'store',      default = 'out.csv',
+                        action = 'store',      default = None,
                         help = 'Output file name.')
 
     parser.add_argument('-p', '--plusminus',
@@ -124,4 +143,4 @@ def ParseCmdLine():
 #----------------------------------------------------------------------------
 # Provide for cmd line invocation and clean module loading
 if __name__ == "__main__":
-    main()
+    Embedding_CmdLine() # Call CLI wrapper for Embedding()
