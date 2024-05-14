@@ -24,7 +24,6 @@ keywords    = ['EDM', 'Empirical Dynamic Modeling', 'nonlinear dynamics',
                'time series', 'state space' ]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: GPL3 License",
   "Operating System :: OS Independent",
 ]
 
