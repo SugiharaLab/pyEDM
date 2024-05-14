@@ -1,3 +1,5 @@
+build
+dist
 etc
 __pycache__
 src/pyEDM.egg-info
