@@ -1,2 +1,3 @@
-include cppEDM/src/*
-include src/bindings/*
+include src/pyEDM/data/*.csv
+include src/pyEDM/tests/*.py
+include src/pyEDM/tests/validation/*.csv

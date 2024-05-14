@@ -1,6 +1,6 @@
 ## Empirical Dynamic Modeling (EDM)
 ---
-This package provides a Python/Pandas DataFrame interface to the [cppEDM](https://github.com/SugiharaLab/cppEDM "cppEDM") library for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/ "EDM @ Sugihara Lab").  Introduction and documentation are are avilable [online](https://sugiharalab.github.io/EDM_Documentation/ "EDM Docs"), or in the package [API docs](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf "pyEDM API"). A Jupyter notebook interface is available at [jpyEDM](https://github.com/SugiharaLab/jpyEDM#empirical-dynamic-modeling-edm-jupyter-notebook).
+This package provides a Python/Pandas DataFrame toolset for [EDM analysis](http://deepeco.ucsd.edu/nonlinear-dynamics-research/edm/ "EDM @ Sugihara Lab").  Introduction and documentation are are avilable [online](https://sugiharalab.github.io/EDM_Documentation/ "EDM Docs"), or in the package [API docs](https://github.com/SugiharaLab/pyEDM/blob/master/doc/pyEDM.pdf "pyEDM API"). A Jupyter notebook interface is available at [jpyEDM](https://github.com/SugiharaLab/jpyEDM#empirical-dynamic-modeling-edm-jupyter-notebook).
 
 Functionality includes:
 * Simplex projection ([Sugihara and May 1990](https://www.nature.com/articles/344734a0))
@@ -13,32 +13,11 @@ Functionality includes:
 ## Installation
 
 ### Python Package Index (PyPI)
-Certain MacOS, Linux and Windows platforms are supported with prebuilt binary distributions hosted on PyPI [pyEDM](https://pypi.org/project/pyEDM/). 
-
-Command line using the Python pip module: `python -m pip install pyEDM`
-
-### Manual Install
-If a pre-built binary distribution is not available the user can build the cppEDM library, then install the Python package using pip. On OSX and Linux this requires g++. On Windows, the mingw-w64 GCC is available as in [MSYS2](https://www.msys2.org/).
-
-Note the [LAPACK](http://www.netlib.org/lapack/explore-html/index.html) library is required to build cppEDM and pyEDM. As of version 1.15.1, LAPACK is not required on Windows.
-
-#### OSX and Linux
-1. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
-2. Build cppEDM library: `cd pyEDM/cppEDM/src; make`
-3. Build and install package: `cd ../..; python -m pip install . --user`
-
-#### Windows
-0. If a Windows binary is not available, these suggestions may be useful.
-1. mingw-w64 GCC is available in [MSYS2](https://www.msys2.org/).
-2. Prior to version 1.15.1, [gfortran](https://gcc.gnu.org/wiki/GFortranBinariesWindows) and [OpenBLAS](https://www.openblas.net/) libraries are required.
-3. Download pyEDM: `git clone https://github.com/SugiharaLab/pyEDM`
-4. Build cppEDM library: `cd pyEDM\cppEDM\src; make`
-5. Adjust paths to find gfortran and openblas libraries (pyEDM/pyEDM/etc/windows/libopenblas.a). You may need to rename libEDM.a to EDM.lib, and openblas.a to openblas.lib.
-6. Build and install package in `pyEDM\`: `python -m pip install . --user`
+Certain MacOS, Linux and Windows platforms are supported with prebuilt binary distributions hosted on PyPI [pyEDM](https://pypi.org/project/pyEDM/) and can be installed with the Python pip module: `python -m pip install pyEDM`
 
 ---
 ## Usage
-Example usage at the python prompt:
+Examples can be executed in the python command line:
 ```python
 >>> import pyEDM
 >>> pyEDM.Examples()

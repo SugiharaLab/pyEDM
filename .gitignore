@@ -1,4 +1,5 @@
+etc
 __pycache__
-cppEDM/lib/
-pyEDM/__pycache__
-pyEDM/tests/__pycache__
+src/pyEDM.egg-info
+src/pyEDM/__pycache__
+src/pyEDM/tests/__pycache__
