@@ -18,7 +18,7 @@ def SMap_theta( data, thetaList = None, target = None, column = None,
                 verbose = False, plot = False ):
     
     '''Use multiprocessing Pool to process parallelise SMap.
-       The thetapList (-th) argument specifies a list of theta.
+       The thetaList (-th) argument specifies a list of theta.
     '''
     
     startTime = time.time()
