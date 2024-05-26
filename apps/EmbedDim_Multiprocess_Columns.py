@@ -46,8 +46,10 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
         pred = [ 1, data.shape[0] ]
 
     # Ignore first column, convert to list
-    if not noTime :
-        columns = data.columns[ 1 : len(data.columns) ].to_list()
+    if noTime :
+        columns = list( data.columns )
+    else :
+        columns = list( data.columns[ 1 : ] )
 
     N = len( columns )
 
