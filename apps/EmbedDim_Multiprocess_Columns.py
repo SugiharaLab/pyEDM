@@ -74,15 +74,17 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
     # Fill maxCols, targets and maxE arrays, dict
     maxCols = [None] * N
     targets = [None] * N
+    maxRho  = [0]    * N
     maxE    = [0]    * N
     i       = 0
     for edim in EDim :
         maxCols[i] = edim['column']
         targets[i] = edim['target']
         maxE[i]    = edim['maxE']
+        maxRho[i]  = edim['maxRho']
         i = i + 1
 
-    D = { 'column':maxCols, 'target':targets, 'E':maxE }
+    D = { 'column':maxCols, 'target':targets, 'E':maxE, 'rho':maxRho }
 
     if outputFile :
         with open( outputFile, 'wb' ) as fileObj:
@@ -128,10 +130,12 @@ def EmbedDimFunc( column, df, args ):
                          showPlot        = False )
 
     # Find max E(rho)
-    iMax = ed['rho'].round(2).argmax()
-    maxE = ed['E'].iloc[ iMax ]
+    iMax   = ed['rho'].round(2).argmax()
+    maxRho = ed['rho'].iloc[ iMax ]
+    maxE   = ed['E'].iloc[ iMax ]
 
-    return { 'column':column, 'target':target, 'maxE':maxE } #, 'EDim':ed }
+    return { 'column':column, 'target':target,
+             'maxE':maxE, 'maxRho':maxRho } #, 'EDim':ed }
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
