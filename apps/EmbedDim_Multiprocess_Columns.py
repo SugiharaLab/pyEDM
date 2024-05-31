@@ -8,16 +8,19 @@ from itertools          import repeat
 from concurrent.futures import ProcessPoolExecutor
 
 # Community modules
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from pyEDM  import EmbedDimension, sampleData
 from matplotlib import pyplot as plt
+from numpy import greater
+from scipy.signal import argrelextrema
 
 #----------------------------------------------------------------------------
 #
 #----------------------------------------------------------------------------
 def EmbedDim_Columns( data, target = None, maxE = 15,
                       lib = None, pred = None, Tp = 1, tau = -1,
-                      exclusionRadius = 0, validLib = [], noTime = False,
+                      exclusionRadius = 0, firstMax = False,
+                      validLib = [], noTime = False,
                       ignoreNan = True, cores = 2, EDimCores = 5,
                       outputFile = None, verbose = False, plot = False ):
 
@@ -34,7 +37,9 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
        If target is not specified EmbedDimension is univariate where each
        embedding evaluation is of the data column itself. It target (-t)
        is specified it is a single column against which all other columns
-       are cross mapped.
+       are cross mapped and evaluated against embedding dimension.
+
+       If firstMax is True, return the intial (lowest E) maximum.
     '''
 
     startTime = time()
@@ -61,6 +66,7 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
               'Tp'              : Tp,
               'tau'             : tau,
               'exclusionRadius' : exclusionRadius,
+              'firstMax'        : firstMax,
               'validLib'        : validLib,
               'noTime'          : noTime,
               'ignoreNan'       : ignoreNan,
@@ -130,8 +136,17 @@ def EmbedDimFunc( column, df, args ):
                          showPlot        = False )
 
     # Find max E(rho)
-    iMax   = ed['rho'].round(2).argmax()
-    maxRho = ed['rho'].iloc[ iMax ]
+    if args['firstMax'] :
+        iMax = argrelextrema( ed['rho'].to_numpy(), greater )[0] # tuple
+
+        if len( iMax ) :
+            iMax = iMax[0] # first element of array
+        else :
+            iMax = len( ed['E'] ) - 1 # no local maxima, last element is max
+    else : 
+        iMax = ed['rho'].round(4).argmax() # global maximum
+
+    maxRho = ed['rho'].iloc[ iMax ].round(4)
     maxE   = ed['E'].iloc[ iMax ]
 
     return { 'column':column, 'target':target,
@@ -159,6 +174,7 @@ def EmbedDim_Columns_CmdLine():
                           lib = args.lib, pred = args.pred,
                           Tp = args.Tp, tau = args.tau,
                           exclusionRadius = args.exclusionRadius,
+                          firstMax = args.firstMax,
                           validLib = args.validLib, noTime = args.noTime,
                           ignoreNan = args.ignoreNan, cores = args.cores,
                           EDimCores = args.EDimCores,
@@ -228,6 +244,11 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 0,
                         help    = 'Exclusion Radius.')
+
+    parser.add_argument('-f', '--firstMax',
+                        dest   = 'firstMax',
+                        action = 'store_true', default = False,
+                        help = 'firstMax')
 
     parser.add_argument('-VL', '--validLib',
                         dest   = 'validLib', type = str,
