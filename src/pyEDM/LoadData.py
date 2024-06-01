@@ -1,6 +1,6 @@
 '''Loading of example data.'''
 
-import pkg_resources # Get data file pathnames from EDM package
+import importlib.resources # Get data file pathnames from EDM package
 
 from pandas import read_csv
 
@@ -22,9 +22,10 @@ for fileName, dataName in dataFileNames:
 
     filePath = "data/" + fileName
 
-    if pkg_resources.resource_exists( __name__, filePath ):
-        sampleData[ dataName ] = \
-            read_csv( pkg_resources.resource_filename( __name__, filePath ) )
-    else :
-        raise Warning( "pyEDM: Failed to find sample data file " + \
-                       fileName + " in pyEDM package." )
+    ref = importlib.resources.files('pyEDM') / filePath
+
+    with importlib.resources.as_file( ref ) as filePath_ :
+        sampleData[ dataName ] = read_csv( filePath_ )
+
+if not len( sampleData ) :
+    raise Warning( "pyEDM: Failed to find sample data in pyEDM package." )
