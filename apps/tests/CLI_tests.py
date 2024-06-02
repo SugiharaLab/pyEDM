@@ -14,6 +14,8 @@
 ./CrossMap_Multiprocess_Columns.py -t V1 -E 5 -l 1 500 -p 501 800 -v -P
 ./CrossMap_Multiprocess_Columns.py -t V3 -E 5 -l 1 500 -p 801 1000 -tau -3 -v -P
 
+./CrossMap_Multiprocess_ColumnList.py -c V2 V3 V4 V5 -t V1 -E 1 -l 1 500 -p 501 800 -v -P
+
 ./CrossMap_Multiprocess_Matrix.py -E 5 -v -P
 ./CrossMap_Multiprocess_Matrix.py -i ~/Research/ZebrafishDynamics/data/FishDyn50.csv -E 7 -C 5 -P
 

@@ -16,10 +16,11 @@ def CrossMap_Columns( data, target = None, E = 0,
                       lib = None, pred = None, cores = 5,
                       outputFile = None, noTime = False,
                       verbose = False, plot = False ):
-    
+
     '''Use multiprocessing Pool to process parallelise Simplex.
        The target (-t) argument specifies a column against which all
        other columns are cross mapped.
+       Return dict '{columns[i]}:{target}' : Simplex DataFrame
     '''
 
     startTime = time.time()
@@ -73,7 +74,7 @@ def CrossMap_Columns( data, target = None, E = 0,
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 def SimplexFunc( column, argsD, data ):
-    '''Call pyEDM EmbedDimension using the column, args, and data'''
+    '''Call pyEDM Simplex using the column, args, and data'''
 
     df = Simplex( dataFrame       = data,
                   columns         = column,

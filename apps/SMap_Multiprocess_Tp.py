@@ -19,6 +19,7 @@ def SMap_Tp( data, TpList = None, target = None, column = None,
     
     '''Use multiprocessing Pool to process parallelise SMap.
        The TpList (-T) argument specifies a list of Tp.
+       Return dict of Tp{Tp} : SMap dict
     '''
     
     startTime = time.time()

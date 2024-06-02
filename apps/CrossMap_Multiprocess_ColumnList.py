@@ -2,28 +2,35 @@
 
 import time, argparse
 from   multiprocessing import Pool
-from   itertools       import repeat, product
+from   itertools       import repeat
 
-from numpy  import full, nan
 from pandas import DataFrame, read_csv, concat
-from pyEDM  import Simplex, sampleData, ComputeError
+from pyEDM  import Simplex, sampleData
 from matplotlib import pyplot as plt
 
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
-def CrossMap_Matrix( data, E = 0, Tp = 1,
-                     tau = -1, exclusionRadius = 0,
-                     lib = None, pred = None, cores = 5,
-                     outputFile = None, noTime = False,
-                     verbose = False, plot = False ):
-
-    '''Use multiprocessing Pool to process parallelize Simplex.
-       All dataFrame columns are cross mapped to all others.
-       Return dict of column i : vector of column rho
+def CrossMap_ColumnList( data, columns = [], target = None, E = 0,
+                         Tp = 1, tau = -1, exclusionRadius = 0,
+                         lib = None, pred = None, embedded = False,
+                         cores = 5, outputFile = None, noTime = False,
+                         verbose = False, plot = False ):
+    
+    '''Use multiprocessing Pool to process parallelise Simplex. 
+       columns is a list of columns to be cross mapped against
+       the target (-t). columns can be a list of single columns,
+       or list of multiple columns. 
+       Return : dict '{columns[i]}:{target}' : Simplex DataFrame
     '''
 
     startTime = time.time()
+
+    if not len( columns ) :
+        raise( RuntimeError( 'columns list required' ) )
+
+    if not target :
+        raise( RuntimeError( 'target required' ) )
 
     # If no lib and pred, create from full data span
     if not lib :
@@ -31,91 +38,69 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
     if not pred :
         pred = [ 1, data.shape[0] ]
 
-    # Ignore first column, convert to list
-    if not noTime :
-        columns = data.columns[ 1 : len(data.columns) ].to_list()
-
-    numCols = N = len( columns )
-
-    # Allocate matrix for cross map rho
-    CM_mat = full ( ( N, N ), nan )
-
-    # Iterable of all columns x columns
-    allPairs = list( product( columns, columns ) )
-    # Group column tuples into matrix column sets of N
-    matColumns = [ allPairs[ i:(i+N) ] for i in range(0, len(allPairs), N) ]
+    if noTime :
+        dataColumns = data.columns
+    else :
+        # Ignore first data column, convert to list
+        dataColumns = data.columns[ 1 : len(data.columns) ].to_list()
 
     # Dictionary of arguments for Pool : SimplexFunc
-    argsD = { 'lib' : lib, 'pred' : pred, 'E' : E,
-              'exclusionRadius' : exclusionRadius, 'Tp' : Tp,
-              'tau' : tau, 'noTime' : noTime }
+    argsD = { 'target' : target, 'lib' : lib, 'pred' : pred, 'E' : E,
+              'embedded' : embedded, 'exclusionRadius' : exclusionRadius,
+              'Tp' : Tp, 'tau' : tau, 'noTime' : noTime }
 
     # Create iterable for Pool.starmap, use repeated copies of argsD, data
-    poolArgs = zip( matColumns, repeat( argsD ), repeat( data ) )
+    poolArgs = zip( columns, repeat( argsD ), repeat( data ) )
 
     # Use pool.starmap to distribute among cores
     with Pool( processes = cores ) as pool :
         CMList = pool.starmap( SimplexFunc, poolArgs )
 
-    # Load CMList results into dictionary and matrix
+    # Load CMList results into dictionary
     D = {}
-    for i in range( len( matColumns ) ) :
-        D[ i ] = CMList[ i ]
-
-        CM_mat[ i, : ] = CMList[ i ]
+    for i in range( len( columns ) ) :
+        D[ f'{columns[i]}:{target}' ] = CMList[ i ]
 
     print( "Elapsed time:", round( time.time() - startTime, 2 ) )
 
     if verbose :
         print( D.keys() )
-        print( D.values() )
-        print( CM_mat )
 
     if plot :
-        PlotMatrix( CM_mat, columns, figsize = (5,5), dpi = 150,
-                    title = None, plot = True, plotFile = None )
+        df = D[ list( D.keys() )[-1] ]
+        df.plot( df.columns[0], df.columns[1:3], linewidth = 3,
+                 ylabel = list( D.keys() )[-1] )
+        plt.show()
 
     if outputFile :
         df.to_csv( outputFile )
 
     return D
+    
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+def SimplexFunc( columns, argsD, data ):
+    '''Call pyEDM Simplex using the column, args, and data'''
+
+    df = Simplex( dataFrame       = data,
+                  columns         = columns,
+                  target          = argsD['target'],
+                  lib             = argsD['lib'],
+                  pred            = argsD['pred'],
+                  E               = argsD['E'],
+                  embedded        = argsD['embedded'],
+                  exclusionRadius = argsD['exclusionRadius'],
+                  Tp              = argsD['Tp'],
+                  tau             = argsD['tau'],
+                  noTime          = argsD['noTime'],
+                  showPlot        = False )
+
+    return df
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def SimplexFunc( matColumns, argsD, data ):
-    '''Call pyEDM Simplex using the column, args, and data
-       Return prediction correlation
-
-       Each matColumn is a 1xN list of column tuples : for the matrix columns
-    '''
-
-    N = len( matColumns )
-    rhoCol = full( N, nan )
-
-    for i in range( N ) :
-        column, target = matColumns[i]
-
-        df = Simplex( dataFrame       = data,
-                      columns         = column,
-                      target          = target,
-                      lib             = argsD['lib'],
-                      pred            = argsD['pred'],
-                      E               = argsD['E'],
-                      exclusionRadius = argsD['exclusionRadius'],
-                      Tp              = argsD['Tp'],
-                      tau             = argsD['tau'],
-                      noTime          = argsD['noTime'],
-                      showPlot        = False )
-
-        rho = ComputeError( df['Observations'], df['Predictions'] )['rho']
-        rhoCol[ i ] = rho
-
-    return rhoCol
-
-#----------------------------------------------------------------------------
-#----------------------------------------------------------------------------
-def CrossMap_Matrix_CmdLine():
-    '''Wrapper for CrossMap_Matrix with command line parsing'''
+def CrossMap_ColumnList_CmdLine():
+    '''Wrapper for CrossMap_ColumnList with command line parsing'''
 
     args = ParseCmdLine()
 
@@ -128,46 +113,21 @@ def CrossMap_Matrix_CmdLine():
     else:
         raise RuntimeError( "Invalid inputFile or inputData" )
 
-    # Call CrossMap_Matrix()
-    df = CrossMap_Matrix( data = dataFrame,
-                          E = args.E, Tp = args.Tp, tau = args.tau,
-                          exclusionRadius = args.exclusionRadius,
-                          lib = args.lib, pred = args.pred,
-                          cores = args.cores, noTime = args.noTime,
-                          outputFile = args.outputFile,
-                          verbose = args.verbose, plot = args.Plot )
-
-#--------------------------------------------------------------
-#--------------------------------------------------------------
-def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
-                plot = True, plotFile = None ):
-    ''' '''
-
-    fig = plt.figure( figsize = figsize, dpi = dpi )
-    ax  = fig.add_subplot()
-
-    #fig.suptitle( title )
-    ax.set( title = f'{title}' )
-    ax.xaxis.set_ticks( [x for x in range( len(columns) )] )
-    ax.yaxis.set_ticks( [x for x in range( len(columns) )] )
-    ax.set_xticklabels(columns, rotation = 90)
-    ax.set_yticklabels(columns)
-
-    cax = ax.matshow( xm )
-    fig.colorbar( cax )
-
-    if plotFile :
-        fname = f'{plotFile}'
-        plt.savefig( fname, dpi = 'figure', format = 'png' )
-
-    if plot :
-        plt.show()
+    # Call CrossMap_ColumnList()
+    df = CrossMap_ColumnList( data = dataFrame,
+                              columns = args.columns, target = args.target,
+                              E = args.E, Tp = args.Tp, tau = args.tau,
+                              exclusionRadius = args.exclusionRadius,
+                              lib = args.lib, pred = args.pred,
+                              cores = args.cores, noTime = args.noTime,
+                              outputFile = args.outputFile,
+                              verbose = args.verbose, plot = args.Plot )
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 def ParseCmdLine():
     
-    parser = argparse.ArgumentParser( description = 'CrossMap Columns' )
+    parser = argparse.ArgumentParser( description = 'CrossMap Column List' )
     
     parser.add_argument('-i', '--inputFile',
                         dest    = 'inputFile', type = str, 
@@ -211,6 +171,18 @@ def ParseCmdLine():
                         default = -1,
                         help    = 'tau.')
 
+    parser.add_argument('-cols', '--columns', nargs = '*',
+                        dest    = 'columns', type = str, 
+                        action  = 'store',
+                        default = [],
+                        help    = 'List of columns.')
+    
+    parser.add_argument('-t', '--target',
+                        dest    = 'target', type = str, 
+                        action  = 'store',
+                        default = 'V5',
+                        help    = 'Data target name.')
+    
     parser.add_argument('-l', '--lib', nargs = '*',
                         dest    = 'lib', type = int, 
                         action  = 'store',
@@ -254,4 +226,4 @@ def ParseCmdLine():
 #----------------------------------------------------------------------------
 # Provide for cmd line invocation and clean module loading
 if __name__ == "__main__":
-    CrossMap_Matrix_CmdLine()
+    CrossMap_ColumnList_CmdLine()
