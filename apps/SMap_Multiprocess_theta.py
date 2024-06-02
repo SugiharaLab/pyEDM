@@ -16,13 +16,14 @@ def SMap_theta( data, thetaList = None, target = None, column = None,
                 lib = None, pred = None, cores = 5, embedded = False,
                 outputFile = None, noTime = False,
                 verbose = False, plot = False ):
-    
+
     '''Use multiprocessing Pool to process parallelise SMap.
        The thetaList (-th) argument specifies a list of theta.
+       Returns dict of theta_{theta} : SMap dict
     '''
-    
+
     startTime = time.time()
-    
+
     if not target :
         raise( RuntimeError( 'target required' ) )
     if not  column:
@@ -102,13 +103,13 @@ def SMap_theta_CmdLine():
 
     # Call SMap_theta()
     D = SMap_theta( data = dataFrame, thetaList = args.thetaList, 
-                 target = args.target, column = args.column,
-                 E = args.E, tau = args.tau, Tp = args.Tp,
-                 exclusionRadius = args.exclusionRadius,
-                 lib = args.lib, pred = args.pred,
-                 embedded = args.embedded, cores = args.cores,
-                 outputFile = args.outputFile, noTime = args.noTime,
-                 verbose = args.verbose, plot = args.Plot )
+                    target = args.target, column = args.column,
+                    E = args.E, tau = args.tau, Tp = args.Tp,
+                    exclusionRadius = args.exclusionRadius,
+                    lib = args.lib, pred = args.pred,
+                    embedded = args.embedded, cores = args.cores,
+                    outputFile = args.outputFile, noTime = args.noTime,
+                    verbose = args.verbose, plot = args.Plot )
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------

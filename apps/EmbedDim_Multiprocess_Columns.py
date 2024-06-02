@@ -40,6 +40,9 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
        are cross mapped and evaluated against embedding dimension.
 
        If firstMax is True, return the intial (lowest E) maximum.
+
+       Return : dict { 'column':column, 'target':target,
+                       'maxE':maxE, 'maxRho':maxRho }
     '''
 
     startTime = time()
