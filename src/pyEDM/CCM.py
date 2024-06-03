@@ -263,7 +263,7 @@ class CCM:
         if self.verbose:
             print( f'{self.name}: Validate()' )
 
-        if not self.libSizes :
+        if not len( self.libSizes ) :
             raise RuntimeError(f'{self.name} Validate(): LibSizes required.')
         if not IsIterable( self.libSizes ) :
             self.libSizes = [ int(L) for L in self.libSizes.split() ]

@@ -286,7 +286,7 @@ class EDM:
                 raise RuntimeError(f'Validate() {self.name}: dataFrame ' +\
                                    'is not a Pandas DataFrame.')
 
-        if not self.columns :
+        if not len( self.columns ) :
             raise RuntimeError( f'Validate() {self.name}: columns required.' )
         if not IsIterable( self.columns ) :
             self.columns = self.columns.split()
@@ -296,7 +296,7 @@ class EDM:
                 raise RuntimeError( f'Validate() {self.name}: column ' +\
                                     f'{column} not found in dataFrame.' )
 
-        if not self.target :
+        if not len( self.target ) :
             raise RuntimeError( f'Validate() {self.name}: target required.' )
         if not IsIterable( self.target ) :
             self.target = self.target.split()
@@ -315,12 +315,12 @@ class EDM:
                                    f' E = {self.E} is invalid.')
 
         if self.name != 'CCM' :
-            if not self.lib :
+            if not len( self.lib ) :
                 raise RuntimeError( f'Validate() {self.name}: lib required.' )
             if not IsIterable( self.lib ) :
                 self.lib = [ int(i) for i in self.lib.split() ]
 
-            if not self.pred :
+            if not len( self.pred ) :
                 raise RuntimeError( f'Validate() {self.name}: pred required.' )
             if not IsIterable( self.pred ) :
                 self.pred = [ int(i) for i in self.pred.split() ]
