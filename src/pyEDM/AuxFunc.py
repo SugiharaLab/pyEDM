@@ -70,9 +70,10 @@ def Examples():
 
     #---------------------------------------------------------------
     cmd = str().join(['Multiview( dataFrame = sampleData["block_3sp"],',
-                      ' E = 3, columns = "x_t y_t z_t", target = "x_t",',
-                      ' lib = [1, 99], pred = [105, 190],',
-                      ' showPlot = True ) '])
+                      ' columns = "x_t y_t z_t", target = "x_t",',
+                      ' lib = [1, 100], pred = [101, 198],',
+                      ' D = 0, E = 3, Tp = 1, multiview = 0,',
+                      ' trainLib = False, showPlot = True ) '])
     RunEDM( cmd )
 
     #---------------------------------------------------------------

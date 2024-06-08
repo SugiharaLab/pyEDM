@@ -196,7 +196,8 @@ class SMap( EDMClass ):
         # print( f'{self.name}: Solver.' )
         '''Call SMap solver. Default is numpy.lstsq'''
 
-        if self.solver.__class__.__name__ == 'function' and \
+        if self.solver.__class__.__name__ in \
+           [ 'function', '_ArrayFunctionDispatcher' ] and \
            self.solver.__name__ == 'lstsq' :
             # numpy default lstsq or scipy lstsq
             C, residuals, rank, SV = self.solver( A, wB, rcond = None )
