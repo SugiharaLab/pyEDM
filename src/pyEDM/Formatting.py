@@ -46,7 +46,7 @@ def FormatProjection( self ) :
     N_targetVec = len( self.targetVec )
     for i in range( startObservations, outSize ) :
         if t < N_targetVec :
-            observations[ i ] = self.targetVec[ t ]
+            observations[ i ] = self.targetVec[ t, 0 ]
         else :
             break
         t = t + 1
