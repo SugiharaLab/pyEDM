@@ -15,30 +15,49 @@ from matplotlib import pyplot as plt
 def CrossMap_Matrix( data, E = 0, Tp = 1,
                      tau = -1, exclusionRadius = 0,
                      lib = None, pred = None, cores = 5,
+                     returnValue = 'matrix', # or 'dict'
                      outputFile = None, noTime = False,
                      verbose = False, plot = False ):
 
     '''Use multiprocessing Pool to process parallelize Simplex.
        All dataFrame columns are cross mapped to all others.
-       Return dict of column i : vector of column rho
+       E is a vector of embedding dimension for each column.
+       if E is single value it is repeated for all columns.
+       if returnValue == 'matrix' : NxN ndarray
+       if returnValue == 'dict'   : { column i : vector column rho }
     '''
 
     startTime = time.time()
 
     # If no lib and pred, create from full data span
     if not lib :
-        lib = [ 1, data.shape[0] ]
+        lib =  [ 1, data.shape[0] ]
     if not pred :
         pred = [ 1, data.shape[0] ]
 
-    # Ignore first column, convert to list
-    if not noTime :
+    if noTime :
+        columns = data.columns.to_list()
+    else :
+        # Ignore first column
         columns = data.columns[ 1 : len(data.columns) ].to_list()
 
-    numCols = N = len( columns )
+    N = len( columns )
 
-    # Allocate matrix for cross map rho
-    CM_mat = full ( ( N, N ), nan )
+    if len( E ) == 1 :
+        E = [ e for e in repeat( E[0], N ) ]
+    if len( E ) != N :
+        msg = 'CrossMap_Matrix() E must be scalar or length of data columns.'
+        raise RuntimeError( msg )
+
+    if 'matrix' in returnValue :
+        # Allocate matrix for cross map rho
+        CM_mat = full ( ( N, N ), nan )
+    else :
+        CM_mat = None
+
+        if plot :
+            msg = "CrossMap_Matrix() set returnValue = 'matrix' for plot."
+            raise RuntimeError( msg )
 
     # Iterable of all columns x columns
     allPairs = list( product( columns, columns ) )
@@ -46,12 +65,12 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
     matColumns = [ allPairs[ i:(i+N) ] for i in range(0, len(allPairs), N) ]
 
     # Dictionary of arguments for Pool : SimplexFunc
-    argsD = { 'lib' : lib, 'pred' : pred, 'E' : E,
+    argsD = { 'lib' : lib, 'pred' : pred,
               'exclusionRadius' : exclusionRadius, 'Tp' : Tp,
               'tau' : tau, 'noTime' : noTime }
 
     # Create iterable for Pool.starmap, use repeated copies of argsD, data
-    poolArgs = zip( matColumns, repeat( argsD ), repeat( data ) )
+    poolArgs = zip( matColumns, E, repeat( argsD ), repeat( data ) )
 
     # Use pool.starmap to distribute among cores
     with Pool( processes = cores ) as pool :
@@ -60,29 +79,39 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
     # Load CMList results into dictionary and matrix
     D = {}
     for i in range( len( matColumns ) ) :
-        D[ i ] = CMList[ i ]
-
-        CM_mat[ i, : ] = CMList[ i ]
+        if 'dict' in returnValue :
+            D[ i ] = CMList[ i ]
+        else :
+            CM_mat[ i, : ] = CMList[ i ]
 
     print( "Elapsed time:", round( time.time() - startTime, 2 ) )
 
     if verbose :
-        print( D.keys() )
-        print( D.values() )
-        print( CM_mat )
+        if 'dict' in returnValue :
+            print( D.keys() )
+            print( D.values() )
+        else :
+            print( CM_mat )
 
     if plot :
         PlotMatrix( CM_mat, columns, figsize = (5,5), dpi = 150,
                     title = None, plot = True, plotFile = None )
 
     if outputFile :
+        if 'dict' in returnValue :
+            df = DataFrame( D )
+        else :
+            df = DataFrame( CM_Mat, columns = columns )
         df.to_csv( outputFile )
 
-    return D
+    if 'matrix' in returnValue :
+        return CM_mat
+    else :
+        return D
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def SimplexFunc( matColumns, argsD, data ):
+def SimplexFunc( matColumns, E, argsD, data ):
     '''Call pyEDM Simplex using the column, args, and data
        Return prediction correlation
 
@@ -100,7 +129,7 @@ def SimplexFunc( matColumns, argsD, data ):
                       target          = target,
                       lib             = argsD['lib'],
                       pred            = argsD['pred'],
-                      E               = argsD['E'],
+                      E               = E,
                       exclusionRadius = argsD['exclusionRadius'],
                       Tp              = argsD['Tp'],
                       tau             = argsD['tau'],
@@ -133,8 +162,8 @@ def CrossMap_Matrix_CmdLine():
                           E = args.E, Tp = args.Tp, tau = args.tau,
                           exclusionRadius = args.exclusionRadius,
                           lib = args.lib, pred = args.pred,
-                          cores = args.cores, noTime = args.noTime,
-                          outputFile = args.outputFile,
+                          cores = args.cores, returnValue = args.returnValue,
+                          noTime = args.noTime, outputFile = args.outputFile,
                           verbose = args.verbose, plot = args.Plot )
 
 #--------------------------------------------------------------
@@ -187,7 +216,7 @@ def ParseCmdLine():
                         default = None,
                         help    = 'Output file.')
 
-    parser.add_argument('-E', '--E',
+    parser.add_argument('-E', '--E', nargs = '*',
                         dest    = 'E', type = int, 
                         action  = 'store',
                         default = 0,
@@ -234,6 +263,12 @@ def ParseCmdLine():
                         action  = 'store_true',
                         default = False,
                         help    = 'noTime.')
+
+    parser.add_argument('-r', '--returnValue',
+                        dest    = 'returnValue',
+                        action  = 'store',
+                        default = 'matrix',
+                        help    = 'returnValue.')
 
     parser.add_argument('-v', '--verbose',
                         dest    = 'verbose',
