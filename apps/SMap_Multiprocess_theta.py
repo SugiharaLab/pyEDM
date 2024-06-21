@@ -48,9 +48,9 @@ def SMap_theta( data, thetaList = None, target = None, column = None,
     keys = [ 'theta_' + str( t ) for t in thetaList ]
     D = dict( zip( keys, SMapList ) )
 
-    print( "Elapsed time:", round( time.time() - startTime, 2 ) )
-
     if verbose :
+        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+
         print( D.keys() )
 
     # if -P : Plot Tp0 coefficients and predictions

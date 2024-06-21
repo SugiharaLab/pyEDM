@@ -55,9 +55,9 @@ def CrossMap_Columns( data, target = None, E = 0,
     for i in range( len( columns ) ) :
         D[ f'{columns[i]}:{target}' ] = CMList[ i ]
 
-    print( "Elapsed time:", round( time.time() - startTime, 2 ) )
-
     if verbose :
+        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+
         print( D.keys() )
 
     if plot :
