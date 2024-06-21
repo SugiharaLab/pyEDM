@@ -99,10 +99,10 @@ def EmbedDim_Columns( data, target = None, maxE = 15,
         with open( outputFile, 'wb' ) as fileObj:
             dump( D, fileObj )
 
-    ET = round( time() - startTime, 2 )
-    print( f'Elapsed Time {ET}' )
-
     if verbose :
+        ET = round( time() - startTime, 2 )
+        print( f'Elapsed Time {ET}' )
+
         print( DataFrame( D ) )
 
     if plot :

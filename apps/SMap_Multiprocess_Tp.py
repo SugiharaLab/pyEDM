@@ -48,9 +48,9 @@ def SMap_Tp( data, TpList = None, target = None, column = None,
     keys = [ 'Tp' + str( k ) for k in TpList ]
     D = dict( zip( keys, SMapList ) )
 
-    print( "Elapsed time:", round( time.time() - startTime, 2 ) )
-
     if verbose :
+        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+
         print( D.keys() )
 
     # if -P : Plot Tp0 coefficients and predictions

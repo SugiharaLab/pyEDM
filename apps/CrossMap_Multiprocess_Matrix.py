@@ -84,14 +84,8 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
         else :
             CM_mat[ i, : ] = CMList[ i ]
 
-    print( "Elapsed time:", round( time.time() - startTime, 2 ) )
-
     if verbose :
-        if 'dict' in returnValue :
-            print( D.keys() )
-            print( D.values() )
-        else :
-            print( CM_mat )
+        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
 
     if plot :
         PlotMatrix( CM_mat, columns, figsize = (5,5), dpi = 150,
