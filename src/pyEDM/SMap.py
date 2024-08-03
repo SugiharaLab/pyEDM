@@ -17,10 +17,10 @@ class SMap( EDMClass ):
     def __init__( self,
                   dataFrame       = None,
                   columns         = "",
-                  target          = "", 
+                  target          = "",
                   lib             = "",
                   pred            = "",
-                  E               = 0, 
+                  E               = 0,
                   Tp              = 1,
                   knn             = 0,
                   tau             = -1,
@@ -32,9 +32,9 @@ class SMap( EDMClass ):
                   noTime          = False,
                   ignoreNan       = True,
                   verbose         = False ):
-        '''Initialize SMap as child of EDM. 
+        '''Initialize SMap as child of EDM.
            Set data object to dataFrame.
-           Setup : Validate(), CreateIndices(), get targetVec, allTime'''
+           Setup : Validate(), CreateIndices(), get targetVec, time'''
 
         # Instantiate EDM class: inheret all members to self
         super(SMap, self).__init__( dataFrame, 'SMap' )
@@ -70,12 +70,12 @@ class SMap( EDMClass ):
         self.targetVec = self.Data[ [ self.target[0] ] ].to_numpy()
 
         if self.noTime :
-            # Generate a time/index vector
+            # Generate a time/index vector, store as ndarray
             timeIndex = [ i for i in range( 1, self.Data.shape[0] + 1 ) ]
-            self.allTime = Series( timeIndex, dtype = int )
+            self.time = Series( timeIndex, dtype = int ).to_numpy()
         else :
             # 1st data column is time
-            self.allTime = self.Data.iloc[ :, 0 ]
+            self.time = self.Data.iloc[ :, 0 ].to_numpy()
 
         if self.solver is None :
             self.solver = lstsq
@@ -102,7 +102,7 @@ class SMap( EDMClass ):
         N_pred = len( self.pred_i )
         N_dim  = self.E + 1
 
-        self.projection_    = full( N_pred, nan, dtype = float )
+        self.projection     = full( N_pred, nan, dtype = float )
         self.variance       = full( N_pred, nan, dtype = float )
         self.coefficients   = full( (N_pred, N_dim), nan, dtype = float )
         self.singularValues = full( (N_pred, N_dim), nan, dtype = float )
@@ -131,7 +131,7 @@ class SMap( EDMClass ):
 
         if self.targetVecNan :
             # If there are nan in the targetVec need to remove them
-            # from B since Solver returns nan. B_valid is matrix of 
+            # from B since Solver returns nan. B_valid is matrix of
             # B row booleans of valid data for pred rows
             # Function to apply isfinite to rows
             def FiniteRow( B_row ) :
@@ -168,26 +168,26 @@ class SMap( EDMClass ):
             self.coefficients  [ row, : ] = C
             self.singularValues[ row, : ] = SV
 
-            # Prediction is local linear projection. 
+            # Prediction is local linear projection.
             if isnan( C[0] ) :
-                projection = 0
+                projection_ = 0
             else :
-                projection = C[0]
+                projection_ = C[0]
 
             for e in range( 1, N_dim ) :
-                projection = projection + \
+                projection_ = projection_ + \
                     C[e] * embedding[ self.pred_i[ row ], e-1 ]
 
-            self.projection_[ row ] = projection
+            self.projection[ row ] = projection_
 
             # "Variance" estimate assuming weights are probabilities
             if self.targetVecNan :
-                deltaSqr = power( B[ row, valid_i ] - projection, 2 )
+                deltaSqr = power( B[ row, valid_i ] - projection_, 2 )
                 self.variance[ row ] = \
                     sum( W[ row, valid_i ] * deltaSqr ) \
                     / sum( W[ row, valid_i ] )
             else :
-                deltaSqr = power( B[row,:] - projection, 2 )
+                deltaSqr = power( B[row,:] - projection_, 2 )
                 self.variance[ row ] = sum(W[row]*deltaSqr) / sum(W[row])
 
     #-------------------------------------------------------------------
@@ -205,7 +205,7 @@ class SMap( EDMClass ):
 
         # Otherwise, sklearn.linear_model passed as solver
         # Coefficient matrix A has weighted unity vector in the first
-        # column to create a bias (intercept) term. sklearn.linear_model's 
+        # column to create a bias (intercept) term. sklearn.linear_model's
         # include an intercept term by default. Ignore first column of A.
         LM = self.solver.fit( A[:,1:], wB )
         C  = LM.coef_

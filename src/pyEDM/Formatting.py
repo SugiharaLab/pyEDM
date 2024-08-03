@@ -1,9 +1,10 @@
 # python modules
 import datetime as dt
+from warnings import warn
 
 # package modules
 from pandas import DataFrame
-from numpy  import append, array, floating, full, integer, nan
+from numpy  import append, array, empty, floating, full, integer, nan
 
 #--------------------------------------------------------------------
 # EDM Methods
@@ -11,66 +12,182 @@ from numpy  import append, array, floating, full, integer, nan
 def FormatProjection( self ) :
 #-------------------------------------------------------------------
     '''Create Projection, Coefficients, SingularValues DataFrames
-       FillTimes() attempts to extend forecast time
+       AddTime() attempts to extend forecast time if needed
+
+       NOTE: self.pred_i had all nan removed for KDTree by RemoveNan().
+             self.predList only had leading/trailing embedding nan removed.
+             Here we want to include any nan observation rows so we
+             process predList & pred_i_all, not self.pred_i.
     '''
     if self.verbose:
         print( f'{self.name}: FormatProjection()' )
 
-    N_dim        = self.E + 1
-    N_pred       = len( self.pred_i_all )
-    Tp_magnitude = abs( self.Tp )
-    outSize      = N_pred + Tp_magnitude
+    if len( self.pred_i ) == 0 :
+        msg = f'{self.name}: FormatProjection() No valid prediction indices.'
+        warn( msg )
 
-    # Get timeOut vector with additional Tp points from FillTimes()
-    if self.Tp != 0 :
-        timeOut = self.FillTimes( Tp_magnitude, outSize )
-    else :
-        timeOut = self.allTime.to_numpy()[ self.pred_i_all ]
+        self.Projection = DataFrame({ 'Time': [],        'Observations':  [],
+                                      'Predictions': [], 'Pred_Variance': [] })
+        return
+
+    N_dim        = self.E + 1
+    Tp_magnitude = abs( self.Tp )
 
     #----------------------------------------------------
     # Observations: Insert target data in observations
     #----------------------------------------------------
-    observations      = full( outSize, nan )
-    startObservations = 0
+    outSize = 0
 
-    if self.Tp > -1 : # Positive Tp
-        startTarget = self.pred_i_all[0]
-    else:
-        startTarget = self.pred_i_all[0] - Tp_magnitude
+    # Create array of indices into self.targetVec for observations
+    obs_i = array( [], dtype = int )
 
-    if startTarget < 0 :
-        startObservations = abs( startTarget )
-        startTarget = 0
+    # Process each pred segment in self.predList
+    for pred_i in self.predList :
+        N_pred    = len( pred_i )
+        outSize_i = N_pred + Tp_magnitude
+        outSize   = outSize + outSize_i
+        append_i  = array( [], dtype = int )
 
-    t = startTarget
-    N_targetVec = len( self.targetVec )
-    for i in range( startObservations, outSize ) :
-        if t < N_targetVec :
-            observations[ i ] = self.targetVec[ t, 0 ]
-        else :
-            break
-        t = t + 1
+        if N_pred == 0 :
+             # No prediction made for this pred segment
+            if self.verbose :
+                msg = f'{self.name} FormatProjection(): No prediction made ' +\
+                      f'for empty pred in {self.predList}. ' +\
+                      'Examine pred, E, tau, Tp parameters and/or nan.'
+                print( msg )
+            continue
+
+        if self.Tp == 0 : # Tp = 0
+            append_i = pred_i.copy()
+
+        elif self.Tp > 0 : # Positive Tp
+            if pred_i[-1] + self.Tp < self.targetVec.shape[0] :
+                # targetVec data available before end of targetVec
+                append_i = append( append_i, pred_i )
+                Tp_i     = [ i for i in range( append_i[-1] + 1,
+                                               append_i[-1] + self.Tp + 1) ]
+                append_i = append( append_i, array( Tp_i, dtype = int ) )
+            else :
+                # targetVec data not available at prediction end
+                append_i = append( append_i, pred_i )
+
+        else : # Negative Tp
+            if pred_i[0] + self.Tp > -1 :
+                # targetVec data available after begin of pred_i[0]
+                append_i = append( append_i, pred_i )
+                Tp_i     = [ i for i in range( pred_i[0] + self.Tp,
+                                               pred_i[0] ) ]
+                append_i = append( array( Tp_i, dtype = int ), append_i )
+            else :
+                # targetVec data not available before pred_i[0]
+                append_i = append( append_i, pred_i )
+
+        obs_i = append( obs_i, append_i )
+
+    observations = self.targetVec[ obs_i, 0 ]
 
     #----------------------------------------------------
     # Projections & variance
     #----------------------------------------------------
-    # ndarray init to nan
-    projectionOut = full( outSize, nan )
-    varianceOut   = full( outSize, nan )
-    
-    if self.Tp > -1 : # Positive Tp
-        predOut_i = self.pred_i - self.pred_i[0] + self.Tp
-        
-    else :            # Negative Tp
-        predOut_i = self.pred_i - self.pred_i[0]
+    # Define array's of indices predOut_i, obsOut_i for DataFrame vectors
+    predOut_i = array( [], dtype = int )
+    predOut_0 = 0
 
-    # fill projectionOut, varianceOut with projected values
-    projectionOut[ predOut_i ] = self.projection_
+    # Process each pred segment in self.predList for predOut_i
+    for pred_i in self.predList :
+        N_pred    = len( pred_i )
+        outSize_i = N_pred + Tp_magnitude
+
+        if N_pred == 0 :
+            # No prediction made for this pred segment
+            continue
+
+        if self.Tp == 0 :
+            Tp_i      = [i for i in range( predOut_0, predOut_0 + N_pred )]
+            predOut_i = append( predOut_i, array( Tp_i, dtype = int ) )
+            predOut_0 = predOut_i[-1] + 1
+
+        elif self.Tp > 0 : # Positive Tp
+            Tp_i = [i for i in range( predOut_0 + self.Tp,
+                                      predOut_0 + self.Tp + N_pred ) ]
+            predOut_i = append( predOut_i, array( Tp_i, dtype = int ) )
+            predOut_0 = predOut_i[-1] + 1
+
+        else : # Negative Tp
+            Tp_i = [i for i in range(predOut_0, predOut_0 + N_pred)]
+            predOut_i = append( predOut_i, array( Tp_i, dtype = int ) )
+            predOut_0 = predOut_i[-1] + Tp_magnitude + 1
+
+    # If nan are present, the foregoing can be wrong since it is not
+    # known before prediction what lib vectors will produce pred
+    # If len( pred_i ) != len( predOut_i ), nan resulted in missing pred
+    # Create a map between pred_i_all : predOut_i to create a new/shorter
+    # predOut_i mapping pred_i to the output vector predOut_i
+    if len( self.pred_i ) != len( predOut_i ) :
+        # Map the last predOut_i values since embed shift near data begining
+        # can have (E-1)*tau na, but still listed in pred_i_all
+        N_ = len( predOut_i )
+
+        if self.tau < 0 :
+            D  = dict( zip( self.pred_i_all[ -N_: ], predOut_i ) )
+        else :
+            D  = dict( zip( self.pred_i_all[ :N_ ], predOut_i ) )
+
+        # Reset predOut_i
+        predOut_i = [ D[i] for i in self.pred_i ]
+
+    # Create obsOut_i indices for output vectors in DataFrame
+    if self.Tp > 0 : # Positive Tp
+        if obs_i[-1] + self.Tp > self.Data.shape[0] - 1 :
+            # Edge case of end of data with positive Tp
+            obsOut_i = [ i for i in range( len(obs_i) ) ]
+        else :
+            obsOut_i = [ i for i in range( outSize ) ]
+
+    elif self.Tp < 1 : # Negative or Zero Tp
+        if self.pred_i[0] + self.Tp < 0 :
+            # Edge case of start of data with negative Tp
+            obsOut_i = [ i for i in range( len(obs_i) ) ]
+
+            # Shift obsOut_i values based on leading nan
+            shift    = Tp_magnitude - self.pred_i[0]
+            obsOut_i = obsOut_i + shift
+        else :
+            obsOut_i = [ i for i in range( len(obs_i) ) ]
+
+    obsOut_i = array( obsOut_i, dtype = int )
+
+    # ndarray init to nan
+    observationOut = full( outSize, nan )
+    projectionOut  = full( outSize, nan )
+    varianceOut    = full( outSize, nan )
+
+    # fill *Out with observed & projected values
+    observationOut[ obsOut_i ] = observations
+    projectionOut[ predOut_i ] = self.projection
     varianceOut  [ predOut_i ] = self.variance
 
+    #----------------------------------------------------
+    # Time
+    #----------------------------------------------------
+    self.ConvertTime()
+
+    if self.Tp == 0 or \
+       (self.Tp > 0 and (self.pred_i_all[-1] + self.Tp) < len(self.time)) or \
+       (self.Tp < 0 and (self.pred_i[0] + self.Tp >= 0)) :
+        # All times present in self.time, copy them
+        timeOut = empty( outSize, dtype = self.time.dtype )
+        timeOut[ obsOut_i ] = self.time[ obs_i ]
+    else :
+        # Need to pre/append additional times
+        timeOut = self.AddTime( Tp_magnitude, outSize, obs_i, obsOut_i )
+
+    #----------------------------------------------------
+    # Output DataFrame
+    #----------------------------------------------------
     self.Projection = DataFrame(
         { 'Time'          : timeOut,
-          'Observations'  : observations,
+          'Observations'  : observationOut,
           'Predictions'   : projectionOut,
           'Pred_Variance' : varianceOut } )
 
@@ -100,101 +217,94 @@ def FormatProjection( self ) :
         self.SingularValues = timeDF.join( SVDF )
 
 #-------------------------------------------------------------------
-def FillTimes( self, Tp_magnitude, outSize ) :
+def ConvertTime( self ) :
 #-------------------------------------------------------------------
-    '''Provide some utility for parsing time, date or datetime in
-    data.allTime extending the range for output at Tp != 0
-    ISO 8601 formats are supported in the time & datetime modules.
-
-    return timeOut vector with additional Tp points
+    '''Replace self.time with ndarray numerically operable values
+       ISO 8601 formats are supported in the time & datetime modules
     '''
     if self.verbose:
-        print( f'{self.name}: FillTimes()' )
+        print( f'{self.name}: ConvertTime()' )
 
-    # Local copy of allTime
-    times = self.allTime.to_numpy().copy() # ndarray from Series
-    time0 = times[0]
+    time0 = self.time[0]
+
+    # If times are numerically operable, nothing to do.
+    if isinstance( time0, int )     or isinstance( time0, float )    or \
+       isinstance( time0, integer ) or isinstance( time0, floating ) or \
+       isinstance( time0, dt.time ) or isinstance( time0, dt.datetime ) :
+        return
+
+    # Local copy of time
+    time_ = self.time.copy() # ndarray
 
     # If times are strings, try to parse into time or datetime
-    # If success, replace times with parsed time or datetime list
+    # If success, replace time with parsed time or datetime array
     if isinstance( time0, str ) :
-        # Assume date or datetime to be converted from string
         try :
             t0 = dt.time.fromisoformat( time0 )
-            # parsed t0 into dt.time. Parse the whole vector
-            times = array( [ dt.time.fromisoformat( t ) for t in times ] )
+            # Parsed t0 into dt.time OK. Parse the whole vector
+            time_ = array( [ dt.time.fromisoformat(t) for t in time_ ] )
         except ValueError :
             try:
                 t0 = dt.datetime.fromisoformat( time0 )
-                # parsed t0 into dt.datetime. Parse the whole vector
-                times = array([dt.datetime.fromisoformat(t) for t in times])
+                # Parsed t0 into dt.datetime OK. Parse the whole vector
+                time_ = array([ dt.datetime.fromisoformat(t) for t in time_ ])
             except ValueError :
-                msg = f'{self.name} FillTimes(): Time values are strings '+\
+                msg = f'{self.name} ConvertTime(): Time values are strings '+\
                       'but are not ISO 8601 recognized time or datetime.'
                 raise RuntimeError( msg )
 
-    # if times were string they have been converted to time or datetime
-    time0  = times[0] # reset time0
-    deltaT = None
-
+    # If times were string they have been converted to time or datetime
     # Ensure times can be numerically manipulated, compute deltaT
-    if isinstance( time0, int )     or isinstance( time0, integer )  or \
-       isinstance( time0, float )   or isinstance( time0, floating ) or \
-       isinstance( time0, dt.time ) or isinstance( time0, dt.datetime ) :
-
-        deltaT = times[1] - time0
-
-    if deltaT is None :
-        msg = f'{self.name} FillTimes(): Time values not recognized.' +\
-            ' Accepted values are int, float, or string of ISO 8601 ' +\
+    try :
+        deltaT = time_[1] - time_[0]
+    except TypeError :
+        msg = f'{self.name} ConvertTime(): Time values not recognized.' +\
+            ' Accepted values are int, float, or string of ISO 8601'    +\
             ' compliant time or datetime.'
         raise RuntimeError( msg )
 
-    # Now we have times that can be numerically manipulated...
-    min_pred_i = self.pred_i_all[0]
-    max_pred_i = self.pred_i_all[-1]
-    timeOut    = None
+    # Replace DataFrame derived time with converted time_
+    self.time = time_
+
+#-------------------------------------------------------------------
+def AddTime( self, Tp_magnitude, outSize, obs_i, obsOut_i ) :
+#-------------------------------------------------------------------
+    '''Prepend or append time values to self.time if needed
+       Return timeOut vector with additional Tp points
+    '''
+    if self.verbose:
+        print( f'{self.name}: AddTime()' )
+
+    min_pred_i     = self.pred_i[0]
+    max_pred_i_all = self.pred_i_all[-1]
+    deltaT         = self.time[1] - self.time[0]
+
+    # First, fill timeOut with times in time
+    timeOut             = full( outSize, nan )
+    timeOut[ obsOut_i ] = self.time[ obs_i ]
+
+    newTimes = full( Tp_magnitude, nan )
 
     if self.Tp > 0 :
-        if max_pred_i + self.Tp < len( times ) :
-            # All times are present in allTime, copy them
-            timeOut = times[ min_pred_i : (min_pred_i + outSize) ]
-        else :
-            # Tp introduces time values beyond the range of allTime
-            # First, fill timeOut with times in allTime
-            timeOut = times[ min_pred_i : (max_pred_i + 1) ]
+        # Tp introduces time values beyond the range of time
+        # Generate future times
+        newTimes[0] = self.time[ max_pred_i_all ] + deltaT
+        for i in range( 1, self.Tp ) :
+            newTimes[ i ] = newTimes[ i-1 ] + deltaT
 
-            # Generate future times
-            newTimes = [ times[ max_pred_i ] ] * (self.Tp)
-            for i in range( self.Tp ) :
-                newTimes[ i ] = newTimes[ i ] + (i+1) * deltaT
+        timeOut[ -self.Tp : ] = newTimes
 
-            timeOut = append( timeOut, newTimes )
+    else :
+        # Tp introduces time values before the range of time
+        # Generate past times
+        newTimes[0] = self.time[ min_pred_i ] - deltaT
+        for i in range( 1, Tp_magnitude ) :
+            newTimes[ i ] = newTimes[ i-1 ] - deltaT
 
-    else : # Tp < 0
-        if min_pred_i + self.Tp >= 0 :
-            # All times are present in allTime, copy them
-            timeOut = times[ min_pred_i + self.Tp :
-                             (min_pred_i + self.Tp + outSize ) ]
-        else :
-            # Tp introduces time values before the range of allTime
-            # First, fill timeOut with times in allTime
-            timeOut = times[ min_pred_i : (max_pred_i + 1) ]
+        newTimes = newTimes[::-1] # Reverse
 
-            # Generate past times
-            newTimes = [ times[ min_pred_i ] ] * Tp_magnitude
-            for i in range( Tp_magnitude - 1, -1, -1 ) :
-                newTimes[ i ] = timeOut[ 0 ] - (i+1) * deltaT
-
-            newTimes.reverse()
-            timeOut = append( newTimes, timeOut )
-
-    if timeOut is None :
-        msg = f'{self.name} FillTimes(): Failed to pre/append new times.' +\
-            ' Accepted values are int, float, or string of ISO 8601 ' +\
-            ' compliant time or datetime. Time vector of indices provided.'
-        print( msg, flush = True )
-
-        timeOut = array( [i for i in range( 1, outSize + 1 )], dtype = int )
+        # Shift timeOut values based on leading nan
+        shift = Tp_magnitude - self.pred_i[0]
+        timeOut[ : Tp_magnitude ] = newTimes
 
     return timeOut
