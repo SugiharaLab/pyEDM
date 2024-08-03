@@ -18,8 +18,8 @@ class CCM:
     def __init__( self,
                   dataFrame       = None,
                   columns         = "",
-                  target          = "", 
-                  E               = 0, 
+                  target          = "",
+                  E               = 0,
                   Tp              = 0,
                   knn             = 0,
                   tau             = -1,
@@ -71,10 +71,10 @@ class CCM:
         # and sets up targetVec, allTime
         self.FwdMap = SimplexClass( dataFrame       = dataFrame,
                                     columns         = columns,
-                                    target          = target, 
+                                    target          = target,
                                     lib             = self.lib,
                                     pred            = self.pred,
-                                    E               = E, 
+                                    E               = E,
                                     Tp              = Tp,
                                     knn             = knn,
                                     tau             = tau,
@@ -87,10 +87,10 @@ class CCM:
 
         self.RevMap = SimplexClass( dataFrame       = dataFrame,
                                     columns         = target,
-                                    target          = columns, 
+                                    target          = columns,
                                     lib             = self.lib,
                                     pred            = self.pred,
-                                    E               = E, 
+                                    E               = E,
                                     Tp              = Tp,
                                     knn             = knn,
                                     tau             = tau,
@@ -110,7 +110,7 @@ class CCM:
         if self.verbose:
             print( f'{self.name}: Project()' )
 
-        if sequential : # Sequential alternative to multiprocessing 
+        if sequential : # Sequential alternative to multiprocessing
             FwdCM = self.CrossMap( 'FWD' )
             RevCM = self.CrossMap( 'REV' )
             self.CrossMapList = [ FwdCM, RevCM ]
@@ -181,7 +181,7 @@ class CCM:
         RNG = default_rng( self.seed )
 
         # Copy S.lib_i since it's replaced every iteration
-        lib_i   = S.lib_i.copy() 
+        lib_i   = S.lib_i.copy()
         N_lib_i = len( lib_i )
 
         libRhoMap  = {} # Output dict libSize key : mean rho value
@@ -199,7 +199,7 @@ class CCM:
                 rng_i = RNG.choice( lib_i, size = min( libSize, N_lib_i ),
                                     replace = False )
 
-                S.lib_i = rng_i 
+                S.lib_i = rng_i
 
                 S.FindNeighbors() # Depends on S.lib_i
 
@@ -224,19 +224,19 @@ class CCM:
                 # Code from Simplex:Project ----------------------------------
 
                 # Projection is average of weighted knn library target values
-                projection = sum( weights * libTargetValues,
-                                  axis = 1) / weightRowSum
+                projection_ = sum( weights * libTargetValues,
+                                   axis = 1) / weightRowSum
 
                 # Align observations & predictions as in FormatProjection()
-                # Shift projection by Tp
-                projection = roll( projection, S.Tp )
+                # Shift projection_ by Tp
+                projection_ = roll( projection_, S.Tp )
                 if S.Tp > 0 :
-                    projection[ :S.Tp ] = nan
+                    projection_[ :S.Tp ] = nan
                 elif S.Tp < 0 :
-                    projection[ S.Tp: ] = nan
+                    projection_[ S.Tp: ] = nan
 
                 err = ComputeError( S.targetVec[ S.pred_i, 0 ],
-                                    projection, digits = 5 )
+                                    projection_, digits = 5 )
 
                 rhos[ s ] = err['rho']
 
@@ -282,7 +282,7 @@ class CCM:
             start, stop, increment = [ int( s ) for s in self.libSizes ]
 
             # If increment < stop, presume start : stop : increment
-            # and generate the sequence of library sizes 
+            # and generate the sequence of library sizes
             if increment < stop :
                 if increment < 1 :
                     msg = f'{self.name} Validate(): ' +\

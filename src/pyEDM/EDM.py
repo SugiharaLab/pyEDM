@@ -3,7 +3,7 @@ from warnings import warn
 
 # package modules
 from pandas import DataFrame
-from numpy  import any, append, array, concatenate, delete, isnan, where, zeros
+from numpy  import any, append, array, concatenate, isnan, zeros
 
 # local modules
 import pyEDM.API
@@ -18,33 +18,34 @@ class EDM:
     def __init__( self, dataFrame, name = 'EDM' ):
         self.name = name
 
-        self.Data           = dataFrame # DataFrame
-        self.Embedding      = None      # DataFrame, includes nan
-        self.Projection     = None      # DataFrame Simplex & SMap output
+        self.Data          = dataFrame # DataFrame
+        self.Embedding     = None      # DataFrame, includes nan
+        self.Projection    = None      # DataFrame Simplex & SMap output
 
-        self.lib_i          = None   # ndarray library indices
-        self.pred_i         = None   # ndarray prediction indices
-        self.pred_i_all     = None   # ndarray prediction indices, includes nan
-        self.libOverlap     = False  # True if lib & pred overlap
-        self.disjointLib    = False  # True if disjoint library
-        self.ignoreNan      = True   # Remove nan from embedding
-        self.xRadKnnFactor  = 5      # exlcusionRadius knn factor
+        self.lib_i         = None  # ndarray library indices
+        self.pred_i        = None  # ndarray prediction indices : nan removed
+        self.pred_i_all    = None  # ndarray prediction indices : nan included
+        self.predList      = []    # list of disjoint pred_i_all
+        self.disjointLib   = False # True if disjoint library
+        self.libOverlap    = False # True if lib & pred overlap
+        self.ignoreNan     = True  # Remove nan from embedding
+        self.xRadKnnFactor = 5     # exlcusionRadius knn factor
 
-        self.kdTree         = None  # SciPy KDTree (k-dimensional tree)
-        self.knn_neighbors  = None  # ndarray (N_pred, knn) sorted
-        self.knn_distances  = None  # ndarray (N_pred, knn) sorted
+        self.kdTree        = None  # SciPy KDTree (k-dimensional tree)
+        self.knn_neighbors = None  # ndarray (N_pred, knn) sorted
+        self.knn_distances = None  # ndarray (N_pred, knn) sorted
 
-        self.projection_    = None  # ndarray Simplex & SMap output
-        self.variance       = None  # ndarray Simplex & SMap output
-        self.targetVec      = None  # ndarray entire record
-        self.targetVecNan   = False # True if targetVec has nan : SMap only
-        self.allTime        = None  # entire record
+        self.projection    = None  # ndarray Simplex & SMap output
+        self.variance      = None  # ndarray Simplex & SMap output
+        self.targetVec     = None  # ndarray entire record
+        self.targetVecNan  = False # True if targetVec has nan : SMap only
+        self.time          = None  # ndarray entire record numerically operable
 
     #--------------------------------------------------------------------
     # Methods
     #--------------------------------------------------------------------
     from .Neighbors  import FindNeighbors
-    from .Formatting import FormatProjection, FillTimes
+    from .Formatting import FormatProjection, ConvertTime, AddTime
 
     #--------------------------------------------------------------------
     def EmbedData( self ) :
@@ -63,11 +64,14 @@ class EDM:
     def RemoveNan( self ) :
     #--------------------------------------------------------------------
         '''KDTree in Neighbors does not accept nan
-           If ignoreNan remove Embedding rows with nan from lib_i, pred_i'''
+           If ignoreNan remove Embedding rows with nan from lib_i, pred_i
+        '''
         if self.verbose:
             print( f'{self.name}: RemoveNan()' )
 
         if self.ignoreNan :
+            # type : <class 'pandas.core.series.Series'>
+            # Series of bool for all Embedding columns (axis = 1) of lib_i...
             na_lib  = self.Embedding.iloc[self.lib_i,: ].isna().any(axis = 1)
             na_pred = self.Embedding.iloc[self.pred_i,:].isna().any(axis = 1)
 
@@ -85,12 +89,15 @@ class EDM:
                         self.knn = len( self.lib_i ) - 1
 
             # Redefine pred_i excluding nan
-            if na_pred.any() : self.pred_i = self.pred_i[ ~na_pred.to_numpy() ]
+            if any( na_pred ) :
+                self.pred_i = self.pred_i[ ~na_pred ]
 
             # If targetVec has nan, set flag for SMap internals
             if self.name == 'SMap' :
                 if any( isnan( self.targetVec ) ) :
                     self.targetVecNan = True
+
+        self.PredictionValid()
 
     #--------------------------------------------------------------------
     def CreateIndices( self ):
@@ -165,12 +172,12 @@ class EDM:
 
         if len( lib_i_list ) > 1 : self.disjointLib = True
 
+        #------------------------------------------------
         # Validate lib_i: E, tau, Tp combination
+        #------------------------------------------------
         if self.name in [ 'Simplex', 'SMap', 'CCM', 'Multiview' ] :
-            vectorStart  = max( (self.E - 1) * self.tau, 0 )
-            vectorStart  = max( vectorStart, self.Tp )
-            vectorEnd    = min( (self.E - 1) * self.tau, self.Tp )
-            vectorEnd    = min( vectorEnd, 0 )
+            vectorStart  = max( [ -embedShift, 0, self.Tp ] )
+            vectorEnd    = min( [ -embedShift, 0, self.Tp ] )
             vectorLength = abs( vectorStart - vectorEnd ) + 1
 
             if vectorLength > len( self.lib_i ) :
@@ -193,6 +200,8 @@ class EDM:
         for i in range( 0, len( self.pred ), 2 ) :
             predPairs.append( (self.pred[i], self.pred[i+1]) )
 
+        if len( predPairs ) > 1 : self.disjointPred = True
+
         # Validate end > start
         for predPair in predPairs :
             predStart, predEnd = predPair
@@ -210,44 +219,57 @@ class EDM:
                     ' less than 1 not allowed.'
                 raise RuntimeError( msg )
 
-        # Create indices of prediction pred_i
-        nPred = 0
-        for predPair in predPairs :
-            nPred = nPred + (predPair[1] - predPair[0] + 1)
-        self.pred_i = zeros( nPred, dtype = int )
-
-        i = 0
+        # Create pred_i indices from predPairs
         for r in range( len( predPairs ) ) :
             start, stop = predPairs[ r ]
+            pred_i      = zeros( stop - start + 1, dtype = int )
 
+            i = 0
             for j in range( start, stop + 1 ) :
-                self.pred_i[ i ] = j - 1  # apply zero-offset
+                pred_i[ i ] = j - 1  # apply zero-offset
                 i = i + 1
 
-        # Remove embedShift nan at ends if needed
+            self.predList.append( pred_i ) # Append disjoint segment(s)
+
+        # flatten arrays in self.predList for single array self.pred_i
+        pred_i_ = []
+        for pred_i in self.predList :
+            i_      = [i for i in pred_i]
+            pred_i_ = pred_i_ + i_
+
+        self.pred_i = array( pred_i_, dtype = int )
+
+        self.PredictionValid()
+
+        self.pred_i_all = self.pred_i.copy() # Before nan are removed
+
+        # Remove embedShift nan from predPairs
+        # NOTE : This does NOT redefine self.pred_i, only self.predPairs
+        #        self.pred_i is redefined to remove all nan in RemoveNan()
+        #        at the API level.
         if not self.embedded :
             # If [0, 1, ... embedShift] nan (negative tau) or
             # [N - embedShift, ... N-1, N]  (positive tau) nan
             # are in pred_i delete elements
-            if self.tau > 0 :
-                nan_i = [ self.Data.shape[0] - 1 - i
-                          for i in range( embedShift ) ]
-            else :
-                nan_i = [ i for i in range( embedShift ) ]
+            nan_i_start = [ i for i in range( embedShift ) ]
+            nan_i_end   = [ self.Data.shape[0]-1-i for i in range(embedShift) ]
 
-            if nan_i :
-                p_i = [ where( self.pred_i == i ) for i in nan_i ]
-                self.pred_i = delete( self.pred_i, p_i )
+            for i in range( len( self.predList ) ) :
+                pred_i = self.predList[i]
+                nan_i  = None
 
-        self.pred_i_all = self.pred_i.copy() # Before internal nan are removed
+                if self.tau > 0 :
+                    if any( [ i in nan_i_end for i in pred_i ] ) :
+                        pred_i_ = [i for i in pred_i if i not in nan_i_end]
+                        self.predList[i] = array( pred_i_, dtype = int )
+                else :
+                    if any( [ i in nan_i_start for i in pred_i ] ) :
+                        pred_i_ = [i for i in pred_i if i not in nan_i_start]
+                        self.predList[i] = array( pred_i_, dtype = int )
 
-        # Warn about disjoint prediction sets: not supported
-        if len( predPairs ) > 1 :
-            msg = f'{self.name}: CreateIndices(): ' +\
-                ' Disjoint prediction sets not supported.'
-            warn( msg )
-
+        #------------------------------------------------
         # Validate lib_i pred_i do not exceed data
+        #------------------------------------------------
         if self.lib_i[-1] >= self.Data.shape[0] :
             msg = f'{self.name}: CreateIndices() The prediction index ' +\
                 f'{self.lib_i[-1]} exceeds the number of data rows ' +\
@@ -260,7 +282,9 @@ class EDM:
                 f'{self.Data.shape[0]}'
             raise RuntimeError( msg )
 
+        #---------------------------------------------------
         # Check for lib : pred overlap for knn leave-one-out
+        #---------------------------------------------------
         if len( set( self.lib_i ).intersection( set( self.pred_i ) ) ) :
                 self.libOverlap = True
 
@@ -272,6 +296,19 @@ class EDM:
                     msg = f'{self.name} CreateIndices(): ' +\
                         f'Set knn = {self.knn} for SMap.'
                     print( msg, flush = True )
+
+    #--------------------------------------------------------------------
+    def PredictionValid( self ) :
+    #--------------------------------------------------------------------
+        '''Validate there are pred_i to make a prediction
+        '''
+        if self.verbose:
+            print( f'{self.name}: PredictionValid()' )
+
+        if len( self.pred_i ) == 0 :
+            msg = f'{self.name}: PredictionValid() No valid prediction ' +\
+                'indices. Examine pred, E, tau, Tp parameters and/or nan.'
+            warn( msg )
 
     #--------------------------------------------------------------------
     def Validate( self ):

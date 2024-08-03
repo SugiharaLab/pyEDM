@@ -30,9 +30,9 @@ class Simplex( EDMClass ):
                   noTime          = False,
                   ignoreNan       = True,
                   verbose         = False ):
-        '''Initialize Simplex as child of EDM. 
+        '''Initialize Simplex as child of EDM.
            Set data object to dataFrame.
-           Setup : Validate(), CreateIndices(), get targetVec, allTime'''
+           Setup : Validate(), CreateIndices(), get targetVec, time'''
 
         # Instantiate EDM class: inheret EDM members to self
         super(Simplex, self).__init__( dataFrame, 'Simplex' )
@@ -66,12 +66,12 @@ class Simplex( EDMClass ):
         self.targetVec = self.Data[ [ self.target[0] ] ].to_numpy()
 
         if self.noTime :
-            # Generate a time/index vector
+            # Generate a time/index vector, store as ndarray
             timeIndex = [ i for i in range( 1, self.Data.shape[0] + 1 ) ]
-            self.allTime = Series( timeIndex, dtype = int )
+            self.time = Series( timeIndex, dtype = int ).to_numpy()
         else :
             # 1st data column is time
-            self.allTime = self.Data.iloc[ :, 0 ]
+            self.time = self.Data.iloc[ :, 0 ].to_numpy()
 
     #-------------------------------------------------------------------
     # Methods
@@ -106,10 +106,10 @@ class Simplex( EDMClass ):
                 self.targetVec[ knn_neighbors_Tp[ :, j ] ]
 
         # Projection is average of weighted knn library target values
-        self.projection_ = sum(weights * libTargetValues, axis=1) / weightRowSum
+        self.projection = sum(weights * libTargetValues, axis=1) / weightRowSum
 
         # "Variance" estimate assuming weights are probabilities
-        libTargetPredDiff = subtract( libTargetValues, self.projection_[:,None] )
+        libTargetPredDiff = subtract( libTargetValues, self.projection[:,None] )
         deltaSqr          = power( libTargetPredDiff, 2 )
         self.variance     = sum( weights * deltaSqr, axis = 1 ) / weightRowSum
 

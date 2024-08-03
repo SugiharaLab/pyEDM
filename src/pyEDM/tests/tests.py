@@ -50,6 +50,7 @@ class test_EDM( unittest.TestCase ):
                        'SMap_noTime_valid.csv',
                        'Smplx_DateTime_valid.csv',
                        'Smplx_disjointLib_valid.csv',
+                       'Smplx_disjointPred_nan_valid.csv',
                        'Smplx_E3_block_3sp_valid.csv',
                        'Smplx_E3_embd_block_3sp_valid.csv',
                        'Smplx_exclRadius_valid.csv',
@@ -223,6 +224,23 @@ class test_EDM( unittest.TestCase ):
 
     #------------------------------------------------------------
     def test_simplex6( self ):
+        '''disjoint pred w/ nan'''
+        if self.verbose : print ( "--- disjoint pred w/ nan ---" )
+        df_ = EDM.sampleData["Lorenz5D"]
+        df_.iloc[ [8,50,501], [1,2] ] = nan
+
+        df = EDM.Simplex( dataFrame = df_, columns='V1', target = 'V2',
+                          E = 5, Tp = 2, lib = [1,50,101,200,251,500],
+                          pred = [1,10,151,155,551,555,881,885,991,1000] )
+
+        dfv = self.ValidFiles["Smplx_disjointPred_nan_valid.csv"]
+
+        S1 = round( dfv.get('Predictions')[1:195], 5 ) # Skip row 0 Nan
+        S2 = round(  df.get('Predictions')[1:195], 5 ) # Skip row 0 Nan
+        self.assertTrue( S1.equals( S2 ) )
+
+    #------------------------------------------------------------
+    def test_simplex7( self ):
         '''exclusion radius'''
         if self.verbose : print ( "--- exclusion radius ---" )
         df_ = EDM.sampleData["circle"]
@@ -237,7 +255,7 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
-    def test_simplex7( self ):
+    def test_simplex8( self ):
         '''nan'''
         if self.verbose : print ( "--- nan ---" )
         df_ = EDM.sampleData["circle"]
@@ -255,7 +273,7 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
-    def test_simplex8( self ):
+    def test_simplex9( self ):
         '''nan'''
         if self.verbose : print ( "--- nan ---" )
         df_ = EDM.sampleData["circle"]
@@ -273,7 +291,7 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
-    def test_simplex9( self ):
+    def test_simplex10( self ):
         '''DateTime'''
         if self.verbose : print ( "--- DateTime ---" )
         df_ = EDM.sampleData["SumFlow_1980-2005"]
