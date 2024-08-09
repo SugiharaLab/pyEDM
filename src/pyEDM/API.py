@@ -283,9 +283,16 @@ def CCM( dataFrame        = None,
 
     if showPlot :
         title = f'E = {C.E}'
-        ax = C.libMeans.plot(
-            'LibSize', [ C.libMeans.columns[1], C.libMeans.columns[2] ],
-            title = title, linewidth = 3 )
+        if C.libMeans.shape[1] == 3 :
+            # CCM of two different variables
+            ax = C.libMeans.plot(
+                'LibSize', [ C.libMeans.columns[1], C.libMeans.columns[2] ],
+                title = title, linewidth = 3 )
+        elif C.libMeans.shape[1] == 2 :
+            # CCM of degenerate columns : target
+            ax = C.libMeans.plot( 'LibSize', C.libMeans.columns[1],
+                                  title = title, linewidth = 3 )
+
         ax.set( xlabel = "Library Size", ylabel = "CCM ρ" )
         axhline( y = 0, linewidth = 1 )
         show()
