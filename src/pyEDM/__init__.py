@@ -7,4 +7,4 @@ from .AuxFunc  import SurrogateData
 from .LoadData import sampleData
 
 __version__     = "2.1.1"
-__versionDate__ = "2024-08-08"
+__versionDate__ = "2024-08-12"
