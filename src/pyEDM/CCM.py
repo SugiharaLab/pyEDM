@@ -309,7 +309,13 @@ class CCM:
         if self.libSizes[-1] > self.Data.shape[0] :
             msg = f'{self.name} Validate(): ' +\
                   f'Maximum libSize {self.libSizes[-1]}'    +\
-                  f' exceeds data size ({self.Data.shape[0]}).'
+                  f' exceeds data size {self.Data.shape[0]}.'
+            raise RuntimeError( msg )
+
+        if self.libSizes[0] < self.E + 2 :
+            msg = f'{self.name} Validate(): ' +\
+                  f'Minimum libSize {self.libSizes[0]}'    +\
+                  f' invalid for E={self.E}. Minimum {self.E + 2}.'
             raise RuntimeError( msg )
 
         if self.Tp < 0 :
