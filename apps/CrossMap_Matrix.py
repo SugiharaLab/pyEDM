@@ -43,8 +43,10 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
 
     N = len( columns )
 
-    if len( E ) == 1 :
-        E = [ e for e in repeat( E[0], N ) ]
+    if isinstance( E, int ) :
+        E = [ e for e in repeat( E, len( columns ) ) ]
+    elif len( E ) == 1 :
+        E = [ e for e in repeat( E[0], len( columns ) ) ]
     if len( E ) != N :
         msg = 'CrossMap_Matrix() E must be scalar or length of data columns.'
         raise RuntimeError( msg )
