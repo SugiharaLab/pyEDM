@@ -40,7 +40,10 @@ def CCM_Matrix( data,
        All dataFrame columns are cross mapped to all others.
 
        E is a vector of embedding dimension for each column.
-       if E is single value it is repeated for all columns.
+       if E is a single value it is repeated for all columns.
+
+       tau is a vector of embedding delay for each column.
+       if tau is a single value it is repeated for all columns.
 
        Note CCM is already multiprocessing with two processes.
        The number of cores used : -C args.cores should be less
@@ -77,6 +80,8 @@ def CCM_Matrix( data,
     CCM_DF   = DataFrame( columns = columns, index = columns )
     slope_DF = DataFrame( columns = columns, index = columns )
 
+    # Create dictionary of columns : E
+    # If E is scalar use E for all columns
     if isinstance( E, int ) :
         E = [ e for e in repeat( E, len( columns ) ) ]
     elif len( E ) == 1 :
@@ -85,6 +90,17 @@ def CCM_Matrix( data,
         msg = 'CCM_Matrix() E must be scalar or length of columns.'
         raise RuntimeError( msg )
     D_E = dict( zip( columns, E ) )
+
+    # Create dictionary of columns : tau
+    # If tau is scalar use tau for all columns
+    if isinstance( tau, int ) :
+        tau = [ t for t in repeat( tau, len( columns ) ) ]
+    elif len( tau ) == 1 :
+        tau = [ t for t in repeat( E[0], len( columns ) ) ]
+    if len( tau ) != len( columns ) :
+        msg = 'CCM_Matrix() tau must be scalar or length of columns.'
+        raise RuntimeError( msg )
+    D_tau = dict( zip( columns, tau ) )
 
     #----------------------------------------------------------------
     def UpperDiagonalProduct( iterable ):
@@ -107,7 +123,7 @@ def CCM_Matrix( data,
     argsD = { 'D_E'             : D_E,
               'libSizes'        : libSizes,
               'Tp'              : Tp,
-              'tau'             : tau,
+              'D_tau'           : D_tau,
               'sample'          : sample,
               'exclusionRadius' : exclusionRadius,
               'validLib'        : validLib,
@@ -175,7 +191,8 @@ def CCMFunc( column_target, df, args ):
     '''
 
     column, target = column_target
-    E = args['D_E'][column]
+    E   = args['D_E']  [column]
+    tau = args['D_tau'][column]
 
     try :
         ccm_ = CCM( dataFrame = df,
@@ -184,7 +201,7 @@ def CCMFunc( column_target, df, args ):
                     libSizes  = args['libSizes'],
                     sample    = args['sample'],
                     E         = E,
-                    tau       = args['tau'],
+                    tau       = tau,
                     Tp        = args['Tp'],
                     seed      = 0 )
     except :
@@ -194,6 +211,7 @@ def CCMFunc( column_target, df, args ):
         D = { 'column'  : column,
               'target'  : target,
               'E'       : E,
+              'tau'     : tau,
               'libSize' : args['libSizes'],
               'col_tgt' : zeros( len( args['libSizes'] ) ),
               'tgt_col' : zeros( len( args['libSizes'] ) ),
@@ -225,6 +243,7 @@ def CCMFunc( column_target, df, args ):
     D = { 'column'  : column,
           'target'  : target,
           'E'       : E,
+          'tau'     : tau,
           'libSize' : args['libSizes'],
           'col_tgt' : ccm_col_tgt[ col_target ].to_numpy(),
           'tgt_col' : ccm_tgt_col[ target_col ].to_numpy(),
@@ -318,7 +337,7 @@ def ParseCmdLine():
     parser.add_argument('-E', '--E', nargs = '*',
                         dest    = 'E', type = int,
                         action  = 'store',
-                        default = 0,
+                        default = [],
                         help    = 'E')
 
     parser.add_argument('-x', '--exclusionRadius',
@@ -333,10 +352,10 @@ def ParseCmdLine():
                         default = 0,
                         help    = 'Tp')
 
-    parser.add_argument('-tau', '--tau',
+    parser.add_argument('-tau', '--tau', nargs = '*',
                         dest    = 'tau', type = int,
                         action  = 'store',
-                        default = -1,
+                        default = [-1],
                         help    = 'tau')
 
     parser.add_argument('-l', '--libSizes', nargs = '*',
