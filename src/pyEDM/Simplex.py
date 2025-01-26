@@ -2,8 +2,9 @@
 # python modules
 
 # package modules
-from numpy  import divide, exp, fmax, power, subtract, sum, zeros
-from pandas import Series
+from numpy  import array, divide, exp, fmax, full, nan
+from numpy  import power, subtract, sum, zeros
+from pandas import DataFrame, Series, concat
 
 # local modules
 from .EDM import EDM as EDMClass
@@ -28,6 +29,8 @@ class Simplex( EDMClass ):
                   embedded        = False,
                   validLib        = [],
                   noTime          = False,
+                  generateSteps   = 0,
+                  generateConcat  = False,
                   ignoreNan       = True,
                   verbose         = False ):
         '''Initialize Simplex as child of EDM.
@@ -50,6 +53,8 @@ class Simplex( EDMClass ):
         self.embedded        = embedded
         self.validLib        = validLib
         self.noTime          = noTime
+        self.generateSteps   = generateSteps
+        self.generateConcat  = generateConcat
         self.ignoreNan       = ignoreNan
         self.verbose         = verbose
 
@@ -76,8 +81,19 @@ class Simplex( EDMClass ):
     #-------------------------------------------------------------------
     # Methods
     #-------------------------------------------------------------------
+    def Run( self ) :
+    #-------------------------------------------------------------------
+        self.EmbedData()
+        self.RemoveNan()
+        self.FindNeighbors()
+        self.Project()
+        self.FormatProjection()
+
+    #-------------------------------------------------------------------
     def Project( self ) :
     #-------------------------------------------------------------------
+        '''Simplex Projection
+           Sugihara & May (1990) doi.org/10.1038/344734a0'''
         if self.verbose:
             print( f'{self.name}: Project()' )
 
@@ -94,10 +110,10 @@ class Simplex( EDMClass ):
         weightRowSum = sum( weights, axis = 1 ) # N x 1
 
         # Matrix of knn_neighbors + Tp defines library target values
-        # JP : Need to find optimal way to fill libTargetValues
-        # Since number of knn is usually less than number of pred rows
-        # loop over knn_neighbors_Tp columns to get target value column
-        # vectors from the knn_neighbors_Tp row indices
+        # JP : Find optimal way to fill libTargetValues, for now:
+        #   Since number of knn is usually less than number of pred rows
+        #   loop over knn_neighbors_Tp columns to get target value column
+        #   vectors from the knn_neighbors_Tp row indices
         knn_neighbors_Tp = self.knn_neighbors + self.Tp     # N x k
         libTargetValues  = zeros( knn_neighbors_Tp.shape )  # N x k
 
@@ -116,4 +132,125 @@ class Simplex( EDMClass ):
     #-------------------------------------------------------------------
     def Generate( self ) :
     #-------------------------------------------------------------------
-        print( f'{self.name}: Generate() Not implemented.' )
+        '''Simplex Generation
+           Given lib: override pred for single prediction at end of lib
+           Replace self.Projection with G.Projection
+        '''
+        if self.verbose:
+            print( f'{self.name}: Generate()' )
+
+        # Local references for convenience
+        N      = self.Data.shape[0]
+        column = self.columns[0]
+        target = self.target[0]
+        lib    = self.lib
+
+        if self.verbose:
+            print(f'\tData: {self.Data.shape} : {self.Data.columns.to_list()}')
+            print(f'\tlib: {lib}')
+
+        # Override pred for single prediction at end of lib
+        pred = [ lib[-1] - 1, lib[-1] ]
+        if self.verbose:
+            print(f'{self.name}: Generate(): pred overriden to {pred}')
+
+        # Output DataFrame to replace self.Projection
+        nOutRows  = self.generateSteps
+        generate_ = full( (nOutRows, 4), nan )
+        colNames  = [ 'Time', 'Observations', 'Predictions', 'Pred_Variance' ]
+        generated = DataFrame( generate_, columns = colNames )
+
+        # Allocate vector for univariate column data
+        # At each iteration the prediction is stored in columnData
+        # timeData and columnData are copied to newData for next iteration
+        columnData     = full( N + nOutRows, nan )
+        columnData[:N] = self.Data.loc[ :, column ] # First col only
+
+        # Allocate output time vector & newData DataFrame
+        timeData = full( N + nOutRows, nan )
+        if self.noTime :
+            # If noTime create a time vector and join into self.Data
+            timeData[:N] = [t+1 for t in range( N )]
+            timeDF       = DataFrame( {'Time' : timeData[:N]} )
+            self.Data    = timeDF.join( self.Data )
+        else :
+            timeData[:N] = self.Data.iloc[:,0] # Presume column 0 is time
+
+        newData = self.Data.copy()
+
+        #-------------------------------------------------------------------
+        # Loop for each feedback generation step
+        #-------------------------------------------------------------------
+        for step in range( self.generateSteps ) :
+            if self.verbose :
+                print( f'{self.name}: Generate(): step {step} {"="*50}')
+
+            # Local SimplexClass for generation
+            G = Simplex( dataFrame       = newData,
+                         columns         = column,
+                         target          = target,
+                         lib             = lib,
+                         pred            = pred,
+                         E               = self.E,
+                         Tp              = self.Tp,
+                         knn             = self.knn,
+                         tau             = self.tau,
+                         exclusionRadius = self.exclusionRadius,
+                         embedded        = self.embedded,
+                         validLib        = self.validLib,
+                         noTime          = False,
+                         generateSteps   = self.generateSteps,
+                         generateConcat  = self.generateConcat,
+                         ignoreNan       = self.ignoreNan,
+                         verbose         = self.verbose )
+
+            # 1) Generate prediction ----------------------------------
+            G.Run()
+
+            if self.verbose :
+                print( 'G.Projection' )
+                print( G.Projection ); print()
+
+            newPrediction = G.Projection['Predictions'].iat[-1]
+            newTime       = G.Projection.iloc[-1, 0] # Presume col 0 is time
+
+            # 2) Save prediction in generated --------------------------
+            generated.iloc[ step, : ] = G.Projection.iloc[-1, :]
+
+            if self.verbose :
+                print( f'2) generated\n{generated}\n' )
+
+            # 3) Increment library by adding another row index ---------
+            # Dynamic library not implemented
+
+            # 4) Increment prediction indices --------------------------
+            pred = [ p + 1 for p in pred ]
+
+            if self.verbose:
+                print(f'4) pred {pred}')
+
+            # 5) Add 1-step ahead projection to newData for next Project()
+            columnData[ N + step ] = newPrediction
+            timeData  [ N + step ] = newTime
+
+            # JP : for big data this is likely not efficient
+            newData = DataFrame( { 'Time'      : timeData  [:(N + step + 1)],
+                                   f'{column}' : columnData[:(N + step + 1)] } )
+
+            if self.verbose:
+                print(f'5) newData: {newData.shape}  newData.tail(4):')
+                print( newData.tail(4) )
+        #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        # Loop for each feedback generation step
+        #----------------------------------------------------------
+
+        # Replace self.Projection with Generated
+        if self.generateConcat :
+            # Join original data observations with generated predictions
+            timeName = self.Data.columns[0]
+            dataDF   = self.Data.loc[ :, [timeName, column] ]
+            dataDF.columns = [ 'Time', 'Observations' ]
+            self.Projection = concat( [ dataDF, generated ], axis = 0 )
+
+        else :
+            self.Projection = generated

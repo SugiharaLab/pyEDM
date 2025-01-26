@@ -376,7 +376,7 @@ class EDM:
                     msg = f'{self.name} Validate(): Set knn = {self.knn}'
                     print( msg, flush = True )
 
-        elif self.name == 'SMap' :
+        if self.name == 'SMap' :
             # embedded = true: Set E to number of columns
             if self.embedded and len( self.columns ) :
                 self.E = len( self.columns )
@@ -386,3 +386,17 @@ class EDM:
                 'must use embedded = True to ensure data/dimension '  +\
                 'correspondance.'
                 raise RuntimeError( msg )
+
+        if self.generateSteps > 0 :
+            # univariate only, embedded must be False
+            if self.name in [ 'Simplex', 'SMap' ] :
+                if self.embedded :
+                    msg = f'{self.name} Validate(): generateSteps > 0 ' +\
+                        'must use univariate embedded = False.'
+                    raise RuntimeError( msg )
+
+                if self.target[0] != self.columns[0] :
+                    msg = f'{self.name} Validate(): generateSteps > 0 ' +\
+                          f'must use univariate target ({self.target[0]}) ' +\
+                          f' == columns ({self.columns[0]}).'
+                    raise RuntimeError( msg )

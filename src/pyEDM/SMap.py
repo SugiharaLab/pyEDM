@@ -3,7 +3,7 @@
 # package modules
 from numpy  import apply_along_axis, insert, isnan, isfinite, exp
 from numpy  import full, mean, nan, power, sum
-from pandas import Series
+from pandas import DataFrame, Series, concat
 
 from numpy.linalg import lstsq # from scipy.linalg import lstsq
 
@@ -30,6 +30,8 @@ class SMap( EDMClass ):
                   embedded        = False,
                   validLib        = [],
                   noTime          = False,
+                  generateSteps   = 0,
+                  generateConcat  = False,
                   ignoreNan       = True,
                   verbose         = False ):
         '''Initialize SMap as child of EDM.
@@ -54,6 +56,8 @@ class SMap( EDMClass ):
         self.embedded        = embedded
         self.validLib        = validLib
         self.noTime          = noTime
+        self.generateSteps   = generateSteps
+        self.generateConcat  = generateConcat
         self.ignoreNan       = ignoreNan
         self.verbose         = verbose
 
@@ -83,6 +87,15 @@ class SMap( EDMClass ):
     #-------------------------------------------------------------------
     # Methods
     #-------------------------------------------------------------------
+    def Run( self ) :
+    #-------------------------------------------------------------------
+        self.EmbedData()
+        self.RemoveNan()
+        self.FindNeighbors()
+        self.Project()
+        self.FormatProjection()
+
+    #-------------------------------------------------------------------
     def Project( self ) :
     #-------------------------------------------------------------------
         '''For each prediction row compute projection as the linear
@@ -94,6 +107,8 @@ class SMap( EDMClass ):
 
            Matrix A has (weighted) constant (1) first column
            to enable a linear intercept/bias term.
+
+           Sugihara (1994) doi.org/10.1098/rsta.1994.0106
         '''
 
         if self.verbose:
@@ -193,7 +208,6 @@ class SMap( EDMClass ):
     #-------------------------------------------------------------------
     def Solver( self, A, wB ) :
     #-------------------------------------------------------------------
-        # print( f'{self.name}: Solver.' )
         '''Call SMap solver. Default is numpy.lstsq'''
 
         if self.solver.__class__.__name__ in \
@@ -225,4 +239,138 @@ class SMap( EDMClass ):
     #-------------------------------------------------------------------
     def Generate( self ) :
     #-------------------------------------------------------------------
-        print( f'{self.name}: Generate() Not implemented.' )
+        '''SMap Generation
+           Given lib: override pred to be single prediction at end of lib
+           Replace self.Projection with G.Projection
+        '''
+        if self.verbose:
+            print( f'{self.name}: Generate()' )
+
+        # Local references for convenience
+        N      = self.Data.shape[0]
+        column = self.columns[0]
+        target = self.target[0]
+        lib    = self.lib
+
+        # Override pred for single prediction at end of lib
+        pred = [ lib[-1] - 1, lib[-1] ]
+        if self.verbose:
+            print(f'{self.name}: Generate(): pred overriden to {pred}')
+
+        # Output DataFrames to replace self.Projection, self.Coefficients...
+        nOutRows  = self.generateSteps
+        generate_ = full( (nOutRows, 4), nan )
+        colNames  = [ 'Time', 'Observations', 'Predictions', 'Pred_Variance' ]
+        generated = DataFrame( generate_, columns = colNames )
+
+        coeff_ = full( (nOutRows, self.E + 2), nan )
+        if self.tau < 0 :
+            coefNames = [f'∂{target}/∂{target}(t-{e})' for e in range(self.E)]
+        else :
+            coefNames = [f'∂{target}/∂{target}(t+{e})' for e in range(self.E)]
+        colNames = [ 'Time', 'C0' ] + coefNames
+        genCoeff = DataFrame( coeff_, columns = colNames )
+
+        sv_      = full( (nOutRows, self.E + 2), nan )
+        colNames = [ 'Time' ] + [ f'C{i}' for i in range( self.E + 1 ) ]
+        genSV    = DataFrame( sv_, columns = colNames )
+
+        # Allocate vector for univariate column data
+        # At each iteration the prediction is stored in columnData
+        # timeData and columnData are copied to newData for next iteration
+        columnData     = full( N + nOutRows, nan )
+        columnData[:N] = self.Data.loc[ :, column ] # First col only
+
+        # Allocate output time vector & newData DataFrame
+        timeData = full( N + nOutRows, nan )
+        if self.noTime :
+            # If noTime create a time vector and join into self.Data
+            timeData[:N] = [t+1 for t in range( N )]
+            timeDF       = DataFrame( {'Time' : timeData[:N]} )
+            self.Data    = timeDF.join( self.Data )
+        else :
+            timeData[:N] = self.Data.iloc[:,0] # Presume column 0 is time
+
+        newData = self.Data.copy()
+
+        #-------------------------------------------------------------------
+        # Loop for each feedback generation step
+        #-------------------------------------------------------------------
+        for step in range( self.generateSteps ) :
+            if self.verbose :
+                print( f'{self.name}: Generate(): step {step} {"="*50}')
+
+            # Local SMapClass for generation
+            G = SMap( dataFrame       = newData,
+                      columns         = column,
+                      target          = target,
+                      lib             = lib,
+                      pred            = pred,
+                      E               = self.E,
+                      Tp              = self.Tp,
+                      knn             = self.knn,
+                      tau             = self.tau,
+                      theta           = self.theta,
+                      exclusionRadius = self.exclusionRadius,
+                      solver          = self.solver,
+                      embedded        = self.embedded,
+                      validLib        = self.validLib,
+                      noTime          = False,
+                      generateSteps   = self.generateSteps,
+                      generateConcat  = self.generateConcat,
+                      ignoreNan       = self.ignoreNan,
+                      verbose         = self.verbose )
+
+            # 1) Generate prediction ----------------------------------
+            G.Run()
+
+            if self.verbose :
+                print( 'G.Projection' )
+                print( G.Projection ); print()
+
+            newPrediction = G.Projection['Predictions'].iat[-1]
+            newTime       = G.Projection.iloc[-1, 0] # Presume col 0 is time
+
+            # 2) Save prediction in generated --------------------------
+            generated.iloc[ step, : ] = G.Projection.iloc    [-1, :]
+            genCoeff.iloc [ step, : ] = G.Coefficients.iloc  [-1, :]
+            genSV.iloc    [ step, : ] = G.SingularValues.iloc[-1, :]
+
+            if self.verbose :
+                print( f'2) generated\n{generated}\n' )
+
+            # 3) Increment library by adding another row index ---------
+            # Dynamic library not implemented
+
+            # 4) Increment prediction indices --------------------------
+            pred = [ p + 1 for p in pred ]
+
+            if self.verbose:
+                print(f'4) pred {pred}')
+
+            # 5) Add 1-step ahead projection to newData for next Project()
+            columnData[ N + step ] = newPrediction
+            timeData  [ N + step ] = newTime
+
+            # JP : for big data this is likely not efficient
+            newData = DataFrame( { 'Time'      : timeData  [:(N + step + 1)],
+                                   f'{column}' : columnData[:(N + step + 1)] } )
+
+            if self.verbose:
+                print(f'5) newData: {newData.shape}  newData.tail(4):')
+                print( newData.tail(4) )
+        #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        # Loop for each feedback generation step
+        #----------------------------------------------------------
+
+        # Replace self.Projection with generated
+        if self.generateConcat :
+            timeName = self.Data.columns[0]
+            dataDF   = self.Data.loc[ :, [timeName, column] ]
+            dataDF.columns = [ 'Time', 'Observations' ]
+            self.Projection = concat( [ dataDF, generated ], axis = 0 )
+        else :
+            self.Projection = generated
+
+        self.Coefficients   = genCoeff
+        self.SingularValues = genSV
