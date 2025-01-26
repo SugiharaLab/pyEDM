@@ -112,7 +112,7 @@ class test_EDM( unittest.TestCase ):
 
     def test_API_7( self ):
         '''API 7'''
-        if self.verbose : print ( "--- Column names with space ---" )
+        if self.verbose : print ( "--- API 7 Column names with space ---" )
         df_ = EDM.sampleData["columnNameSpace"]
         df = EDM.Simplex( df_, ['Var 1','Var 2'], ["Var 5 1"],
                           [1, 80], [81, 85], 5, 1, 0, -1, 0,
@@ -309,6 +309,19 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
+    def test_simplex11( self ):
+        '''DateTime'''
+        if self.verbose : print ( "--- Simplex Generate ---" )
+        df_ = EDM.sampleData["circle"]
+
+        df = EDM.Simplex( dataFrame = df_,
+                          columns = 'x', target = 'x',
+                          lib = [1,200], pred = [1,2], E = 2,
+                          generateSteps = 100, generateConcat = True )
+
+        self.assertTrue( df.shape == (300,4) )
+
+    #------------------------------------------------------------
     # S-map
     #------------------------------------------------------------
     def test_smap( self ):
@@ -383,6 +396,19 @@ class test_EDM( unittest.TestCase ):
         S1 = round( dfv.get('Predictions')[1:50], 6 ) # Skip row 0 Nan
         S2 = round(  df.get('Predictions')[1:50], 6 ) # Skip row 0 Nan
         self.assertTrue( S1.equals( S2 ) )
+
+    #------------------------------------------------------------
+    def test_smap5( self ):
+        '''DateTime'''
+        if self.verbose : print ( "--- SMap Generate ---" )
+        df_ = EDM.sampleData["circle"]
+
+        S = EDM.SMap( dataFrame = df_,
+                      columns = 'x', target = 'x', theta = 3.,
+                      lib = [1,200], pred = [1,2], E = 2,
+                      generateSteps = 100, generateConcat = True )
+
+        self.assertTrue( S['predictions'].shape == (300,4) )
 
     #------------------------------------------------------------
     # CCM

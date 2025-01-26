@@ -101,6 +101,8 @@ def Simplex( dataFrame       = None,
              embedded        = False,
              validLib        = [],
              noTime          = False,
+             generateSteps   = 0,
+             generateConcat  = False,
              verbose         = False,
              showPlot        = False,
              ignoreNan       = True,
@@ -123,14 +125,15 @@ def Simplex( dataFrame       = None,
                       embedded        = embedded,
                       validLib        = validLib,
                       noTime          = noTime,
+                      generateSteps   = generateSteps,
+                      generateConcat  = generateConcat,
                       ignoreNan       = ignoreNan,
                       verbose         = verbose )
 
-    S.EmbedData()
-    S.RemoveNan()
-    S.FindNeighbors()
-    S.Project()
-    S.FormatProjection()
+    if generateSteps :
+        S.Generate()
+    else :
+        S.Run()
 
     if showPlot :
         if embedded :
@@ -163,6 +166,8 @@ def SMap( dataFrame       = None,
           embedded        = False,
           validLib        = [],
           noTime          = False,
+          generateSteps   = 0,
+          generateConcat  = False,
           ignoreNan       = True,
           showPlot        = False,
           verbose         = False,
@@ -203,14 +208,15 @@ def SMap( dataFrame       = None,
                    embedded        = embedded,
                    validLib        = validLib,
                    noTime          = noTime,
+                   generateSteps   = generateSteps,
+                   generateConcat  = generateConcat,
                    ignoreNan       = ignoreNan,
                    verbose         = verbose )
 
-    S.EmbedData()
-    S.RemoveNan()
-    S.FindNeighbors()
-    S.Project()
-    S.FormatProjection()
+    if generateSteps :
+        S.Generate()
+    else :
+        S.Run()
 
     if showPlot :
         if embedded :
