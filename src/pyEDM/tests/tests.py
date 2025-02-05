@@ -116,7 +116,7 @@ class test_EDM( unittest.TestCase ):
         df_ = EDM.sampleData["columnNameSpace"]
         df = EDM.Simplex( df_, ['Var 1','Var 2'], ["Var 5 1"],
                           [1, 80], [81, 85], 5, 1, 0, -1, 0,
-                          False, [], False, False, False )
+                          False, [], False, 0, False, False, False )
 
     #------------------------------------------------------------
     # Embed
@@ -154,7 +154,7 @@ class test_EDM( unittest.TestCase ):
         df_ = EDM.sampleData["block_3sp"]
         df = EDM.Simplex( df_, "x_t", "x_t",
                           [1, 100], [101, 195], 3, 1, 0, -1, 0,
-                          False, [], False, False, False )
+                          False, [], False, 0, False, False, False )
 
         dfv = self.ValidFiles["Smplx_E3_block_3sp_valid.csv"]
 
@@ -169,7 +169,7 @@ class test_EDM( unittest.TestCase ):
         df_ = EDM.sampleData["block_3sp"]
         df = EDM.Simplex( df_, "x_t y_t z_t", "x_t",
                           [1, 99], [100, 198], 3, 1, 0, -1, 0,
-                          True, [], False, False, False )
+                          True, [], False, 0, False, False, False )
 
         dfv = self.ValidFiles["Smplx_E3_embd_block_3sp_valid.csv"]
 
@@ -184,7 +184,7 @@ class test_EDM( unittest.TestCase ):
         df_ = EDM.sampleData["block_3sp"]
         df = EDM.Simplex( df_, "x_t", "y_t",
                           [1, 100], [50, 80], 3, -2, 0, -1, 0,
-                          False, [], False, False, False )
+                          False, [], False, 0, False, False, False )
 
         dfv = self.ValidFiles["Smplx_negTp_block_3sp_valid.csv"]
 
@@ -309,19 +309,6 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
-    def test_simplex11( self ):
-        '''DateTime'''
-        if self.verbose : print ( "--- Simplex Generate ---" )
-        df_ = EDM.sampleData["circle"]
-
-        df = EDM.Simplex( dataFrame = df_,
-                          columns = 'x', target = 'x',
-                          lib = [1,200], pred = [1,2], E = 2,
-                          generateSteps = 100, generateConcat = True )
-
-        self.assertTrue( df.shape == (300,4) )
-
-    #------------------------------------------------------------
     # S-map
     #------------------------------------------------------------
     def test_smap( self ):
@@ -396,19 +383,6 @@ class test_EDM( unittest.TestCase ):
         S1 = round( dfv.get('Predictions')[1:50], 6 ) # Skip row 0 Nan
         S2 = round(  df.get('Predictions')[1:50], 6 ) # Skip row 0 Nan
         self.assertTrue( S1.equals( S2 ) )
-
-    #------------------------------------------------------------
-    def test_smap5( self ):
-        '''DateTime'''
-        if self.verbose : print ( "--- SMap Generate ---" )
-        df_ = EDM.sampleData["circle"]
-
-        S = EDM.SMap( dataFrame = df_,
-                      columns = 'x', target = 'x', theta = 3.,
-                      lib = [1,200], pred = [1,2], E = 2,
-                      generateSteps = 100, generateConcat = True )
-
-        self.assertTrue( S['predictions'].shape == (300,4) )
 
     #------------------------------------------------------------
     # CCM
@@ -545,6 +519,46 @@ class test_EDM( unittest.TestCase ):
         dfv = round( self.ValidFiles["PredictNonlinear_valid.csv"], 6 )
 
         self.assertTrue( dfv.equals( round( df, 6 ) ) )
+
+    #------------------------------------------------------------
+    # Generative mode
+    #------------------------------------------------------------
+    def test_generate__simplex1( self ):
+        '''Simplex Generate 1'''
+        if self.verbose : print ( "--- Simplex Generate 1 ---" )
+        df_ = EDM.sampleData["circle"]
+
+        df = EDM.Simplex( dataFrame = df_,
+                          columns = 'x', target = 'x',
+                          lib = [1,200], pred = [1,2], E = 2,
+                          generateSteps = 100, generateConcat = True )
+
+        self.assertTrue( df.shape == (300,4) )
+
+    #------------------------------------------------------------
+    def test_generate_simplex2( self ):
+        '''Simplex generateSteps 2'''
+        if self.verbose : print ( "--- Simplex generateSteps 2 ---" )
+        df_ = EDM.sampleData["Lorenz5D"]
+
+        df = EDM.Simplex( df_, "V1", "V1",
+                          [1, 1000], [1, 2], 5, 1, 0, -1, 0,
+                          False, [], False, 100, False, False, False )
+
+        self.assertTrue( df.shape == (100,4) )
+
+    #------------------------------------------------------------
+    def test_generate_smap1( self ):
+        '''DateTime'''
+        if self.verbose : print ( "--- SMap Generate ---" )
+        df_ = EDM.sampleData["circle"]
+
+        S = EDM.SMap( dataFrame = df_,
+                      columns = 'x', target = 'x', theta = 3.,
+                      lib = [1,200], pred = [1,2], E = 2,
+                      generateSteps = 100, generateConcat = True )
+
+        self.assertTrue( S['predictions'].shape == (300,4) )
 
 #------------------------------------------------------------
 #

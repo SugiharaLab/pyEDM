@@ -1,5 +1,6 @@
 # python modules
 from warnings import warn
+from datetime import datetime
 
 # package modules
 from pandas import DataFrame
@@ -399,4 +400,21 @@ class EDM:
                     msg = f'{self.name} Validate(): generateSteps > 0 ' +\
                           f'must use univariate target ({self.target[0]}) ' +\
                           f' == columns ({self.columns[0]}).'
+                    raise RuntimeError( msg )
+
+            # If times are datetime, AddTime() fails
+            # EDM.time is ndarray storing python datetime
+            # In AddTime() datetime, timedelta operations are not compatible
+            # with numpy datetime64, timedelta64 : deltaT fails in conversion
+            # If times are datetime: raise exception
+            try:
+                time0 = self.Data.iloc[ 0, 0 ] # self.time not constructed yet
+                dt0   = datetime.fromisoformat( time0 )
+            except :
+                pass # dt0 is not a datetime
+            finally :
+                # if dt0 is datetime, raise exception to use noTime = True
+                if isinstance( time0, datetime ) :
+                    msg = f'{self.name} Validate(): generateSteps ' +\
+                        'with datetime needs to use noTime = True.'
                     raise RuntimeError( msg )

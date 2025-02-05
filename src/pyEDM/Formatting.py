@@ -280,15 +280,25 @@ def AddTime( self, Tp_magnitude, outSize, obs_i, obsOut_i ) :
     deltaT         = self.time[1] - self.time[0]
 
     # First, fill timeOut with times in time
-    timeOut             = full( outSize, nan )
+    # timeOut should not be int (np.integer) since they cannot be nan
+    time0 = self.time[0]
+    if isinstance( time0, int ) or isinstance( time0, integer ) :
+        time_dtype = float
+    else :
+        time_dtype = type( time0 )
+
+    timeOut = full( outSize, nan, dtype = time_dtype )
+
     timeOut[ obsOut_i ] = self.time[ obs_i ]
 
-    newTimes = full( Tp_magnitude, nan )
+    newTimes = full( Tp_magnitude, nan, dtype = time_dtype )
 
     if self.Tp > 0 :
         # Tp introduces time values beyond the range of time
         # Generate future times
-        newTimes[0] = self.time[ max_pred_i_all ] + deltaT
+        lastTime    = self.time[ max_pred_i_all ]
+        newTimes[0] = lastTime + deltaT
+
         for i in range( 1, self.Tp ) :
             newTimes[ i ] = newTimes[ i-1 ] + deltaT
 

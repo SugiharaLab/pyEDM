@@ -2,7 +2,7 @@
 
 # package modules
 from numpy  import apply_along_axis, insert, isnan, isfinite, exp
-from numpy  import full, mean, nan, power, sum
+from numpy  import full, integer, linspace, mean, nan, power, sum
 from pandas import DataFrame, Series, concat
 
 from numpy.linalg import lstsq # from scipy.linalg import lstsq
@@ -242,6 +242,9 @@ class SMap( EDMClass ):
         '''SMap Generation
            Given lib: override pred to be single prediction at end of lib
            Replace self.Projection with G.Projection
+
+           Note: Generation with datetime time values fails: incompatible
+                 numpy.datetime64, timedelta64 and python datetime, timedelta
         '''
         if self.verbose:
             print( f'{self.name}: Generate()' )
@@ -258,10 +261,22 @@ class SMap( EDMClass ):
             print(f'{self.name}: Generate(): pred overriden to {pred}')
 
         # Output DataFrames to replace self.Projection, self.Coefficients...
+        if self.noTime :
+            time_dtype = float # numpy int cannot represent nan, use float
+        else :
+            self.ConvertTime()
+
+            time0 = self.time[0]
+            if isinstance( time0, int ) or isinstance( time0, integer ) :
+                time_dtype = float # numpy int cannot represent nan, use float
+            else :
+                time_dtype = type( time0 )
+
         nOutRows  = self.generateSteps
-        generate_ = full( (nOutRows, 4), nan )
-        colNames  = [ 'Time', 'Observations', 'Predictions', 'Pred_Variance' ]
-        generated = DataFrame( generate_, columns = colNames )
+        generated = DataFrame({'Time' : full(nOutRows, nan, dtype = time_dtype),
+                               'Observations'  : full(nOutRows, nan),
+                               'Predictions'   : full(nOutRows, nan),
+                               'Pred_Variance' : full(nOutRows, nan)})
 
         coeff_ = full( (nOutRows, self.E + 2), nan )
         if self.tau < 0 :
@@ -285,11 +300,11 @@ class SMap( EDMClass ):
         timeData = full( N + nOutRows, nan )
         if self.noTime :
             # If noTime create a time vector and join into self.Data
-            timeData[:N] = [t+1 for t in range( N )]
+            timeData[:N] = linspace( 1, N, N )
             timeDF       = DataFrame( {'Time' : timeData[:N]} )
-            self.Data    = timeDF.join( self.Data )
+            self.Data    = timeDF.join( self.Data, lsuffix = '_' )
         else :
-            timeData[:N] = self.Data.iloc[:,0] # Presume column 0 is time
+            timeData[:N] = self.time # Presume column 0 is time
 
         newData = self.Data.copy()
 
