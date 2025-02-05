@@ -2,8 +2,8 @@
 # python modules
 
 # package modules
-from numpy  import array, divide, exp, fmax, full, nan
-from numpy  import power, subtract, sum, zeros
+from numpy  import array, divide, exp, fmax, full, integer, nan
+from numpy  import linspace, power, subtract, sum, zeros
 from pandas import DataFrame, Series, concat
 
 # local modules
@@ -135,6 +135,9 @@ class Simplex( EDMClass ):
         '''Simplex Generation
            Given lib: override pred for single prediction at end of lib
            Replace self.Projection with G.Projection
+
+           Note: Generation with datetime time values fails: incompatible
+                 numpy.datetime64, timedelta64 and python datetime, timedelta
         '''
         if self.verbose:
             print( f'{self.name}: Generate()' )
@@ -146,19 +149,33 @@ class Simplex( EDMClass ):
         lib    = self.lib
 
         if self.verbose:
-            print(f'\tData: {self.Data.shape} : {self.Data.columns.to_list()}')
+            print(f'\tData shape: {self.Data.shape} : ' +\
+                  f'{self.Data.columns.to_list()}')
+            print(self.Data.head(3))
             print(f'\tlib: {lib}')
 
         # Override pred for single prediction at end of lib
         pred = [ lib[-1] - 1, lib[-1] ]
         if self.verbose:
-            print(f'{self.name}: Generate(): pred overriden to {pred}')
+            print(f'\tGenerate(): pred overriden to {pred}')
 
         # Output DataFrame to replace self.Projection
+        if self.noTime :
+            time_dtype = float # numpy int cannot represent nan, use float
+        else :
+            self.ConvertTime()
+
+            time0 = self.time[0]
+            if isinstance( time0, int ) or isinstance( time0, integer ) :
+                time_dtype = float # numpy int cannot represent nan, use float
+            else :
+                time_dtype = type( time0 )
+
         nOutRows  = self.generateSteps
-        generate_ = full( (nOutRows, 4), nan )
-        colNames  = [ 'Time', 'Observations', 'Predictions', 'Pred_Variance' ]
-        generated = DataFrame( generate_, columns = colNames )
+        generated = DataFrame({'Time' : full(nOutRows, nan, dtype = time_dtype),
+                               'Observations'  : full(nOutRows, nan),
+                               'Predictions'   : full(nOutRows, nan),
+                               'Pred_Variance' : full(nOutRows, nan)})
 
         # Allocate vector for univariate column data
         # At each iteration the prediction is stored in columnData
@@ -167,14 +184,14 @@ class Simplex( EDMClass ):
         columnData[:N] = self.Data.loc[ :, column ] # First col only
 
         # Allocate output time vector & newData DataFrame
-        timeData = full( N + nOutRows, nan )
+        timeData = full( N + nOutRows, nan, dtype = time_dtype )
         if self.noTime :
             # If noTime create a time vector and join into self.Data
-            timeData[:N] = [t+1 for t in range( N )]
+            timeData[:N] = linspace( 1, N, N )
             timeDF       = DataFrame( {'Time' : timeData[:N]} )
-            self.Data    = timeDF.join( self.Data )
+            self.Data    = timeDF.join( self.Data, lsuffix = '_' )
         else :
-            timeData[:N] = self.Data.iloc[:,0] # Presume column 0 is time
+            timeData[:N] = self.time
 
         newData = self.Data.copy()
 
@@ -208,7 +225,7 @@ class Simplex( EDMClass ):
             G.Run()
 
             if self.verbose :
-                print( 'G.Projection' )
+                print( '1) G.Projection' )
                 print( G.Projection ); print()
 
             newPrediction = G.Projection['Predictions'].iat[-1]
