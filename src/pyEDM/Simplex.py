@@ -215,7 +215,7 @@ class Simplex( EDMClass ):
                          exclusionRadius = self.exclusionRadius,
                          embedded        = self.embedded,
                          validLib        = self.validLib,
-                         noTime          = False,
+                         noTime          = self.noTime,
                          generateSteps   = self.generateSteps,
                          generateConcat  = self.generateConcat,
                          ignoreNan       = self.ignoreNan,

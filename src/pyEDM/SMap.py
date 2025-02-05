@@ -330,7 +330,7 @@ class SMap( EDMClass ):
                       solver          = self.solver,
                       embedded        = self.embedded,
                       validLib        = self.validLib,
-                      noTime          = False,
+                      noTime          = self.noTime,
                       generateSteps   = self.generateSteps,
                       generateConcat  = self.generateConcat,
                       ignoreNan       = self.ignoreNan,
