@@ -391,6 +391,7 @@ class EDM:
         if self.generateSteps > 0 :
             # univariate only, embedded must be False
             if self.name in [ 'Simplex', 'SMap' ] :
+
                 if self.embedded :
                     msg = f'{self.name} Validate(): generateSteps > 0 ' +\
                         'must use univariate embedded = False.'
@@ -402,19 +403,21 @@ class EDM:
                           f' == columns ({self.columns[0]}).'
                     raise RuntimeError( msg )
 
-            # If times are datetime, AddTime() fails
-            # EDM.time is ndarray storing python datetime
-            # In AddTime() datetime, timedelta operations are not compatible
-            # with numpy datetime64, timedelta64 : deltaT fails in conversion
-            # If times are datetime: raise exception
-            try:
-                time0 = self.Data.iloc[ 0, 0 ] # self.time not constructed yet
-                dt0   = datetime.fromisoformat( time0 )
-            except :
-                pass # dt0 is not a datetime
-            finally :
-                # if dt0 is datetime, raise exception to use noTime = True
-                if isinstance( time0, datetime ) :
-                    msg = f'{self.name} Validate(): generateSteps ' +\
-                        'with datetime needs to use noTime = True.'
-                    raise RuntimeError( msg )
+                # If times are datetime, AddTime() fails
+                # EDM.time is ndarray storing python datetime
+                # In AddTime() datetime, timedelta operations are not compatible
+                # with numpy datetime64, timedelta64 : deltaT fails in conversion
+                # If times are datetime: raise exception
+                if not self.noTime :
+                    try:
+                        time0 = self.Data.iloc[ 0, 0 ] # self.time not yet
+                        dt0   = datetime.fromisoformat( time0 )
+                    except :
+                        # dt0 is not a datetime assign for finally to pass
+                        dt0 = None
+                    finally :
+                        # if dt0 is datetime, raise exception for noTime = True
+                        if isinstance( dt0, datetime ) :
+                            msg = f'{self.name} Validate(): generateSteps ' +\
+                                'with datetime needs to use noTime = True.'
+                            raise RuntimeError( msg )
