@@ -177,15 +177,21 @@ class EDM:
         # Validate lib_i: E, tau, Tp combination
         #------------------------------------------------
         if self.name in [ 'Simplex', 'SMap', 'CCM', 'Multiview' ] :
-            vectorStart  = max( [ -embedShift, 0, self.Tp ] )
-            vectorEnd    = min( [ -embedShift, 0, self.Tp ] )
-            vectorLength = abs( vectorStart - vectorEnd ) + 1
+            if self.embedded :
+                if len( self.lib_i ) < abs( self.Tp ) :
+                    msg = f'{self.name}: CreateIndices(): embbeded True ' +\
+                          f'Tp = {self.Tp} is invalid for the library.'
+                    raise RuntimeError( msg )
+            else :
+                vectorStart  = max( [ -embedShift, 0, self.Tp ] )
+                vectorEnd    = min( [ -embedShift, 0, self.Tp ] )
+                vectorLength = abs( vectorStart - vectorEnd ) + 1
 
-            if vectorLength > len( self.lib_i ) :
-                msg = f'{self.name}: CreateIndices(): Combination of E = ' +\
-                f'{self.E}  Tp = {self.Tp}  tau = {self.tau} is invalid '  +\
-                'for the library.'
-                raise RuntimeError( msg )
+                if vectorLength > len( self.lib_i ) :
+                    msg = f'{self.name}: CreateIndices(): Combination of E = '+\
+                          f'{self.E}  Tp = {self.Tp}  tau = {self.tau} ' +\
+                          'is invalid for the library.'
+                    raise RuntimeError( msg )
 
         #------------------------------------------------
         # pred_i from pred
