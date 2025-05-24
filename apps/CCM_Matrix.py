@@ -173,7 +173,7 @@ def CCM_Matrix( data,
                     title = title, plot = True, plotFile = None )
 
     if outputFile :
-        CCM_DF.to_csv( outputFile )
+        CCM_DF.to_csv( outputFile, index_label = 'variable' )
 
     D = { 'ccm rho' : CCM_DF, 'ccm slope' : slope_DF }
     if includeCCM :
