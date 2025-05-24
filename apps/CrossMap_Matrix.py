@@ -95,10 +95,10 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
 
     if outputFile :
         if 'dict' in returnValue :
-            df = DataFrame( D )
+            df = DataFrame( D, index = columns )
         else :
-            df = DataFrame( CM_Mat, columns = columns )
-        df.to_csv( outputFile )
+            df = DataFrame( CM_mat, index = columns, columns = columns )
+        df.to_csv( outputFile, index_label = 'variable' )
 
     if 'matrix' in returnValue :
         return CM_mat
