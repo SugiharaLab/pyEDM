@@ -7,7 +7,7 @@ from   concurrent.futures import ProcessPoolExecutor
 
 # Community modules
 from pyEDM  import CCM
-from numpy  import array, nan_to_num, zeros
+from numpy  import array, nan_to_num, round, zeros
 from pandas import DataFrame, read_csv
 from sklearn.linear_model import LinearRegression
 from matplotlib import pyplot as plt
@@ -29,7 +29,8 @@ def CCM_Matrix( data,
                 cores           = 5,
                 verbose         = False,
                 debug           = False,
-                outputFile      = None,
+                outputFileName  = None,
+                outputFileType  = 'csv',
                 includeCCM      = False,
                 plot            = False,
                 title           = "",
@@ -63,6 +64,11 @@ def CCM_Matrix( data,
     '''
 
     startTime = time.time()
+
+    if outputFileName :
+        if 'csv' not in outputFileType and 'feather' not in outputFileType :
+            msg = f'outputFileType {outputFileType} must be csv or feather'
+            raise( RuntimeError( msg ) )
 
     # If no libSizes create from pLibSizes percentiles of data len
     if not len( libSizes ) :
@@ -154,8 +160,6 @@ def CCM_Matrix( data,
         slope_DF.loc[ ccmD['column'], ccmD['target'] ] = ccmD['col_tgt_slope']
         slope_DF.loc[ ccmD['target'], ccmD['column'] ] = ccmD['tgt_col_slope']
 
-    slope_DF.round( 6 )
-
     if debug :
         print( 'CCM_Matrix: ccm rho' )
         print( CCM_DF )
@@ -172,8 +176,15 @@ def CCM_Matrix( data,
                     figsize = figSize, dpi = dpi,
                     title = title, plot = True, plotFile = None )
 
-    if outputFile :
-        CCM_DF.to_csv( outputFile, index_label = 'variable' )
+    if outputFileName :
+        if outputFileType == 'csv' :
+            CCM_DF.to_csv( outputFileName + '_CCM.csv',
+                           index_label = 'variable' )
+            slope_DF.to_csv( outputFileName + '_Slope.csv',
+                             index_label = 'variable' )
+        elif outputFileType == 'feather' :
+            CCM_DF.to_feather( outputFileName + '_CCM.feather' )
+            slope_DF.to_feather( outputFileName + '_Slope.feather' )
 
     D = { 'ccm rho' : CCM_DF, 'ccm slope' : slope_DF }
     if includeCCM :
@@ -245,10 +256,10 @@ def CCMFunc( column_target, df, args ):
           'E'       : E,
           'tau'     : tau,
           'libSize' : args['libSizes'],
-          'col_tgt' : ccm_col_tgt[ col_target ].to_numpy(),
-          'tgt_col' : ccm_tgt_col[ target_col ].to_numpy(),
-          'col_tgt_slope' : slope_col_tgt,
-          'tgt_col_slope' : slope_tgt_col }
+          'col_tgt' : round( ccm_col_tgt[ col_target ].to_numpy(), 5 ),
+          'tgt_col' : round( ccm_tgt_col[ target_col ].to_numpy(), 5 ),
+          'col_tgt_slope' : round( slope_col_tgt, 5 ),
+          'tgt_col_slope' : round( slope_tgt_col, 5 ) }
 
     return D
 
@@ -276,7 +287,9 @@ def CCM_Matrix_CmdLine():
                      ignoreNan = args.ignoreNan, noTime = args.noTime,
                      validLib = args.validLib, cores = args.cores,
                      verbose = args.verbose, debug = args.debug,
-                     outputFile = args.outputFile, includeCCM = args.includeCCM,
+                     outputFileName = args.outputFileName,
+                     outputFileType = args.outputFileType,
+                     includeCCM = args.includeCCM,
                      plot = args.Plot, title = args.plotTitle,
                      figSize = args.figureSize, dpi = args.dpi )
 
@@ -322,10 +335,16 @@ def ParseCmdLine():
                         default = 'Lorenz5D',
                         help    = 'pyEDM sampleData name')
 
-    parser.add_argument('-o', '--outputFile',
-                        dest    = 'outputFile', type = str,
+    parser.add_argument('-of', '--outputFileName',
+                        dest    = 'outputFileName', type = str,
                         action  = 'store',
                         default = None,
+                        help    = 'CCM matrix output .csv file')
+
+    parser.add_argument('-ot', '--outputFileType',
+                        dest    = 'outputFileType', type = str,
+                        action  = 'store',
+                        default = 'csv',
                         help    = 'CCM matrix output .csv file')
 
     parser.add_argument('-iCCM', '--includeCCM',
