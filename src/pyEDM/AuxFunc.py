@@ -1,4 +1,13 @@
-'''Examples, plot functions, IsIterable, ComputeError, SurrogateData'''
+'''Auxiliary functions:
+
+   ComputeError    Pearson rho, RMSE, MAE, CAE
+   Iterable        Is an object iterable?
+   IsIterable      Is an object iterable and not a string?
+   SurrogateData   ebisuzaki, random shuffle, seasonal
+   PlotObsPred     Plot observations & predictions
+   PlotCoef        Plot s-map coefficients
+   Examples        Canonical examples
+'''
 
 # python modules
 from math   import floor, pi, sqrt, cos
@@ -6,8 +15,8 @@ from cmath  import exp
 from random import sample, uniform, normalvariate
 
 # package modules
-from numpy             import any, arange, corrcoef, fft, isfinite, mean
-from numpy             import max, nan, ptp, std, sqrt, zeros
+from numpy             import absolute, any, arange, corrcoef, fft, isfinite
+from numpy             import mean, max, nan, ptp, std, sqrt, zeros
 from pandas            import DataFrame, read_csv
 from scipy.interpolate import UnivariateSpline
 from matplotlib.pyplot import show, axhline
@@ -17,121 +26,8 @@ from .LoadData import sampleData
 
 #------------------------------------------------------------------------
 #------------------------------------------------------------------------
-def Examples():
-
-    def RunEDM ( cmd ):
-        print(cmd)
-        print()
-        df = eval( 'EDM.' + cmd )
-        return df
-
-    sampleDataNames = \
-        ["TentMap","TentMapNoise","circle","block_3sp","sardine_anchovy_sst"]
-
-    for dataName in sampleDataNames :
-        if dataName not in sampleData:
-            raise Exception( "Examples(): Failed to find sample data " + \
-                             dataName + " in EDM package" )
-
-    #---------------------------------------------------------------
-    cmd = str().join(['EmbedDimension( dataFrame = sampleData["TentMap"],',
-                      ' columns = "TentMap", target = "TentMap",',
-                      ' lib = [1, 100], pred = [201, 500] )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    cmd = str().join(['PredictInterval( dataFrame = sampleData["TentMap"],',
-                      ' columns = "TentMap", target = "TentMap",'
-                      ' lib = [1, 100], pred = [201, 500], E = 2 )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    cmd = str().join(
-        ['PredictNonlinear( dataFrame = sampleData["TentMapNoise"],',
-         ' columns = "TentMap", target = "TentMap", '
-         ' lib = [1, 100], pred = [201, 500], E = 2 )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    # Tent map simplex : specify multivariable columns embedded = True
-    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
-                      ' columns="x_t y_t z_t", target="x_t",'
-                      ' lib = [1, 99], pred = [100, 195],',
-                      ' E = 3, embedded = True, showPlot = True )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    # Tent map simplex : Embed column x_t to E=3, embedded = False
-    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
-                      ' columns = "x_t", target = "x_t",',
-                      ' lib = [1, 99], pred = [105, 190],',
-                      ' E = 3, showPlot = True )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    cmd = str().join(['Multiview( dataFrame = sampleData["block_3sp"],',
-                      ' columns = "x_t y_t z_t", target = "x_t",',
-                      ' lib = [1, 100], pred = [101, 198],',
-                      ' D = 0, E = 3, Tp = 1, multiview = 0,',
-                      ' trainLib = False, showPlot = True ) '])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    # S-map circle : specify multivariable columns embedded = True
-    cmd = str().join(['SMap( dataFrame = sampleData["circle"],',
-                      ' columns = ["x", "y"], target = "x",'
-                      ' lib = [1, 100], pred = [110, 190], theta = 4, E = 2,',
-                      ' verbose = False, showPlot = True, embedded = True )'])
-    RunEDM( cmd )
-
-    #---------------------------------------------------------------
-    cmd = str().join(['CCM( dataFrame = sampleData["sardine_anchovy_sst"],',
-                      ' columns = "anchovy", target = "np_sst",',
-                      ' libSizes = [10, 70, 10], sample = 50,',
-                      ' E = 3, Tp = 0, verbose = False, showPlot = True )'])
-    RunEDM( cmd )
-
-#------------------------------------------------------------------------
-#------------------------------------------------------------------------
-def PlotObsPred( df, dataName = "", E = 0, Tp = 0, block = True ):
-    '''Plot observations and predictions'''
-
-    # stats: {'MAE': 0., 'RMSE': 0., 'rho': 0. }
-    stats = ComputeError( df['Observations'], df['Predictions' ] )
-
-    title = dataName + "\nE=" + str(E) + " Tp=" + str(Tp) +\
-            "  ρ="   + str( round( stats['rho'],  3 ) )   +\
-            " RMSE=" + str( round( stats['RMSE'], 3 ) )
-
-    time_col = df.columns[0]
-
-    df.plot( time_col, ['Observations', 'Predictions'],
-             title = title, linewidth = 3 )
-
-    show( block = block )
-
-#------------------------------------------------------------------------
-#------------------------------------------------------------------------
-def PlotCoeff( df, dataName = "", E = 0, Tp = 0, block = True ):
-    '''Plot S-Map coefficients'''
-
-    title = dataName + "\nE=" + str(E) + " Tp=" + str(Tp) +\
-            "  S-Map Coefficients"
-
-    time_col = df.columns[0]
-
-    # Coefficient columns can be in any column
-    coef_cols = [ x for x in df.columns if time_col not in x ]
-
-    df.plot( time_col, coef_cols, title = title, linewidth = 3,
-             subplots = True )
-
-    show( block = block )
-
-#------------------------------------------------------------------------
-#------------------------------------------------------------------------
 def ComputeError( obs, pred, digits = 6 ):
-    '''Pearson rho, RMSE, MAE
+    '''Pearson rho, MAE, CAE, RMSE
        Remove nan from obs, pred for corrcoeff.
     '''
 
@@ -154,9 +50,10 @@ def ComputeError( obs, pred, digits = 6 ):
     rho  = round( corrcoef( obs, pred )[0,1], digits )
     err  = obs - pred
     MAE  = round( max( err ), digits )
+    CAE  = round( absolute( err ).sum(), digits )
     RMSE = round( sqrt( mean( err**2 ) ), digits )
 
-    D = { 'rho' : rho, 'MAE' : MAE, 'RMSE' : RMSE }
+    D = { 'rho' : rho, 'MAE' : MAE, 'CAE' : CAE, 'RMSE' : RMSE }
 
     return D
 
@@ -237,7 +134,7 @@ def SurrogateData( dataFrame     = None,
         mu            = mean   ( data )
         sigma         = std    ( data )
         a             = fft.fft( data )
-        amplitudes    = abs( a )
+        amplitudes    = absolute( a )
         amplitudes[0] = 0
 
         for s in range( numSurrogates ) :
@@ -304,3 +201,117 @@ def SurrogateData( dataFrame     = None,
         df.to_csv( outputFile, index = False )
 
     return df
+
+#------------------------------------------------------------------------
+#------------------------------------------------------------------------
+def PlotObsPred( df, dataName = "", E = 0, Tp = 0, block = True ):
+    '''Plot observations and predictions'''
+
+    # stats: {'MAE': 0., 'RMSE': 0., 'rho': 0. }
+    stats = ComputeError( df['Observations'], df['Predictions' ] )
+
+    title = dataName + "\nE=" + str(E) + " Tp=" + str(Tp) +\
+            "  ρ="   + str( round( stats['rho'],  3 ) )   +\
+            " RMSE=" + str( round( stats['RMSE'], 3 ) )
+
+    time_col = df.columns[0]
+
+    df.plot( time_col, ['Observations', 'Predictions'],
+             title = title, linewidth = 3 )
+
+    show( block = block )
+
+#------------------------------------------------------------------------
+#------------------------------------------------------------------------
+def PlotCoeff( df, dataName = "", E = 0, Tp = 0, block = True ):
+    '''Plot S-Map coefficients'''
+
+    title = dataName + "\nE=" + str(E) + " Tp=" + str(Tp) +\
+            "  S-Map Coefficients"
+
+    time_col = df.columns[0]
+
+    # Coefficient columns can be in any column
+    coef_cols = [ x for x in df.columns if time_col not in x ]
+
+    df.plot( time_col, coef_cols, title = title, linewidth = 3,
+             subplots = True )
+
+    show( block = block )
+
+#------------------------------------------------------------------------
+#------------------------------------------------------------------------
+def Examples():
+    '''Canonical EDM API examples'''
+
+    def RunEDM ( cmd ):
+        print(cmd)
+        print()
+        df = eval( 'EDM.' + cmd )
+        return df
+
+    sampleDataNames = \
+        ["TentMap","TentMapNoise","circle","block_3sp","sardine_anchovy_sst"]
+
+    for dataName in sampleDataNames :
+        if dataName not in sampleData:
+            raise Exception( "Examples(): Failed to find sample data " + \
+                             dataName + " in EDM package" )
+
+    #---------------------------------------------------------------
+    cmd = str().join(['EmbedDimension( dataFrame = sampleData["TentMap"],',
+                      ' columns = "TentMap", target = "TentMap",',
+                      ' lib = [1, 100], pred = [201, 500] )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    cmd = str().join(['PredictInterval( dataFrame = sampleData["TentMap"],',
+                      ' columns = "TentMap", target = "TentMap",'
+                      ' lib = [1, 100], pred = [201, 500], E = 2 )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    cmd = str().join(
+        ['PredictNonlinear( dataFrame = sampleData["TentMapNoise"],',
+         ' columns = "TentMap", target = "TentMap", '
+         ' lib = [1, 100], pred = [201, 500], E = 2 )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    # Tent map simplex : specify multivariable columns embedded = True
+    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
+                      ' columns="x_t y_t z_t", target="x_t",'
+                      ' lib = [1, 99], pred = [100, 195],',
+                      ' E = 3, embedded = True, showPlot = True )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    # Tent map simplex : Embed column x_t to E=3, embedded = False
+    cmd = str().join(['Simplex( dataFrame = sampleData["block_3sp"],',
+                      ' columns = "x_t", target = "x_t",',
+                      ' lib = [1, 99], pred = [105, 190],',
+                      ' E = 3, showPlot = True )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    cmd = str().join(['Multiview( dataFrame = sampleData["block_3sp"],',
+                      ' columns = "x_t y_t z_t", target = "x_t",',
+                      ' lib = [1, 100], pred = [101, 198],',
+                      ' D = 0, E = 3, Tp = 1, multiview = 0,',
+                      ' trainLib = False, showPlot = True ) '])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    # S-map circle : specify multivariable columns embedded = True
+    cmd = str().join(['SMap( dataFrame = sampleData["circle"],',
+                      ' columns = ["x", "y"], target = "x",'
+                      ' lib = [1, 100], pred = [110, 190], theta = 4, E = 2,',
+                      ' verbose = False, showPlot = True, embedded = True )'])
+    RunEDM( cmd )
+
+    #---------------------------------------------------------------
+    cmd = str().join(['CCM( dataFrame = sampleData["sardine_anchovy_sst"],',
+                      ' columns = "anchovy", target = "np_sst",',
+                      ' libSizes = [10, 70, 10], sample = 50,',
+                      ' E = 3, Tp = 0, verbose = False, showPlot = True )'])
+    RunEDM( cmd )

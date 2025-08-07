@@ -1,21 +1,27 @@
 #! /usr/bin/env python3
 
-import time, argparse
+import argparse
+from   datetime import datetime
 from   multiprocessing import Pool
-from   itertools       import repeat, product
+from   itertools       import repeat, product, islice
+import warnings
 
 from numpy  import full, nan
-from pandas import DataFrame, read_csv, concat
+from pandas import DataFrame, read_feather, read_csv, concat
 from pyEDM  import Simplex, sampleData, ComputeError
 from matplotlib import pyplot as plt
+
+# numpy/lib/_function_base_impl.py:3000:
+# RuntimeWarning: invalid value encountered in divide  c /= stddev[None, :]
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 #----------------------------------------------------------------------------
 # 
 #----------------------------------------------------------------------------
 def CrossMap_Matrix( data, E = 0, Tp = 1,
                      tau = -1, exclusionRadius = 0,
-                     lib = None, pred = None, cores = 5,
-                     returnValue = 'matrix', # or 'dict'
+                     lib = None, pred = None,
+                     cores = 5, returnValue = 'matrix', # or 'dataframe'
                      outputFile = None, noTime = False,
                      verbose = False, plot = False ):
 
@@ -23,11 +29,20 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
        All dataFrame columns are cross mapped to all others.
        E is a vector of embedding dimension for each column.
        if E is single value it is repeated for all columns.
-       if returnValue == 'matrix' : NxN ndarray
-       if returnValue == 'dict'   : { column i : vector column rho }
+
+       Return: NxN ndarray or dataframe
     '''
 
-    startTime = time.time()
+    startTime = datetime.now()
+
+    if 'dataframe' not in returnValue and 'matrix' not in returnValue :
+        msg = "returnValue must be 'matrix' or 'dataframe'"
+        raise( RuntimeError( msg ) )
+
+    if outputFile :
+        if '.csv' not in outputFile[-4:] and '.feather' not in outputFile[-8:] :
+            msg = f'outputFile {outputFile} must be .csv or .feather'
+            raise( RuntimeError( msg ) )
 
     # If no lib and pred, create from full data span
     if not lib :
@@ -41,6 +56,12 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
         # Ignore first column
         columns = data.columns[ 1 : len(data.columns) ].to_list()
 
+    if verbose :
+        print( startTime )
+        print( 'DataFrame:', data.shape, ':', columns[:4],
+               '...', columns[-4:] )
+        print( 'lib:', lib, ' pred:', pred )
+
     N = len( columns )
 
     if isinstance( E, int ) :
@@ -51,63 +72,99 @@ def CrossMap_Matrix( data, E = 0, Tp = 1,
         msg = 'CrossMap_Matrix() E must be scalar or length of data columns.'
         raise RuntimeError( msg )
 
-    if 'matrix' in returnValue :
-        # Allocate matrix for cross map rho
-        CM_mat = full ( ( N, N ), nan )
-    else :
-        CM_mat = None
+    # Allocate matrix for cross map rho
+    CM_mat = full ( ( N, N ), nan )
 
-        if plot :
-            msg = "CrossMap_Matrix() set returnValue = 'matrix' for plot."
-            raise RuntimeError( msg )
-
-    # Iterable of all columns x columns
+    # iterable of all columns x columns with length NxN
     allPairs = list( product( columns, columns ) )
+    
     # Group column tuples into matrix column sets of N
-    matColumns = [ allPairs[ i:(i+N) ] for i in range(0, len(allPairs), N) ]
+    #matColumns = [ allPairs[ i:(i+N) ] for i in range(0, len(allPairs), N) ]
 
-    # Dictionary of arguments for Pool : SimplexFunc
+    # islice iterator of allPairs into N items corresponding to N rows
+    block_i = blockGenerate( allPairs, N )
+
+    # Static dictionary of arguments for Pool : SimplexFunc
     argsD = { 'lib' : lib, 'pred' : pred,
-              'exclusionRadius' : exclusionRadius, 'Tp' : Tp,
-              'tau' : tau, 'noTime' : noTime }
-
-    # Create iterable for Pool.starmap, use repeated copies of argsD, data
-    poolArgs = zip( matColumns, E, repeat( argsD ), repeat( data ) )
-
-    # Use pool.starmap to distribute among cores
-    with Pool( processes = cores ) as pool :
-        CMList = pool.starmap( SimplexFunc, poolArgs )
-
-    # Load CMList results into dictionary and matrix
-    D = {}
-    for i in range( len( matColumns ) ) :
-        if 'dict' in returnValue :
-            D[ i ] = CMList[ i ]
-        else :
-            CM_mat[ i, : ] = CMList[ i ]
+              'exclusionRadius' : exclusionRadius,
+              'Tp' : Tp, 'tau' : tau, 'noTime' : noTime }
 
     if verbose :
-        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+        print( f'Multiprocess loop @  {datetime.now()}', flush = True )
+        
+    # Loop over allPairs blocks : parallelize
+    j = 0 # matrix row index
+    for i_ in block_i :
+        blockPairs = [_ for _ in i_]
+
+        # Iterable for Pool.starmap, use repeated copies of argsD, data
+        poolArgs = zip( blockPairs, E, repeat( argsD ), repeat( data ) )
+
+        # Use pool.starmap to distribute among cores
+        with Pool( processes = cores ) as pool :
+            CMList = pool.starmap( SimplexFunc, poolArgs )
+
+        # Load CMList results into dictionary and matrix
+        for i in range( N ) :
+            CM_mat[ j, : ] = CMList
+        j = j + 1
+
+        if verbose :
+            if j % int(N/5) == 0 :
+                print(  f'    Multiprocess {100*j/N:,.0f}%  {datetime.now()}',
+                        flush = True )
+
+    if verbose :
+        print( f'Finished {datetime.now()} ET: {datetime.now() - startTime}' )
+
+    df = None # Created if outputFile or returnValue = dataframe
+        
+    if outputFile :
+        df = DataFrame( CM_mat, index = columns, columns = columns )
+        if '.csv' in outputFile[-4:] :
+            df.to_csv( outputFile, index_label = 'variable' )
+        elif '.feather' in outputFile[-8:] :
+            df.to_feather( outputFile )
 
     if plot :
         PlotMatrix( CM_mat, columns, figsize = (5,5), dpi = 150,
                     title = None, plot = True, plotFile = None )
 
-    if outputFile :
-        if 'dict' in returnValue :
-            df = DataFrame( D, index = columns )
-        else :
-            df = DataFrame( CM_mat, index = columns, columns = columns )
-        df.to_csv( outputFile, index_label = 'variable' )
-
     if 'matrix' in returnValue :
         return CM_mat
     else :
-        return D
+        if df is None:
+            df = DataFrame( CM_mat, index = columns, columns = columns )
+        return df
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def SimplexFunc( matColumns, E, argsD, data ):
+def SimplexFunc( blockPairs, E, argsD, data ):
+    '''Call pyEDM Simplex using the column, args, and data
+       Return prediction correlation
+    '''
+
+    column, target = blockPairs
+
+    df = Simplex( dataFrame       = data,
+                  columns         = column,
+                  target          = target,
+                  lib             = argsD['lib'],
+                  pred            = argsD['pred'],
+                  E               = E,
+                  exclusionRadius = argsD['exclusionRadius'],
+                  Tp              = argsD['Tp'],
+                  tau             = argsD['tau'],
+                  noTime          = argsD['noTime'],
+                  showPlot        = False )
+
+    rho = ComputeError( df['Observations'], df['Predictions'] )['rho']
+
+    return rho
+
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+def SimplexColumnsFunc( matColumns, E, argsD, data ):
     '''Call pyEDM Simplex using the column, args, and data
        Return prediction correlation
 
@@ -139,16 +196,35 @@ def SimplexFunc( matColumns, E, argsD, data ):
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
+def blockGenerate(iterable, N):
+    '''Given iterable of NxN items, generate slices corresponding
+       to N rows of the NxN product matrix'''
+    n    = 0 # iteration counter
+    k_s  = 0 # block start index
+    while n < N :
+        yield islice( iterable, k_s, k_s + N )
+        n   = n + 1
+        k_s = k_s + N
+
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 def CrossMap_Matrix_CmdLine():
     '''Wrapper for CrossMap_Matrix with command line parsing'''
 
     args = ParseCmdLine()
 
     # Read data
-    # If -i input file: load it, else look for inputData in sampleData
+    # If -i input file: load it, else look for inputData in pyEDM sampleData
     if args.inputFile:
-        dataFrame = read_csv( args.inputFile )
+        if '.csv' in args.inputFile[-4:] :
+            dataFrame = read_csv( args.inputFile )
+        elif '.feather' in args.inputFile[-8:] :
+            dataFrame = read_feather( args.inputFile )
+        else :
+            msg = f'Input file {args.inputFile} must be csv or feather'
+            raise( RuntimeError( msg ) )
     elif args.inputData:
+        from pyEDM import sampleData
         dataFrame = sampleData[ args.inputData ]
     else:
         raise RuntimeError( "Invalid inputFile or inputData" )

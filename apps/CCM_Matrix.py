@@ -7,9 +7,10 @@ from   concurrent.futures import ProcessPoolExecutor
 
 # Community modules
 from pyEDM  import CCM
-from numpy  import array, nan_to_num, round, zeros
-from pandas import DataFrame, read_csv
+from numpy  import array, exp, full, nan, nan_to_num, round, zeros
+from pandas import DataFrame, read_csv, read_feather
 from sklearn.linear_model import LinearRegression
+from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
 
 #----------------------------------------------------------------------------
@@ -23,22 +24,22 @@ def CCM_Matrix( data,
                 Tp              = 0,
                 tau             = -1,
                 exclusionRadius = 0,
+                expConverge     = False,
                 ignoreNan       = True,
                 noTime          = False,
                 validLib        = [],
                 cores           = 5,
                 verbose         = False,
                 debug           = False,
-                outputFileName  = None,
-                outputFileType  = 'csv',
+                outputFile      = None,
                 includeCCM      = False,
                 plot            = False,
                 title           = "",
-                figSize         = (5,5),
+                figSize         = (6,6),
                 dpi             = 150 ) :
 
     '''Use ProcessPoolExecutor to process parallelize CCM.
-       All dataFrame columns are cross mapped to all others.
+       All dataFrame columns are cross mapped against all others.
 
        E is a vector of embedding dimension for each column.
        if E is a single value it is repeated for all columns.
@@ -46,28 +47,36 @@ def CCM_Matrix( data,
        tau is a vector of embedding delay for each column.
        if tau is a single value it is repeated for all columns.
 
-       Note CCM is already multiprocessing with two processes.
+       Note CCM() invokes multiprocessing with two processes.
        The number of cores used : -C args.cores should be less
        than os.process_cpu_count() / 2
-
-       The slope of ccm rho(libSizes) is computed based on a [0,1]
-       normalization of libSizes.
 
        If libSizes are not provided they are computed from pLibSizes:
        a vector of percentiles of the data length. pLibSizes can also
        be specified directly.
 
-       return : { 'ccm rho' : DataFrame, 'ccm slope' : DataFrame }
+       The slope of CCM rho(libSizes) is computed based on a [0,1]
+       normalization of libSizes.
 
-       if args.includeCCM return:
-          { 'ccm rho':DataFrame, 'ccm slope':DataFrame, 'ccm results':list }
+       if expConverge = True a nonlinear convergence function is fit
+       to rho(libSizes) : y0 + b * ( 1 - exp(-a * x) )
+         Fit parameters [a,b,y0] returned in DataFrame D['ccm converge']
+         DataFrame of just a returned in D['ccm converge a']
+
+       return : D = { 'ccm rho' : DataFrame, 'ccm slope' : DataFrame }
+
+       if args.expConverge add to D:
+          { 'ccm converge' : DataFrame, 'ccm converge a' : DataFrame }
+
+       if args.includeCCM add to D:
+          { 'ccm results':list }
     '''
 
     startTime = time.time()
 
-    if outputFileName :
-        if 'csv' not in outputFileType and 'feather' not in outputFileType :
-            msg = f'outputFileType {outputFileType} must be csv or feather'
+    if outputFile :
+        if '.csv' not in outputFile[-4:] and '.feather' not in outputFile[-8:] :
+            msg = f'outputFile {outputFile} must be .csv or .feather'
             raise( RuntimeError( msg ) )
 
     # If no libSizes create from pLibSizes percentiles of data len
@@ -85,6 +94,10 @@ def CCM_Matrix( data,
     # Empty DataFrame for CCM & slope
     CCM_DF   = DataFrame( columns = columns, index = columns )
     slope_DF = DataFrame( columns = columns, index = columns )
+    if expConverge :
+        expConverge_DF = DataFrame( columns = columns, index = columns )
+    else :
+        expConverge_DF = DataFrame() # empty
 
     # Create dictionary of columns : E
     # If E is scalar use E for all columns
@@ -132,6 +145,7 @@ def CCM_Matrix( data,
               'D_tau'           : D_tau,
               'sample'          : sample,
               'exclusionRadius' : exclusionRadius,
+              'expConverge'     : expConverge,
               'validLib'        : validLib,
               'noTime'          : noTime,
               'ignoreNan'       : ignoreNan,
@@ -154,11 +168,18 @@ def CCM_Matrix( data,
 
     # Load ccmD_ results into DataFrame
     for ccmD in ccmD_ :
-        CCM_DF.loc[ ccmD['column'], ccmD['target'] ] = ccmD['col_tgt'][-1]
-        CCM_DF.loc[ ccmD['target'], ccmD['column'] ] = ccmD['tgt_col'][-1]
+        column_ = ccmD['column']
+        target_ = ccmD['target']
 
-        slope_DF.loc[ ccmD['column'], ccmD['target'] ] = ccmD['col_tgt_slope']
-        slope_DF.loc[ ccmD['target'], ccmD['column'] ] = ccmD['tgt_col_slope']
+        CCM_DF.loc[ column_, target_ ] = ccmD['col_tgt'][-1]
+        CCM_DF.loc[ target_, column_ ] = ccmD['tgt_col'][-1]
+
+        slope_DF.loc[ column_, target_ ] = ccmD['col_tgt_slope']
+        slope_DF.loc[ target_, column_ ] = ccmD['tgt_col_slope']
+
+        if expConverge :
+            expConverge_DF.loc[ column_, target_ ] = ccmD['col_tgt_expConverge']
+            expConverge_DF.loc[ target_, column_ ] = ccmD['tgt_col_expConverge']
 
     if debug :
         print( 'CCM_Matrix: ccm rho' )
@@ -166,6 +187,9 @@ def CCM_Matrix( data,
         print()
         print( 'CCM_Matrix: ccm slope' )
         print( slope_DF )
+        print()
+        print( 'CCM_Matrix: ccm expConverge' )
+        print( expConverge_DF )
         print()
 
     if verbose :
@@ -176,30 +200,45 @@ def CCM_Matrix( data,
                     figsize = figSize, dpi = dpi,
                     title = title, plot = True, plotFile = None )
 
-    if outputFileName :
-        if outputFileType == 'csv' :
-            CCM_DF.to_csv( outputFileName + '_CCM.csv',
-                           index_label = 'variable' )
-            slope_DF.to_csv( outputFileName + '_Slope.csv',
-                             index_label = 'variable' )
-        elif outputFileType == 'feather' :
-            CCM_DF.to_feather( outputFileName + '_CCM.feather' )
-            slope_DF.to_feather( outputFileName + '_Slope.feather' )
+    if outputFile :
+        if '.csv' in outputFile[-4:] :
+            CCM_DF.to_csv( 'CCM_' + outputFile, index_label = 'variable' )
+            slope_DF.to_csv( 'Slope_' + outputFile, index_label = 'variable' )
+            expConverge_DF.to_csv( 'expConverge_' + outputFile,
+                                   index_label = 'variable' )
 
+        elif '.feather' in outputFile[-8:] :
+            CCM_DF.to_feather( 'CCM_' + outputFile )
+            slope_DF.to_feather( 'Slope_' + outputFile )
+            expConverge_DF.to_feather( 'expConverge_' + outputFile )
+
+    # Output dict
     D = { 'ccm rho' : CCM_DF, 'ccm slope' : slope_DF }
+
+    if expConverge :
+          D['ccm converge']   = expConverge_DF
+          D['ccm converge a'] = expConverge_DF.apply(lambda x: x.str[0])
+
     if includeCCM :
         D['ccm results'] = ccmD_
+
     return D
 
 #----------------------------------------------------------------------------
 def CCMFunc( column_target, df, args ):
     '''pyEDM CCM
        Compute CCM for forward and reverse mapping, and, linear regression
-       slope of CCM rho against [0,1] normalized libSizes.
+       slope of CCM rho against [0,1] normalized libSizes. if args.expConverge
+       fit CCM_rho_L_fit() function to rho(libSizes)
 
        Return dict: { 'target':, 'column':, 'libSize':, 'col_tgt':, 'tgt_col':,
-                      'col_tgt_slope':, 'tgt_col_slope': }
+                      'col_tgt_slope':, 'tgt_col_slope':,
+                      'expConverge_col_tgt':, 'expConverge_tgt_col': }
     '''
+    #------------------------------------------------------------------
+    def CCM_rho_L_fit( x = 0, a = 2, b = 1, y0 = 0.1 ):
+        '''CCM rho(L) curve for L = [0:1] to optimize in curve_fit()'''
+        return ( y0 + b * ( 1 - exp(-a * x) ) ).flatten()
 
     column, target = column_target
     E   = args['D_E']  [column]
@@ -227,7 +266,9 @@ def CCMFunc( column_target, df, args ):
               'col_tgt' : zeros( len( args['libSizes'] ) ),
               'tgt_col' : zeros( len( args['libSizes'] ) ),
               'col_tgt_slope' : 0.,
-              'tgt_col_slope' : 0. }
+              'tgt_col_slope' : 0.,
+              'col_tgt_expConverge' : 0.,
+              'tgt_col_expConverge' : 0.}
 
         return D
 
@@ -237,10 +278,10 @@ def CCMFunc( column_target, df, args ):
     ccm_col_tgt = ccm_[ ['LibSize', col_target] ]
     ccm_tgt_col = ccm_[ ['LibSize', target_col] ]
 
-    # libSizes ndarray for CCM convergence slope esimate
+    # libSizes ndarray for CCM convergence slope estimate
     libSizesVec = array( args['libSizes'], dtype = float ).reshape( -1, 1 )
-    # normalize [0,1]
-    libSizesVec = libSizesVec / libSizesVec[ -1 ]
+    # normalize L ∈ [0,1]
+    libSizesVec = libSizesVec / df.shape[0]
 
     # Slope of linear fit to rho(libSizes)
     lm_col_tgt = LinearRegression().fit(libSizesVec,
@@ -251,6 +292,43 @@ def CCMFunc( column_target, df, args ):
     slope_col_tgt = lm_col_tgt.coef_[0]
     slope_tgt_col = lm_tgt_col.coef_[0]
 
+    expConverge_col_tgt = None
+    expConverge_tgt_col = None
+
+    if args['expConverge'] :
+        try:
+            ydata = ccm_[ f'{column}:{target}' ]
+            popt_c_t, pcov_c_t, infodict_c_t, msg_c_t, ier_c_t = \
+                curve_fit( CCM_rho_L_fit,
+                           xdata  = libSizesVec,
+                           ydata  = ydata,
+                           p0     = [2,1,0.1],
+                           bounds = ( [0,0,0], [100,1,1] ),
+                           method = 'dogbox',
+                           full_output = True )
+        except Exception as e:
+            if args['verbose'] :
+                print( e )
+            popt_c_t = full( 3, nan )
+
+        try:
+            ydata = ccm_[ f'{target}:{column}' ]
+            popt_t_c, pcov_t_c, infodict_t_c, msg_t_c, ier_t_c = \
+                curve_fit( CCM_rho_L_fit,
+                           xdata  = libSizesVec,
+                           ydata  = ydata,
+                           p0     = [2,1,0.1],
+                           bounds = ( [0,0,0], [100,1,1] ),
+                           method = 'dogbox',
+                           full_output = True )
+        except Exception as e:
+            if args['verbose'] :
+                print( e )
+            popt_t_c = full( 3, nan )
+
+        expConverge_col_tgt = popt_c_t # 3 parameters
+        expConverge_tgt_col = popt_t_c # 3 parameters
+
     D = { 'column'  : column,
           'target'  : target,
           'E'       : E,
@@ -259,7 +337,9 @@ def CCMFunc( column_target, df, args ):
           'col_tgt' : round( ccm_col_tgt[ col_target ].to_numpy(), 5 ),
           'tgt_col' : round( ccm_tgt_col[ target_col ].to_numpy(), 5 ),
           'col_tgt_slope' : round( slope_col_tgt, 5 ),
-          'tgt_col_slope' : round( slope_tgt_col, 5 ) }
+          'tgt_col_slope' : round( slope_tgt_col, 5 ),
+          'col_tgt_expConverge' : expConverge_col_tgt,
+          'tgt_col_expConverge' : expConverge_tgt_col }
 
     return D
 
@@ -272,7 +352,13 @@ def CCM_Matrix_CmdLine():
     # Read data
     # If -i input file: load it, else look for inputData in pyEDM sampleData
     if args.inputFile:
-        dataFrame = read_csv( args.inputFile )
+        if '.csv' in args.inputFile[-4:] :
+            dataFrame = read_csv( args.inputFile )
+        elif '.feather' in args.inputFile[-8:] :
+            dataFrame = read_feather( args.inputFile )
+        else :
+            msg = f'Input file {args.inputFile} must be csv or feather'
+            raise( RuntimeError( msg ) )
     elif args.inputData:
         from pyEDM import sampleData
         dataFrame = sampleData[ args.inputData ]
@@ -284,19 +370,27 @@ def CCM_Matrix_CmdLine():
                      libSizes = args.libSizes, pLibSizes = args.pLibSizes,
                      sample = args.sample, Tp = args.Tp, tau = args.tau,
                      exclusionRadius = args.exclusionRadius,
+                     expConverge = args.expConverge,
                      ignoreNan = args.ignoreNan, noTime = args.noTime,
                      validLib = args.validLib, cores = args.cores,
                      verbose = args.verbose, debug = args.debug,
-                     outputFileName = args.outputFileName,
-                     outputFileType = args.outputFileType,
+                     outputFile = args.outputFile,
                      includeCCM = args.includeCCM,
                      plot = args.Plot, title = args.plotTitle,
                      figSize = args.figureSize, dpi = args.dpi )
 
 #---------------------------------------------------------------------
 def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
-                plot = True, plotFile = None ):
-    ''' '''
+                plot = True, plotFile = None, cmap = None, norm = None,
+                aspect = None, vmin = None, vmax = None, colorBarShrink = 1. ):
+    '''Generic function to plot numpy matrix
+
+    Examples of DataFrame returned in dict of CCM_Matrix:
+       CM = CCM_Matrix( df, 5, expConverge = True )
+       PlotMatrix(CM['ccm slope'].to_numpy(dtype=float),CM['ccm slope'].columns)
+       PlotMatrix(CM['ccm converge a'].to_numpy(dtype=float),
+                  CM['ccm converge a'].columns)
+    '''
 
     fig = plt.figure( figsize = figsize, dpi = dpi )
     ax  = fig.add_subplot()
@@ -308,8 +402,11 @@ def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
     ax.set_xticklabels(columns, rotation = 90)
     ax.set_yticklabels(columns)
 
-    cax = ax.matshow( xm )
-    fig.colorbar( cax )
+    cax = ax.matshow( xm, cmap = cmap, norm = norm,
+                      aspect = aspect, vmin = vmin, vmax = vmax )
+    fig.colorbar( cax, shrink = colorBarShrink )
+
+    plt.tight_layout()
 
     if plotFile :
         fname = f'{plotFile}'
@@ -327,7 +424,7 @@ def ParseCmdLine():
                         dest    = 'inputFile', type = str,
                         action  = 'store',
                         default = None,
-                        help    = 'Input data file.')
+                        help    = 'Input data file .csv or .feather')
 
     parser.add_argument('-d', '--inputData',
                         dest    = 'inputData', type = str,
@@ -335,17 +432,11 @@ def ParseCmdLine():
                         default = 'Lorenz5D',
                         help    = 'pyEDM sampleData name')
 
-    parser.add_argument('-of', '--outputFileName',
-                        dest    = 'outputFileName', type = str,
+    parser.add_argument('-of', '--outputFile',
+                        dest    = 'outputFile', type = str,
                         action  = 'store',
                         default = None,
-                        help    = 'CCM matrix output .csv file')
-
-    parser.add_argument('-ot', '--outputFileType',
-                        dest    = 'outputFileType', type = str,
-                        action  = 'store',
-                        default = 'csv',
-                        help    = 'CCM matrix output .csv file')
+                        help    = 'CCM/slope matrix output file name')
 
     parser.add_argument('-iCCM', '--includeCCM',
                         dest    = 'includeCCM',
@@ -394,6 +485,12 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 30,
                         help    = 'CCM sample')
+
+    parser.add_argument('-ec', '--expConverge',
+                        dest    = 'expConverge',
+                        action  = 'store_true',
+                        default = False,
+                        help    = 'Compute exp convergence')
 
     parser.add_argument('-V', '--validLib', nargs = '*',
                         dest    = 'validLib', type = int,

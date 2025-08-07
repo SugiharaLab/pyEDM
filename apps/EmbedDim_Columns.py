@@ -8,7 +8,7 @@ from itertools          import repeat
 from concurrent.futures import ProcessPoolExecutor
 
 # Community modules
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_feather, read_csv
 from pyEDM  import EmbedDimension, sampleData
 from matplotlib import pyplot as plt
 from numpy import greater
@@ -163,10 +163,17 @@ def EmbedDim_Columns_CmdLine():
     args = ParseCmdLine()
 
     # Read data
-    # If -i input file: load it, else look for inputData in sampleData
+    # If -i input file: load it, else look for inputData in pyEDM sampleData
     if args.inputFile:
-        dataFrame = read_csv( args.inputFile )
+        if '.csv' in args.inputFile[-4:] :
+            dataFrame = read_csv( args.inputFile )
+        elif '.feather' in args.inputFile[-8:] :
+            dataFrame = read_feather( args.inputFile )
+        else :
+            msg = f'Input file {args.inputFile} must be csv or feather'
+            raise( RuntimeError( msg ) )
     elif args.inputData:
+        from pyEDM import sampleData
         dataFrame = sampleData[ args.inputData ]
     else:
         raise RuntimeError( "Invalid inputFile or inputData" )
