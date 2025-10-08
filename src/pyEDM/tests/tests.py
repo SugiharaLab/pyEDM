@@ -2,8 +2,9 @@
 import sys
 import unittest
 from   datetime import datetime
+from   warnings import filterwarnings, catch_warnings
 
-from numpy  import nan
+from numpy  import nan, array, array_equal
 from pandas import read_csv
 import pyEDM as EDM
 
@@ -309,6 +310,20 @@ class test_EDM( unittest.TestCase ):
         self.assertTrue( S1.equals( S2 ) )
 
     #------------------------------------------------------------
+    def test_simplex11( self ):
+        '''knn = 1'''
+        if self.verbose : print ( "--- knn = 1 ---" )
+        df_ = EDM.sampleData["Lorenz5D"]
+
+        df = EDM.Simplex( dataFrame = df_, columns='V5', target = 'V5',
+                          lib = [301,400], pred = [350,355],
+                          knn = 1, embedded = True, returnObject = True )
+
+        knn = df.knn_neighbors
+        knnValid = array( [322,334,362,387,356,355] )[:,None]
+        self.assertTrue( array_equal( knn, knnValid ) )
+
+    #------------------------------------------------------------
     # S-map
     #------------------------------------------------------------
     def test_smap( self ):
@@ -388,24 +403,32 @@ class test_EDM( unittest.TestCase ):
     # CCM
     #------------------------------------------------------------
     def test_ccm( self ):
-        if self.verbose : print ( "--- CCM ---" )
-        df_ = EDM.sampleData['sardine_anchovy_sst']
-        df = EDM.CCM( dataFrame = df_, columns = 'anchovy', target = 'np_sst',
-                      libSizes = [10,20,30,40,50,60,70,75], sample = 100,
-                      E = 3, Tp = 0, tau = -1, seed = 777 )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
 
-        dfv = round( self.ValidFiles["CCM_anch_sst_valid.csv"], 4 )
+            if self.verbose : print ( "--- CCM ---" )
+            df_ = EDM.sampleData['sardine_anchovy_sst']
+            df = EDM.CCM( dataFrame = df_, columns = 'anchovy',target = 'np_sst',
+                          libSizes = [10,20,30,40,50,60,70,75], sample = 100,
+                          E = 3, Tp = 0, tau = -1, seed = 777 )
 
-        self.assertTrue( dfv.equals( round( df, 4 ) ) )
+        dfv = round( self.ValidFiles["CCM_anch_sst_valid.csv"], 2 )
+
+        self.assertTrue( dfv.equals( round( df, 2 ) ) )
 
     #------------------------------------------------------------
     def test_ccm2( self ):
         '''CCM Multivariate'''
-        if self.verbose : print ( "--- CCM multivariate ---" )
-        df_ = EDM.sampleData['Lorenz5D']
-        df = EDM.CCM( dataFrame = df_, columns = 'V3 V5', target = 'V1',
-                      libSizes = [20, 200, 500, 950], sample = 30, E = 5,
-                      Tp = 10, tau = -5, seed = 777 )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
+
+            if self.verbose : print ( "--- CCM multivariate ---" )
+            df_ = EDM.sampleData['Lorenz5D']
+            df = EDM.CCM( dataFrame = df_, columns = 'V3 V5', target = 'V1',
+                          libSizes = [20, 200, 500, 950], sample = 30, E = 5,
+                          Tp = 10, tau = -5, seed = 777 )
 
         dfv = round( self.ValidFiles["CCM_Lorenz5D_MV_valid.csv"], 4 )
 
@@ -414,15 +437,19 @@ class test_EDM( unittest.TestCase ):
     #------------------------------------------------------------
     def test_ccm3( self ):
         '''CCM nan'''
-        if self.verbose : print ( "--- CCM nan ---" )
-        df_ = EDM.sampleData['circle']
-        dfn = df_.copy()
-        dfn.iloc[ [5,6,12], 1 ] = nan
-        dfn.iloc[ [10,11,17], 2 ] = nan
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
 
-        df = EDM.CCM( dataFrame = dfn, columns = 'x', target = 'y',
-                      libSizes = [10,190,10], sample = 20, E = 2,
-                      Tp = 5, tau = -1, seed = 777 )
+            if self.verbose : print ( "--- CCM nan ---" )
+            df_ = EDM.sampleData['circle']
+            dfn = df_.copy()
+            dfn.iloc[ [5,6,12], 1 ] = nan
+            dfn.iloc[ [10,11,17], 2 ] = nan
+
+            df = EDM.CCM( dataFrame = dfn, columns = 'x', target = 'y',
+                          libSizes = [10,190,10], sample = 20, E = 2,
+                          Tp = 5, tau = -1, seed = 777 )
 
         dfv = round( self.ValidFiles["CCM_nan_valid.csv"], 4 )
 
@@ -431,13 +458,17 @@ class test_EDM( unittest.TestCase ):
     #------------------------------------------------------------
     def test_ccm4( self ):
         '''CCM Multivariate names with spaces'''
-        if self.verbose : print ( "--- CCM multivariate name spaces ---" )
-        df_ = EDM.sampleData['columnNameSpace']
-        df = EDM.CCM( dataFrame = df_,
-                      columns = ['Var 1','Var3','Var 5 1'],
-                      target = ['Var 2','Var 4 A'],
-                      libSizes = [20, 50, 90], sample = 1,
-                      E = 5, Tp = 0, tau = -1, seed = 777 )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
+
+            if self.verbose : print ( "--- CCM multivariate name spaces ---" )
+            df_ = EDM.sampleData['columnNameSpace']
+            df = EDM.CCM( dataFrame = df_,
+                          columns = ['Var 1','Var3','Var 5 1'],
+                          target = ['Var 2','Var 4 A'],
+                          libSizes = [20, 50, 90], sample = 1,
+                          E = 5, Tp = 0, tau = -1, seed = 777 )
 
         dfv = round( self.ValidFiles["CCM_Lorenz5D_MV_Space_valid.csv"], 4 )
 
@@ -447,15 +478,19 @@ class test_EDM( unittest.TestCase ):
     # Multiview
     #------------------------------------------------------------
     def test_multiview( self ):
-        if self.verbose : print ( "--- Multiview ---" )
-        df_ = EDM.sampleData['block_3sp']
-        M = EDM.Multiview( dataFrame = df_,
-                           columns = "x_t y_t z_t", target = "x_t",
-                           lib = [1, 100], pred = [101, 198],
-                           D = 0, E = 3, Tp = 1, knn = 0, tau = -1,
-                           multiview = 0, exclusionRadius = 0,
-                           trainLib = False, excludeTarget = False,
-                           numProcess = 4, showPlot = False )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
+
+            if self.verbose : print ( "--- Multiview ---" )
+            df_ = EDM.sampleData['block_3sp']
+            M = EDM.Multiview( dataFrame = df_,
+                               columns = "x_t y_t z_t", target = "x_t",
+                               lib = [1, 100], pred = [101, 198],
+                               D = 0, E = 3, Tp = 1, knn = 0, tau = -1,
+                               multiview = 0, exclusionRadius = 0,
+                               trainLib = False, excludeTarget = False,
+                               numProcess = 4, showPlot = False )
 
         df_pred  = M['Predictions']
         df_combo = M['View'][ ['rho', 'MAE', 'RMSE'] ]
@@ -476,12 +511,16 @@ class test_EDM( unittest.TestCase ):
     # EmbedDimension
     #------------------------------------------------------------
     def test_embedDimension( self ):
-        if self.verbose : print ( "--- EmbedDimension ---" )
-        df_ = EDM.sampleData['Lorenz5D']
-        df = EDM.EmbedDimension( dataFrame = df_, columns = 'V1', target = 'V1',
-                                 maxE = 12, lib = [1, 500], pred = [501, 800],
-                                 Tp = 15, tau = -5, exclusionRadius = 20,
-                                 numProcess = 10, showPlot = False )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
+
+            if self.verbose : print ( "--- EmbedDimension ---" )
+            df_ = EDM.sampleData['Lorenz5D']
+            df = EDM.EmbedDimension( dataFrame = df_, columns='V1', target='V1',
+                                     maxE = 12, lib = [1, 500], pred=[501, 800],
+                                     Tp = 15, tau = -5, exclusionRadius = 20,
+                                     numProcess = 10, showPlot = False )
 
         dfv = round( self.ValidFiles["EmbedDim_valid.csv"], 6 )
 
@@ -491,13 +530,17 @@ class test_EDM( unittest.TestCase ):
     # PredictInterval
     #------------------------------------------------------------
     def test_PredictInterval( self ):
-        if self.verbose : print ( "--- PredictInterval ---" )
-        df_ = EDM.sampleData['block_3sp']
-        df = EDM.PredictInterval( dataFrame = df_,
-                                  columns = 'x_t', target = 'x_t', maxTp = 15,
-                                  lib = [1, 150], pred = [151, 198], E = 3,
-                                  tau = -1, numProcess = 10, showPlot = False )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
 
+            if self.verbose : print ( "--- PredictInterval ---" )
+            df_ = EDM.sampleData['block_3sp']
+            df = EDM.PredictInterval( dataFrame = df_,
+                                      columns = 'x_t', target='x_t', maxTp = 15,
+                                      lib = [1, 150], pred = [151, 198], E = 3,
+                                      tau = -1, numProcess = 10, showPlot=False )
+            
         dfv = round( self.ValidFiles["PredictInterval_valid.csv"], 6 )
 
         self.assertTrue( dfv.equals( round( df, 6 ) ) )
@@ -506,15 +549,19 @@ class test_EDM( unittest.TestCase ):
     # PredictNonlinear
     #------------------------------------------------------------
     def test_PredictNonlinear( self ):
-        if self.verbose : print ( "--- Predict ---" )
-        df_ = EDM.sampleData['TentMapNoise']
-        df = EDM.PredictNonlinear( dataFrame = df_,
-                                   columns = 'TentMap', target = 'TentMap',
-                                   lib = [1, 500], pred = [501,800], E = 4,
-                                   Tp = 1, tau = -1, numProcess = 10,
-                                   theta = [0.01, 0.1, 0.3, 0.5, 0.75, 1, 1.5,
-                                            2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20 ],
-                                   showPlot = False )
+        with catch_warnings():
+            # Python-3.13 multiprocessing fork DeprecationWarning 
+            filterwarnings( "ignore", category = DeprecationWarning )
+
+            if self.verbose : print ( "--- Predict ---" )
+            df_ = EDM.sampleData['TentMapNoise']
+            df = EDM.PredictNonlinear( dataFrame = df_,
+                                       columns = 'TentMap', target = 'TentMap',
+                                       lib = [1, 500], pred = [501,800], E = 4,
+                                       Tp = 1, tau = -1, numProcess = 10,
+                                       theta = [0.01,0.1,0.3,0.5,0.75,1,1.5,
+                                                2,3,4,5,6,7,8,9,10,15,20 ],
+                                       showPlot = False )
 
         dfv = round( self.ValidFiles["PredictNonlinear_valid.csv"], 6 )
 

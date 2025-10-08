@@ -58,14 +58,8 @@ class Simplex( EDMClass ):
         self.ignoreNan       = ignoreNan
         self.verbose         = verbose
 
-        # Prediction row accounting of library neighbor ties
-        # self.anyTies       = False
-        # self.ties          = None  # (bool) true/false each prediction row
-        # self.tieFirstIndex = None  # (int) index in knn of first tie
-        # self.tiePairs      = None  # vector of 2-tuples
-
         # Setup
-        self.Validate()      # EDM Method
+        self.Validate()      # EDM Method: set knn default, E if embedded
         self.CreateIndices() # Generate lib_i & pred_i, validLib : EDM Method
 
         self.targetVec = self.Data[ [ self.target[0] ] ].to_numpy()

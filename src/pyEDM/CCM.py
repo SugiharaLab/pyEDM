@@ -1,6 +1,6 @@
 
 # python modules
-from multiprocessing import Pool
+from multiprocessing import get_context
 
 # package modules
 from pandas import DataFrame, concat
@@ -32,6 +32,8 @@ class CCM:
                   validLib        = [],
                   noTime          = False,
                   ignoreNan       = True,
+                  mpMethod        = None,
+                  sequential      = False,
                   verbose         = False ):
         '''Initialize CCM.'''
 
@@ -53,6 +55,8 @@ class CCM:
         self.validLib        = validLib
         self.noTime          = noTime
         self.ignoreNan       = ignoreNan
+        self.mpMethod        = mpMethod
+        self.sequential      = sequential
         self.verbose         = verbose
 
         # Set full lib & pred
@@ -67,8 +71,9 @@ class CCM:
         self.Validate() # CCM Method
 
         # Instantiate Forward and Reverse Mapping objects
-        # Each __init__ calls Validate() & CreateIndices()
+        # Each __init__ calls EDM.Validate() & EDM.CreateIndices()
         # and sets up targetVec, allTime
+        # EDM.Validate sets default knn, overrides E if embedded
         self.FwdMap = SimplexClass( dataFrame       = dataFrame,
                                     columns         = columns,
                                     target          = target,
@@ -110,14 +115,15 @@ class CCM:
         if self.verbose:
             print( f'{self.name}: Project()' )
 
-        if sequential : # Sequential alternative to multiprocessing
+        if self.sequential : # Sequential alternative to multiprocessing
             FwdCM = self.CrossMap( 'FWD' )
             RevCM = self.CrossMap( 'REV' )
             self.CrossMapList = [ FwdCM, RevCM ]
         else :
             # multiprocessing Pool CrossMap both directions simultaneously
             poolArgs = [ 'FWD', 'REV' ]
-            with Pool( processes = 2 ) as pool :
+            mpContext = get_context( self.mpMethod )
+            with mpContext.Pool( processes = 2 ) as pool :
                 CrossMapList = pool.map( self.CrossMap, poolArgs )
 
             self.CrossMapList = CrossMapList

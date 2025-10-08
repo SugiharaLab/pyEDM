@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 
-import time, argparse
-from   multiprocessing import Pool
-from   itertools       import repeat
+from datetime        import datetime
+from argparse        import ArgumentParser
+from multiprocessing import get_context
+from itertools       import repeat
 
 from   pandas import read_csv
 import matplotlib.pyplot as plt
@@ -13,7 +14,8 @@ from pyEDM import SMap, sampleData
 #----------------------------------------------------------------------------
 def SMap_Tp( data, TpList = None, target = None, column = None,
              E = 2, tau = -1, theta = 0, exclusionRadius = 0,
-             lib = None, pred = None, cores = 5, embedded = False,
+             lib = None, pred = None, cores = 5, mpMethod = None,
+             chunksize = 1, embedded = False,
              outputFile = None, noTime = False,
              verbose = False, plot = False ):
     
@@ -22,7 +24,7 @@ def SMap_Tp( data, TpList = None, target = None, column = None,
        Return dict of Tp{Tp} : SMap dict
     '''
     
-    startTime = time.time()
+    startTime = datetime.now()
     
     if not target :
         raise( RuntimeError( 'target required' ) )
@@ -41,15 +43,16 @@ def SMap_Tp( data, TpList = None, target = None, column = None,
     poolArgs = zip( TpList, repeat( argsD ), repeat( data ) )
 
     # Process pool
-    with Pool( processes = cores ) as pool :
-        SMapList = pool.starmap( SMapTpFunc, poolArgs )
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = cores ) as pool :
+        SMapList = pool.starmap( SMapTpFunc, poolArgs, chunksize = chunksize )
 
     # SMapList is a list of SMap dictionaries : create dict with TpX keys
     keys = [ 'Tp' + str( k ) for k in TpList ]
     D = dict( zip( keys, SMapList ) )
 
     if verbose :
-        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+        print( f'Elapsed time:  {datetime.now() - startTime}' )
 
         print( D.keys() )
 
@@ -108,6 +111,7 @@ def SMap_Tp_CmdLine():
                  exclusionRadius = args.exclusionRadius,
                  lib = args.lib, pred = args.pred,
                  embedded = args.embedded, cores = args.cores,
+                 mpMethod = args.mpMethod, chunksize = args.chunksize,
                  outputFile = args.outputFile, noTime = args.noTime,
                  verbose = args.verbose, plot = args.Plot )
 
@@ -115,7 +119,7 @@ def SMap_Tp_CmdLine():
 #----------------------------------------------------------------------------
 def ParseCmdLine():
     
-    parser = argparse.ArgumentParser( description = 'SMap multiprocess Tp' )
+    parser = ArgumentParser( description = 'SMap multiprocess Tp' )
     
     parser.add_argument('-T', '--TpList', nargs = '+',
                         dest    = 'TpList', type = int, 
@@ -212,6 +216,17 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 4,
                         help    = 'Multiprocessing cores.')
+
+    parser.add_argument('-mp', '--mpMethod',
+                        dest    = 'mpMethod', type = str,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Multiprocessing start method')
+
+    parser.add_argument('-cz', '--chunksize',
+                        dest   = 'chunksize', type = int,
+                        action = 'store', default = 1,
+                        help = 'ProcessPool chunksize')
 
     parser.add_argument('-P', '--Plot',
                         dest    = 'Plot',

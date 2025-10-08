@@ -53,7 +53,8 @@ def main():
                   lib = [1, 100], pred = [101, 198],
                   E = 2, Tp = 1, knn = 0, tau = -1,
                   theta = 4, exclusionRadius = 0,
-                  solver = None, embedded = True, validLib = [] )
+                  solver = None, embedded = True,
+                  validLib = [], showPlot = True )
     
     CM = EDM.CCM( dataFrame = EDM.sampleData[ "sardine_anchovy_sst" ],
                   columns = "anchovy", target = "np_sst",

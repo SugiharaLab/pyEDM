@@ -1,7 +1,7 @@
 '''Interface to Empirical Dynamic Modeling (EDM) pyEDM'''
 
 # python modules
-from multiprocessing import Pool
+from multiprocessing import get_context
 from itertools       import repeat
 
 # package modules
@@ -136,11 +136,6 @@ def Simplex( dataFrame       = None,
         S.Run()
 
     if showPlot :
-        if embedded :
-            if IsIterable( columns ) :
-                E = len( columns )
-            else :
-                E = len( columns.split() )
         PlotObsPred( S.Projection, "", S.E, S.Tp )
 
     if returnObject :
@@ -219,11 +214,6 @@ def SMap( dataFrame       = None,
         S.Run()
 
     if showPlot :
-        if embedded :
-            if IsIterable( columns ) :
-                E = len( columns )
-            else :
-                E = len( columns.split() )
         PlotObsPred( S.Projection,   "", S.E, S.Tp )
         PlotCoeff  ( S.Coefficients, "", S.E, S.Tp )
 
@@ -254,6 +244,8 @@ def CCM( dataFrame        = None,
          includeData      = False,
          noTime           = False,
          ignoreNan        = True,
+         mpMethod         = None,
+         sequential       = False,
          verbose          = False,
          showPlot         = False,
          returnObject     = False ) :
@@ -277,6 +269,8 @@ def CCM( dataFrame        = None,
                   validLib        = validLib,
                   noTime          = noTime,
                   ignoreNan       = ignoreNan,
+                  mpMethod        = mpMethod,
+                  sequential      = sequential,
                   verbose         = verbose )
 
     # Embedding of Forward & Reverse mapping
@@ -333,6 +327,8 @@ def Multiview( dataFrame       = None,
                ignoreNan       = True,
                verbose         = False,
                numProcess      = 4,
+               mpMethod        = None,
+               chunksize       = 1,
                showPlot        = False,
                returnObject    = False ):
     '''Multiview prediction on path/file.'''
@@ -356,6 +352,8 @@ def Multiview( dataFrame       = None,
                         ignoreNan       = ignoreNan,
                         verbose         = verbose,
                         numProcess      = numProcess,
+                        mpMethod        = mpMethod,
+                        chunksize       = chunksize,
                         returnObject    = returnObject )
 
     M.Rank()
@@ -414,6 +412,8 @@ def EmbedDimension( dataFrame       = None,
                     ignoreNan       = True,
                     verbose         = False,
                     numProcess      = 4,
+                    mpMethod        = None,
+                    chunksize       = 1,
                     showPlot        = True ):
     '''Estimate optimal embedding dimension [1:maxE].'''
 
@@ -435,8 +435,10 @@ def EmbedDimension( dataFrame       = None,
     poolArgs = zip( Evals, repeat( dataFrame ), repeat( args ) )
 
     # Multiargument starmap : EmbedDimSimplexFunc in PoolFunc
-    with Pool( processes = numProcess ) as pool :
-        rhoList = pool.starmap( PoolFunc.EmbedDimSimplexFunc, poolArgs )
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = numProcess ) as pool :
+        rhoList = pool.starmap( PoolFunc.EmbedDimSimplexFunc, poolArgs,
+                                chunksize = chunksize )
 
     df = DataFrame( {'E':Evals, 'rho':rhoList} )
 
@@ -467,6 +469,8 @@ def PredictInterval( dataFrame       = None,
                      ignoreNan       = True,
                      verbose         = False,
                      numProcess      = 4,
+                     mpMethod        = None,
+                     chunksize       = 1,
                      showPlot        = True ):
     '''Estimate optimal prediction interval [1:maxTp]'''
 
@@ -488,8 +492,10 @@ def PredictInterval( dataFrame       = None,
     poolArgs = zip( Evals, repeat( dataFrame ), repeat( args ) )
 
     # Multiargument starmap : EmbedDimSimplexFunc in PoolFunc
-    with Pool( processes = numProcess ) as pool :
-        rhoList = pool.starmap( PoolFunc.PredictIntervalSimplexFunc, poolArgs )
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = numProcess ) as pool :
+        rhoList = pool.starmap( PoolFunc.PredictIntervalSimplexFunc, poolArgs,
+                                chunksize = chunksize )
 
     df = DataFrame( {'Tp':Evals, 'rho':rhoList} )
 
@@ -528,6 +534,8 @@ def PredictNonlinear( dataFrame       = None,
                       ignoreNan       = True,
                       verbose         = False,
                       numProcess      = 4,
+                      mpMethod        = None,
+                      chunksize       = 1,
                       showPlot        = True ):
     '''Estimate S-map localisation over theta.'''
 
@@ -544,6 +552,7 @@ def PredictNonlinear( dataFrame       = None,
              'pred'            : pred,
              'E'               : E,
              'Tp'              : Tp,
+             'knn'             : knn,
              'tau'             : tau,
              'exclusionRadius' : exclusionRadius,
              'solver'          : solver,
@@ -556,8 +565,10 @@ def PredictNonlinear( dataFrame       = None,
     poolArgs = zip( theta, repeat( dataFrame ), repeat( args ) )
 
     # Multiargument starmap : EmbedDimSimplexFunc in PoolFunc
-    with Pool( processes = numProcess ) as pool :
-        rhoList = pool.starmap( PoolFunc.PredictNLSMapFunc, poolArgs )
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = numProcess ) as pool :
+        rhoList = pool.starmap( PoolFunc.PredictNLSMapFunc, poolArgs,
+                                chunksize = chunksize )
 
     df = DataFrame( {'theta':theta, 'rho':rhoList} )
 
