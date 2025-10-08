@@ -1,9 +1,11 @@
 #! /usr/bin/env python3
 
 # Python distribution modules
-import time, argparse
-from   itertools          import repeat
-from   concurrent.futures import ProcessPoolExecutor
+from datetime           import datetime
+from argparse           import ArgumentParser
+from itertools          import repeat
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing    import get_context
 
 # Community modules
 from pyEDM  import CCM
@@ -29,6 +31,8 @@ def CCM_Matrix( data,
                 noTime          = False,
                 validLib        = [],
                 cores           = 5,
+                mpMethod        = None,
+                chunksize       = 1,
                 verbose         = False,
                 debug           = False,
                 outputFile      = None,
@@ -72,7 +76,10 @@ def CCM_Matrix( data,
           { 'ccm results':list }
     '''
 
-    startTime = time.time()
+    startTime = datetime.now()
+    
+    if verbose :
+        print( f'CCM_Matrix: {startTime}' )
 
     if outputFile :
         if '.csv' not in outputFile[-4:] and '.feather' not in outputFile[-8:] :
@@ -151,12 +158,19 @@ def CCM_Matrix( data,
               'ignoreNan'       : ignoreNan,
               'verbose'         : verbose }
 
+    mpContext = get_context( mpMethod )
+
+    if verbose :
+        print( f'multiprocessing: {mpContext._name} ' +\
+               f'using {cores} of {mpContext.cpu_count()} available CPU' )
+
     # ProcessPoolExecutor has no starmap(). Pass argument lists directly.
-    with ProcessPoolExecutor( max_workers = cores ) as exe :
+    with ProcessPoolExecutor( max_workers=cores, mp_context=mpContext ) as exe :
         ccm_ = exe.map( CCMFunc,
                         upperDiagPairs,
                         repeat( data,  N ),
-                        repeat( argsD, N ) )
+                        repeat( argsD, N ),
+                        chunksize = chunksize )
 
     # ccm_ is a generator of dictionaries from CCMFunc
     ccmD_ = [ _ for _ in ccm_ ]
@@ -193,7 +207,8 @@ def CCM_Matrix( data,
         print()
 
     if verbose :
-        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+        print( f'Finished {datetime.now()}' )
+        print( f'Elapsed time: {datetime.now() - startTime}' )
 
     if plot :
         PlotMatrix( CCM_DF.to_numpy( dtype = float ), columns,
@@ -372,7 +387,9 @@ def CCM_Matrix_CmdLine():
                      exclusionRadius = args.exclusionRadius,
                      expConverge = args.expConverge,
                      ignoreNan = args.ignoreNan, noTime = args.noTime,
-                     validLib = args.validLib, cores = args.cores,
+                     validLib = args.validLib,
+                     cores = args.cores, mpMethod = args.mpMethod,
+                     chunksize = args.chunksize,
                      verbose = args.verbose, debug = args.debug,
                      outputFile = args.outputFile,
                      includeCCM = args.includeCCM,
@@ -418,7 +435,7 @@ def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
 #----------------------------------------------------------------------
 def ParseCmdLine():
 
-    parser = argparse.ArgumentParser( description = 'CCM Matrix' )
+    parser = ArgumentParser( description = 'CCM Matrix' )
 
     parser.add_argument('-i', '--inputFile',
                         dest    = 'inputFile', type = str,
@@ -503,6 +520,17 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 5,
                         help    = 'Multiprocessing cores')
+
+    parser.add_argument('-mp', '--mpMethod',
+                        dest    = 'mpMethod', type = str,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Multiprocessing start method')
+
+    parser.add_argument('-cz', '--chunksize',
+                        dest   = 'chunksize', type = int,
+                        action = 'store', default = 1,
+                        help = 'ProcessPool chunksize')
 
     parser.add_argument('-nT', '--noTime',
                         dest    = 'noTime',

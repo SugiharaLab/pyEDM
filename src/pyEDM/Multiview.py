@@ -1,6 +1,6 @@
 
 # python modules
-from multiprocessing import Pool
+from multiprocessing import get_context
 from math import floor, sqrt
 from warnings import warn
 from itertools import combinations, repeat
@@ -67,6 +67,8 @@ class Multiview:
                   ignoreNan       = True,
                   verbose         = False,
                   numProcess      = 4,
+                  mpMethod        = None,
+                  chunksize       = 1,
                   returnObject    = False ):
         '''Initialize Multiview.'''
 
@@ -89,6 +91,8 @@ class Multiview:
         self.ignoreNan       = ignoreNan
         self.verbose         = verbose
         self.numProcess      = numProcess
+        self.mpMethod        = mpMethod
+        self.chunksize       = chunksize
 
         self.Embedding  = None # DataFrame 
         self.View       = None # DataFrame
@@ -100,7 +104,7 @@ class Multiview:
         self.topRankStats       = None # dict of columns : dict of stats
 
         # Setup
-        self.Validate() # Multiview Method
+        self.Validate() # Multiview Method: set knn default, E if embedded
         self.Setup()    # Embed Data
 
     #-------------------------------------------------------------------
@@ -131,8 +135,10 @@ class Multiview:
         poolArgs = zip( self.combos, repeat( self.Embedding ), repeat( args ) )
 
         # Multiargument starmap : MultiviewSimplexRho in PoolFunc
-        with Pool( processes = self.numProcess ) as pool :
-            rhoList = pool.starmap( PoolFunc.MultiviewSimplexRho, poolArgs )
+        mpContext = get_context( self.mpMethod )
+        with mpContext.Pool( processes = self.numProcess ) as pool :
+            rhoList = pool.starmap( PoolFunc.MultiviewSimplexRho, poolArgs,
+                                    chunksize = self.chunksize )
 
         rhoVec    = array( rhoList, dtype = float )
         rank_i    = argsort( rhoVec )[::-1] # Reverse results 
@@ -165,7 +171,8 @@ class Multiview:
                         repeat( args ) )
 
         # Multiargument starmap : MultiviewSimplexPred in PoolFunc
-        with Pool( processes = self.numProcess ) as pool :
+        mpContext = get_context( self.mpMethod )
+        with mpContext.Pool( processes = self.numProcess ) as pool :
             dfList = pool.starmap( PoolFunc.MultiviewSimplexPred, poolArgs )
 
         self.topRankProjections = dict( zip( self.topRankCombos, dfList ) )

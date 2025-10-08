@@ -103,6 +103,7 @@ def PredictNLSMapFunc( theta, data, args ) :
                   pred            = args['pred'],
                   E               = args['E'], 
                   Tp              = args['Tp'],
+                  knn             = args['knn'],
                   tau             = args['tau'],
                   theta           = theta,
                   exclusionRadius = args['exclusionRadius'],

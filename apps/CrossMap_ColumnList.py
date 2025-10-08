@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 
-import time, argparse
-from   multiprocessing import Pool
-from   itertools       import repeat
+from datetime        import datetime
+from argparse        import ArgumentParser
+from multiprocessing import get_context
+from itertools       import repeat
 
 from pandas import DataFrame, read_csv, concat
 from pyEDM  import Simplex, sampleData
@@ -14,7 +15,8 @@ from matplotlib import pyplot as plt
 def CrossMap_ColumnList( data, columns = [], target = None, E = 0,
                          Tp = 1, tau = -1, exclusionRadius = 0,
                          lib = None, pred = None, embedded = False,
-                         cores = 5, outputFile = None, noTime = False,
+                         cores = 5, mpMethod = None, chunksize = 1,
+                         outputFile = None, noTime = False,
                          verbose = False, plot = False ):
     
     '''Use multiprocessing Pool to process parallelise Simplex. 
@@ -24,7 +26,7 @@ def CrossMap_ColumnList( data, columns = [], target = None, E = 0,
        Return : dict '{columns[i]}:{target}' : Simplex DataFrame
     '''
 
-    startTime = time.time()
+    startTime = datetime.now()
 
     if not len( columns ) :
         raise( RuntimeError( 'columns list required' ) )
@@ -53,8 +55,9 @@ def CrossMap_ColumnList( data, columns = [], target = None, E = 0,
     poolArgs = zip( columns, repeat( argsD ), repeat( data ) )
 
     # Use pool.starmap to distribute among cores
-    with Pool( processes = cores ) as pool :
-        CMList = pool.starmap( SimplexFunc, poolArgs )
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = cores ) as pool :
+        CMList = pool.starmap( SimplexFunc, poolArgs, chunksize = chunksize )
 
     # Load CMList results into dictionary
     D = {}
@@ -62,7 +65,7 @@ def CrossMap_ColumnList( data, columns = [], target = None, E = 0,
         D[ f'{columns[i]}:{target}' ] = CMList[ i ]
 
     if verbose :
-        print( "Elapsed time:", round( time.time() - startTime, 2 ) )
+        print( f'Elapsed time: {datetime.now() - startTime}' )
 
         print( D.keys() )
 
@@ -119,7 +122,8 @@ def CrossMap_ColumnList_CmdLine():
                               E = args.E, Tp = args.Tp, tau = args.tau,
                               exclusionRadius = args.exclusionRadius,
                               lib = args.lib, pred = args.pred,
-                              cores = args.cores, noTime = args.noTime,
+                              cores = args.cores, mpMethod = args.mpMethod,
+                              chunksize = args.chunksize, noTime = args.noTime,
                               outputFile = args.outputFile,
                               verbose = args.verbose, plot = args.Plot )
 
@@ -127,7 +131,7 @@ def CrossMap_ColumnList_CmdLine():
 #----------------------------------------------------------------------------
 def ParseCmdLine():
     
-    parser = argparse.ArgumentParser( description = 'CrossMap Column List' )
+    parser = ArgumentParser( description = 'CrossMap Column List' )
     
     parser.add_argument('-i', '--inputFile',
                         dest    = 'inputFile', type = str, 
@@ -200,6 +204,17 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 5,
                         help    = 'Multiprocessing cores.')
+
+    parser.add_argument('-mp', '--mpMethod',
+                        dest    = 'mpMethod', type = str,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Multiprocessing start method')
+
+    parser.add_argument('-cz', '--chunksize',
+                        dest   = 'chunksize', type = int,
+                        action = 'store', default = 1,
+                        help = 'ProcessPool chunksize')
 
     parser.add_argument('-nT', '--noTime',
                         dest    = 'noTime',

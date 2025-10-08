@@ -1,34 +1,51 @@
 #! /usr/bin/env python3
 
 # Python distribution modules
-from argparse           import ArgumentParser
-from datetime           import datetime
-from itertools          import repeat
-from multiprocessing    import get_context
-from concurrent.futures import ProcessPoolExecutor
+from argparse  import ArgumentParser
+from warnings  import filterwarnings
+from datetime  import datetime
+from itertools import islice
 
 # Community modules
-from pandas import DataFrame, read_feather, read_csv
-from pyEDM  import EmbedDimension, sampleData
+from pandas     import concat, read_feather, read_csv
 from matplotlib import pyplot as plt
-from numpy import greater, maximum
-from scipy.signal import argrelextrema
+
+# Local modules
+import sys
+sys.path.append( '../../../EDM/pyEDM/apps' )
+from EmbedDim_Columns import EmbedDim_Columns
+
+# numpy/lib/_function_base_impl.py:3000:
+# RuntimeWarning: invalid value encountered in divide  c /= stddev[None, :]
+filterwarnings( "ignore", category = RuntimeWarning )
 
 #----------------------------------------------------------------------------
-#
 #----------------------------------------------------------------------------
-def EmbedDim_Columns( data, target = None, maxE = 15, minE = 1,
-                      lib = None, pred = None, Tp = 1, tau = -1,
-                      exclusionRadius = 0, firstMax = False,
-                      validLib = [], noTime = False, ignoreNan = True,
-                      cores = 2, EDimCores = 5, mpMethod = None, chunksize = 1,
-                      outputFile = None, verbose = False, plot = False ):
+def EDimColsBlock( data, blockSize, target = None, maxE = 15, minE = 1,
+                   lib = None, pred = None, Tp = 1, tau = -1,
+                   exclusionRadius = 0, firstMax = False,
+                   validLib = [], noTime = False, ignoreNan = True,
+                   cores = 5, EDimCores = 2,
+                   mpMethod = None, chunksize = 1, 
+                   outputFile = None, verbose = False, plot = False ):
 
-    '''Use ProcessPoolExecutor to process parallelise EmbedDimension().
-       Note EmbedDimension() uses multiprocessing Pool but usually will
-       not require more than a few processes, maxE at most.
-       Two arguments contol the number of cores used for each:
-         -C  args.cores is number of processors running EmbedDimFunc().
+    '''Wrapper for pyEDM/apps/EmbedDim_Columns()
+    EmbedDim_Columns() uses concurrent.futures.ProcessPoolExecutor()
+    to parallelize pyEDM EmbedDimension() for all columns of a matrix/
+    DataFrame. EmbedDimension() uses multiprocessing.pool.Pool() to
+    parallelize the embedding dimension evaluation.
+
+    On big data the multiple levels of concurrence can strongly contend
+    for CPU resources when the number of columns is large (>1000). One way
+    to get around this is to break the columns into blocks and process
+    each block serially.
+
+    blockSize : size of the block
+
+    With exception of the blockSize parameter, parameters are the same as
+    EmbedDim_Columns():
+       Two arguments contol use of cores:
+         -C  args.cores is number of processors running EmbedDim_Columns().
          -EC args.EDimCores is number of processors for EmbedDimension().
        The product should not exceed available capacity.
        The multiprocessing context is set to mpMethod. 
@@ -44,64 +61,71 @@ def EmbedDim_Columns( data, target = None, maxE = 15, minE = 1,
     '''
 
     startTime = datetime.now()
+    N_cols    = len( data.columns )
+
     if verbose :
-        print( f'EmbedDim_Columns(): {startTime}' )
+        print( f'EDimColsBlock(): {startTime}' )
+        print( f'data shape {data.shape} N_cols={N_cols}' )
 
-    # If no lib and pred, create from full data span
-    if lib is None :
-        lib = [ 1, data.shape[0] ]
-    if pred is None :
-        pred = [ 1, data.shape[0] ]
+    if blockSize > N_cols :
+        raise RuntimeError( f'blockSize must be less than num columns {N_cols}' )
 
-    # Ignore first column, convert to list
-    if noTime :
-        columns = list( data.columns )
-    else :
-        columns = list( data.columns[ 1 : ] )
+    if outputFile :
+        if not outputFile[-8:] in '.feather'             and \
+           not outputFile[-4:] in ['.pkl','.csv','.zip'] and \
+           not outputFile[-3:] in ['.gz','.xz'] :
+            err = 'EDimColsBlock() ' +\
+                f'unrecognized outputFile format: {outputFile}'
+            raise RuntimeError( err )
 
-    N = len( columns )
+    # generator of islice iterators of columns into N blocks
+    block_i = blockGenerate( range( N_cols ), blockSize )
 
-    # Dictionary of arguments for PoolExecutor : EmbedDimFunc
-    argsD = { 'target'          : target,
-              'maxE'            : maxE,
-              'minE'            : minE,
-              'lib'             : lib,
-              'pred'            : pred,
-              'Tp'              : Tp,
-              'tau'             : tau,
-              'exclusionRadius' : exclusionRadius,
-              'firstMax'        : firstMax,
-              'validLib'        : validLib,
-              'noTime'          : noTime,
-              'ignoreNan'       : ignoreNan,
-              'EDimCores'       : EDimCores }
+    # List of blockSize iterators with indices for each block
+    g = [_ for _ in block_i]
 
-    mpContext = get_context( mpMethod )
+    N_blocks = len( g )
+
     if verbose :
-        print( f'multiprocessing: {mpContext._name} ' +\
-               f'using {cores} of {mpContext.cpu_count()} available CPU' )
+        print( datetime.now() )
+        print( f'blockSize {blockSize}  N_blocks {N_blocks }' )
 
-    # ProcessPoolExecutor has no starmap(). Pass argument lists directly.
-    with ProcessPoolExecutor(max_workers=cores, mp_context=mpContext) as exe :
-        EDim = exe.map( EmbedDimFunc,
-                        columns, repeat(data,N), repeat(argsD,N),
-                        chunksize = chunksize )
+    # Container for DataFrame of each block
+    L = [None] * N_blocks
 
-    # EDim is a generator of dictionaries from EmbedDimFunc
-    # Fill maxCols, targets and maxE arrays, dict
-    maxCols = [None] * N
-    targets = [None] * N
-    maxRho  = [0]    * N
-    maxE    = [0]    * N
-    i       = 0
-    for edim in EDim :
-        maxCols[i] = edim['column']
-        targets[i] = edim['target']
-        maxE[i]    = edim['maxE']
-        maxRho[i]  = edim['maxRho']
-        i = i + 1
+    for k in range( N_blocks ) :
+        b = g[k]            # k_th iterator
+        i = [_ for _ in b]  # block indices from g[k]
 
-    DF = DataFrame({'column':maxCols,'target':targets,'E':maxE,'rho':maxRho})
+        if not noTime and k == 0 :
+            # Remove index 0 of time column
+            i = i[1:]
+
+        dataBlock = data.iloc[:,i] # subset data[ :, block ]
+
+        # DataFrame{'column':maxCols,'target':targets,'E':maxE,'rho':maxRho}
+        L[k] = EmbedDim_Columns( dataBlock,
+                                 target          = target,
+                                 maxE            = maxE,
+                                 minE            = minE,
+                                 lib             = lib,
+                                 pred            = pred,
+                                 Tp              = Tp,
+                                 tau             = tau,
+                                 exclusionRadius = exclusionRadius,
+                                 firstMax        = firstMax,
+                                 validLib        = validLib,
+                                 noTime          = True,
+                                 ignoreNan       = ignoreNan,
+                                 cores           = cores,
+                                 EDimCores       = EDimCores,
+                                 mpMethod        = mpMethod,
+                                 chunksize       = chunksize,
+                                 outputFile      = None,
+                                 verbose         = False,
+                                 plot            = False )
+
+    DF = concat( L )
 
     if outputFile :
         if '.csv' in outputFile[-4:] :
@@ -111,15 +135,13 @@ def EmbedDim_Columns( data, target = None, maxE = 15, minE = 1,
         elif any([_ in outputFile[-4:] for _ in ['.pkl','.gz','.xz','.zip'] ]):
             DF.to_pickle( outputFile )
         else :
-            err = 'EmbedDim_Columns() ' +\
-                f'unrecognized outputFile format in {outputFile}'
+            err = 'EDimColsBlock() ' +\
+                f' Failed to write outputFile: {outputFile}'
             print( err )
 
     if verbose :
-        print( f'Finished: {datetime.now()}' )
         print( f'Elapsed Time {datetime.now() - startTime}' )
-
-        print( DF )
+        print( DF.head(3) )
 
     if plot :
         DF.plot( 'column', 'E' )
@@ -129,56 +151,18 @@ def EmbedDim_Columns( data, target = None, maxE = 15, minE = 1,
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def EmbedDimFunc( column, df, args ):
-    '''Estimate optimal embedding dimension [1:maxE]
-       If no target specified : univariate embedding of column'''
-
-    if args['target'] :
-        target = args['target']
-    else :
-        target = column
-
-    ed = EmbedDimension( dataFrame       = df,
-                         columns         = column,
-                         target          = target,
-                         maxE            = args['maxE'],
-                         lib             = args['lib'],
-                         pred            = args['pred'],
-                         Tp              = args['Tp'],
-                         tau             = args['tau'],
-                         exclusionRadius = args['exclusionRadius'],
-                         validLib        = args['validLib'],
-                         noTime          = args['noTime'],
-                         ignoreNan       = args['ignoreNan'],
-                         verbose         = False,
-                         numProcess      = args['EDimCores'],
-                         showPlot        = False )
-
-    # Find max rho(E)
-    if args['firstMax'] :
-        iMax = argrelextrema( ed['rho'].to_numpy(), greater )[0] # tuple
-
-        if len( iMax ) :
-            iMax = iMax[0] # first element of array
-        else :
-            iMax = len( ed['E'] ) - 1 # no local maxima, last element is max
-    else : 
-        iMax = ed['rho'].round(4).argmax() # global maximum
-
-    maxRho = ed['rho'].iloc[ iMax ].round(4)
-    maxE   = ed['E'].iloc[ iMax ]
-
-    # Enforce lower limit on E
-    if args['minE'] > 1 :
-        maxE   = maximum( args['minE'], maxE )
-        maxRho = ed['rho'].iloc[ maxE - 1 ].round(4)
-
-    return { 'column':column, 'target':target,
-             'maxE':maxE, 'maxRho':maxRho } #, 'EDim':ed }
+def blockGenerate(iterable, N):
+    '''Given iterable of NxN items, generate slices corresponding
+       to N rows of the NxN product matrix'''
+    N_  = len(iterable)
+    k_s = 0 # block start index
+    while k_s < N_ :
+        yield islice( iterable, k_s, k_s + N )
+        k_s = k_s + N
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def EmbedDim_Columns_CmdLine():
+def EDimColsBlock_CmdLine():
     '''Wrapper for EmbedDim_Columns with command line parsing'''
 
     args = ParseCmdLine()
@@ -200,25 +184,25 @@ def EmbedDim_Columns_CmdLine():
         raise RuntimeError( "Invalid inputFile or inputData" )
 
     # Call EmbedDim_Columns()
-    DF = EmbedDim_Columns( data = dataFrame,
-                           target = args.target,
-                           maxE = args.maxE, minE = args.minE,
-                           lib = args.lib, pred = args.pred,
-                           Tp = args.Tp, tau = args.tau,
-                           exclusionRadius = args.exclusionRadius,
-                           firstMax = args.firstMax,
-                           validLib = args.validLib, noTime = args.noTime,
-                           ignoreNan = args.ignoreNan,
-                           cores = args.cores, EDimCores = args.EDimCores,
-                           mpMethod = args.mpMethod, chunksize = args.chunksize,
-                           outputFile = args.outputFile,
-                           verbose = args.verbose, plot = args.Plot )
+    DF = EDimColsBlock( data = dataFrame, blockSize = args.blockSize,
+                        target = args.target,
+                        maxE = args.maxE, minE = args.minE,
+                        lib = args.lib, pred = args.pred,
+                        Tp = args.Tp, tau = args.tau,
+                        exclusionRadius = args.exclusionRadius,
+                        firstMax = args.firstMax,
+                        validLib = args.validLib, noTime = args.noTime,
+                        ignoreNan = args.ignoreNan,
+                        cores = args.cores, EDimCores = args.EDimCores,
+                        mpMethod = args.mpMethod, chunksize = args.chunksize,
+                        outputFile = args.outputFile,
+                        verbose = args.verbose, plot = args.Plot )
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 def ParseCmdLine():
 
-    parser = ArgumentParser( description = 'CrossMap Columns' )
+    parser = ArgumentParser( description = 'EDim Cols Block' )
 
     parser.add_argument('-i', '--inputFile',
                         dest    = 'inputFile', type = str,
@@ -237,6 +221,12 @@ def ParseCmdLine():
                         action  = 'store',
                         default = None,
                         help    = 'Output file: csv feather gz xz pkl.')
+
+    parser.add_argument('-b', '--blockSize', required = True,
+                        dest    = 'blockSize', type = int,
+                        action  = 'store',
+                        #default = 1,
+                        help    = 'blockSize')
 
     parser.add_argument('-t', '--target',
                         dest    = 'target', type = str,
@@ -345,4 +335,4 @@ def ParseCmdLine():
 #----------------------------------------------------------------------------
 # Provide for cmd line invocation and clean module loading
 if __name__ == "__main__":
-    EmbedDim_Columns_CmdLine()
+    EDimColsBlock_CmdLine()

@@ -68,7 +68,7 @@ class SMap( EDMClass ):
         self.singularValues = None # ndarray SMap output (N_pred, E+1)
 
         # Setup
-        self.Validate()      # EDM Method
+        self.Validate()      # EDM Method: set knn default, E if embedded
         self.CreateIndices() # Generate lib_i & pred_i, validLib
 
         self.targetVec = self.Data[ [ self.target[0] ] ].to_numpy()

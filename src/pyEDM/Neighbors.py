@@ -118,7 +118,7 @@ def FindNeighbors( self ) :
     # If there is only one lib segment with contiguous values, a single
     # adjustment to knn_neighbors based on lib_i[0] suffices
     if not self.disjointLib and \
-       self.lib_i[-1] - self.lib_i[0] == len(self.lib_i) + 1 :
+       self.lib_i[-1] - self.lib_i[0] + 1 == len(self.lib_i) :
 
         self.knn_neighbors = self.knn_neighbors + self.lib_i[0]
 
@@ -153,6 +153,12 @@ def FindNeighbors( self ) :
                                   self.knn_neighbors[:,j], knn_lib_map )
 
         self.knn_neighbors = knn_neighbors_
+
+    if self.knn == 1 and not self.libOverlap :
+        # Edge case outside the EDM canon.  KDTree.query() docs:
+        # When k == 1, the last dimension of the output is squeezed. 
+        self.knn_distances = self.knn_distances[:,None]
+        self.knn_neighbors = self.knn_neighbors[:,None]
 
     if self.libOverlap :
         # Remove degenerate knn_distances, knn_neighbors
@@ -209,9 +215,10 @@ def FindNeighbors( self ) :
             if -1E6 in knn_neighbors :
                 knn_neighbors = knnRow [ : self.knn ]
                 knn_distances = knnDist[ : self.knn ]
-                msg = f'{self.name}: FindNeighbors() : ExclusionRad()' +\
-                    ' Failed to find knn outside exclusionRadius ' +\
-                    f'{self.exclusionRadius}. Returning orginal knn.'
+                msg = f'{self.name}: FindNeighbors() : ExclusionRad() ' +\
+                    'Failed to find knn outside exclusionRadius ' +\
+                    f'{self.exclusionRadius}. Returning orginal knn. ' +\
+                    f'Consider to reduce knn {self.knn}.'
                 warn( msg )
 
             return knn_neighbors, knn_distances
