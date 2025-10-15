@@ -5,7 +5,7 @@ from   datetime import datetime
 from   warnings import filterwarnings, catch_warnings
 
 from numpy  import nan, array, array_equal
-from pandas import read_csv
+from pandas import DataFrame, read_csv
 import pyEDM as EDM
 
 #----------------------------------------------------------------
@@ -321,6 +321,22 @@ class test_EDM( unittest.TestCase ):
 
         knn = df.knn_neighbors
         knnValid = array( [322,334,362,387,356,355] )[:,None]
+        self.assertTrue( array_equal( knn, knnValid ) )
+
+    #------------------------------------------------------------
+    def test_simplex12( self ):
+        '''exclusion Radius '''
+        if self.verbose : print ( "--- exclusion Radius ---" )
+        df_ = EDM.sampleData["Lorenz5D"]
+        x   = [i+1 for i in range(1000)]
+        df_ = DataFrame({'Time':df_['Time'],'X':x,'V1':df_['V1']})
+
+        df = EDM.Simplex( dataFrame = df_, columns='X', target = 'V1',
+                          lib = [1,100], pred = [101,110],
+                          E = 5, exclusionRadius = 10, returnObject = True )
+
+        knn = df.knn_neighbors[:,0]
+        knnValid = array( [89, 90, 91, 92, 93, 94, 95, 96, 97, 98] )
         self.assertTrue( array_equal( knn, knnValid ) )
 
     #------------------------------------------------------------

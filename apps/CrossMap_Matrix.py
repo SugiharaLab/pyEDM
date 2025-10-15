@@ -4,7 +4,6 @@ from argparse        import ArgumentParser
 from datetime        import datetime
 from multiprocessing import get_context
 from itertools       import repeat, product, islice
-from sys             import platform
 from warnings        import filterwarnings
 
 from numpy  import full, nan, fill_diagonal
