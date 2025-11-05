@@ -231,8 +231,8 @@ def FindNeighbors( self ) :
 
             # Create list excludeRow of lib_i nn to be excluded
             pred_i     = self.pred_i[ i ]
-            rowLow     = max( self.lib_i[0],  pred_i - self.exclusionRadius )
-            rowHi      = min( self.lib_i[-1], pred_i + self.exclusionRadius )
+            rowLow     = max( self.lib_i.min(), pred_i - self.exclusionRadius )
+            rowHi      = min( self.lib_i.max(), pred_i + self.exclusionRadius )
             excludeRow = [ k for k in range( rowLow, rowHi + 1 ) ]
 
             knn_neighbors, knn_distances = \
