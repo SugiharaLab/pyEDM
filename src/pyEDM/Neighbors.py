@@ -70,6 +70,31 @@ def FindNeighbors( self ) :
             if self.exclusionRadius >= excludeRow :
                 exclusionRadius_knn = True
 
+    if len( self.validLib ) :
+        # Convert self.validLib boolean vector to data indices
+        data_i = array( [ i for i in range( self.Data.shape[0] ) ],
+                        dtype = int )
+        validLib_i = data_i[ self.validLib.to_numpy() ]
+
+        # Filter lib_i to only include valid library points
+        lib_i_valid = array( [ i for i in self.lib_i if i in validLib_i ],
+                             dtype = int )
+
+        if len( lib_i_valid ) == 0 :
+            msg = f'{self.name}: FindNeighbors() : ' +\
+                  'No valid library points found. '  +\
+                  'All library points excluded by validLib.'
+            raise ValueError( msg )
+
+        if len( lib_i_valid ) < self.knn :
+            msg = f'{self.name}: FindNeighbors() : Only {len(lib_i_valid)} ' +\
+                  f'valid library points found, but knn={self.knn}. ' +\
+                  'Reduce knn or check validLib.'
+            warn( msg )
+
+        # Replace lib_ with lib_i_valid
+        self.lib_i = lib_i_valid
+
     # Local knn_
     knn_ = self.knn
     if self.libOverlap and not exclusionRadius_knn :
@@ -237,62 +262,6 @@ def FindNeighbors( self ) :
 
             knn_neighbors, knn_distances = \
                 ExclusionRad( knn_neighbors_i, knn_distances_i, excludeRow )
-
-            self.knn_neighbors[ i, range( self.knn ) ] = knn_neighbors
-            self.knn_distances[ i, range( self.knn ) ] = knn_distances
-
-        # Delete the extra knn_ columns
-        d = [ i for i in range( self.knn, self.knn_distances.shape[1] ) ]
-        self.knn_distances = delete( self.knn_distances, d, axis=1 )
-        self.knn_neighbors = delete( self.knn_neighbors, d, axis=1 )
-
-    if len( self.validLib ) :
-        # Conditional embedding
-        # Convert self.validLib boolean vector to lib_i indices
-        data_i = array( [ i for i in range( self.Data.shape[0] ) ],
-                        dtype = int )
-        validLib_i = data_i[ self.validLib.to_numpy() ]
-
-        #-----------------------------------------------------------
-        # Function to select knn from each row of self.knn_distances
-        #-----------------------------------------------------------
-        def ValidLib( knnRow, knnDist, validLib_i ) :
-            '''Search validLib for each element of knnRow
-               If knnRow is in validLib : add the neighbor
-               Return knn length arrays of neighbors, distances'''
-
-            knn_neighbors = full( self.knn, -1E6, dtype = int )
-            knn_distances = full( self.knn, -1E6, dtype = float )
-
-            k = 0
-            for r in range( len( knnRow ) ) :
-                if knnRow[ r ] in validLib_i :
-                    knn_neighbors[ k ] = knnRow [ r ]
-                    knn_distances[ k ] = knnDist[ r ]
-                    k = k + 1
-                else :
-                    continue
-
-                if k == self.knn :
-                    break
-
-            if -1E6 in knn_neighbors :
-                knn_neighbors = knnRow [ : self.knn ]
-                knn_distances = knnDist[ : self.knn ]
-                msg = f'{self.name}: FindNeighbors() : ValidLib()' +\
-                    ' Failed to find knn in validLib. Return orginal knn.'
-                warn( msg )
-
-            return knn_neighbors, knn_distances
-
-        # Call ValidLib() on each row
-        for i in range( N_pred_rows ) :
-            # Existing knn_neighbors, knn_distances row i with knn_ values
-            knn_neighbors_i = self.knn_neighbors[ i, : ]
-            knn_distances_i = self.knn_distances[ i, : ]
-
-            knn_neighbors, knn_distances = \
-                ValidLib( knn_neighbors_i, knn_distances_i, validLib_i )
 
             self.knn_neighbors[ i, range( self.knn ) ] = knn_neighbors
             self.knn_distances[ i, range( self.knn ) ] = knn_distances
