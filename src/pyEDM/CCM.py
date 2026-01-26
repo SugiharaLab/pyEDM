@@ -6,7 +6,9 @@ from multiprocessing import get_context
 from pandas import DataFrame, concat
 from numpy  import array, exp, fmax, divide, mean, nan, roll, sum, zeros
 from numpy.random import default_rng
+import numpy as np
 
+from .NeighborFinder import PairwiseDistanceNeighborFinder
 # local modules
 from .Simplex import Simplex as SimplexClass
 from .AuxFunc import ComputeError, IsIterable
@@ -206,31 +208,39 @@ class CCM:
             # Loop for subsamples
             for s in range( self.sample ) :
                 # Generate library row indices for this subsample
-                rng_i = RNG.choice( lib_i, size = min( libSize, N_lib_i ),
-                                    replace = False )
-
-                S.lib_i = rng_i
-
-                S.FindNeighbors() # Depends on S.lib_i
+                if self.neighbor_algorithm == 'kdtree':
+                    rng_i = RNG.choice( lib_i, size = min( libSize, N_lib_i ),
+                                        replace = False )
+                    S.lib_i = rng_i
+                    S.FindNeighbors() # Depends on S.lib_i
+                    neighbor_distances = S.knn_distances
+                    neighbor_indices = S.knn_neighbors
+                else:
+                    rng_i = RNG.choice(np.arange(S.neighbor_finder.distanceMatrix.shape[0]),
+                                       size = min(libSize, N_lib_i),
+                                       replace = False)
+                    d = S.neighbor_finder.distanceMatrix.copy()
+                    mask = np.ones(d.shape[0], dtype = bool)
+                    mask[rng_i] = False
+                    d[mask, :] = np.inf  # artificially make all the other ones far awa
+                    raw_distances, raw_indices = PairwiseDistanceNeighborFinder.find_neighbors(d, S.knn_)
+                    neighbor_distances, neighbor_indices = S.map_knn_indices_to_data(raw_indices, raw_distances)
 
                 # Code from Simplex:Project ---------------------------------
                 # First column is minimum distance of all N pred rows
-                minDistances = S.knn_distances[:,0]
+                minDistances = neighbor_distances[:,0]
                 # In case there is 0 in minDistances: minWeight = 1E-6
                 minDistances = fmax( minDistances, 1E-6 )
 
                 # Divide each column of N x k knn_distances by minDistances
-                scaledDistances = divide(S.knn_distances, minDistances[:,None])
+                scaledDistances = divide(neighbor_distances, minDistances[:,None])
                 weights         = exp( -scaledDistances )  # Npred x k
                 weightRowSum    = sum( weights, axis = 1 ) # Npred x 1
 
                 # Matrix of knn_neighbors + Tp defines library target values
-                knn_neighbors_Tp = S.knn_neighbors + self.Tp      # Npred x k
+                knn_neighbors_Tp = neighbor_indices + self.Tp      # Npred x k
 
-                libTargetValues = zeros( knn_neighbors_Tp.shape ) # Npred x k
-                for j in range( knn_neighbors_Tp.shape[1] ) :
-                    libTargetValues[ :, j ][ :, None ] = \
-                        S.targetVec[ knn_neighbors_Tp[ :, j ] ]
+                libTargetValues = self.targetVec[knn_neighbors_Tp].squeeze()
                 # Code from Simplex:Project ----------------------------------
 
                 # Projection is average of weighted knn library target values
