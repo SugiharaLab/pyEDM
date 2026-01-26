@@ -485,3 +485,29 @@ class EDM:
     
             # Replace lib_ with lib_i_valid
             self.lib_i = lib_i_valid
+
+    @property
+    def knn_(self):
+        """
+        K nearest neighbors to actually query for
+        Factored out of FindNeighbors()
+        """
+        knn_ = self.knn
+        if self.libOverlap and not self.exclusionRadius_knn :
+            # Increase knn +1 if libOverlap
+            # Returns one more column in knn_distances, knn_neighbors
+            # The first nn degenerate with the prediction vector
+            # is replaced with the 2nd to knn+1 neighbors
+            knn_ = knn_ + 1
+
+        elif self.exclusionRadius_knn :
+            # knn_neighbors exclusionRadius adjustment required
+            # Ask for enough knn to discard exclusionRadius neighbors
+            # This is controlled by the factor: self.xRadKnnFactor
+            # JP : Perhaps easier to just compute all neighbors?
+            knn_ = min( knn_ * self.xRadKnnFactor, len( self.lib_i ) )
+
+        if len( self.validLib ) :
+            # Have to examine all knn
+            knn_ = len( self.lib_i )
+        return knn_
