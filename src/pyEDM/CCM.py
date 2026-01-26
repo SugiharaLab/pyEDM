@@ -199,6 +199,9 @@ class CCM:
         libRhoMap  = {} # Output dict libSize key : mean rho value
         libStatMap = {} # Output dict libSize key : list of ComputeError dicts
 
+        if self.neighbor_algorithm == 'pdist':
+            S.FindNeighbors() # need to initialize the pairwise distance matrix
+
         # Loop for library sizes
         for libSize in self.libSizes :
             rhos = zeros( self.sample )
@@ -240,7 +243,7 @@ class CCM:
                 # Matrix of knn_neighbors + Tp defines library target values
                 knn_neighbors_Tp = neighbor_indices + self.Tp      # Npred x k
 
-                libTargetValues = self.targetVec[knn_neighbors_Tp].squeeze()
+                libTargetValues = S.targetVec[knn_neighbors_Tp].squeeze()
                 # Code from Simplex:Project ----------------------------------
 
                 # Projection is average of weighted knn library target values
