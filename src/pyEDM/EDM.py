@@ -517,7 +517,7 @@ class EDM:
         return knn_
 
 
-    def map_knn_indices_to_data(self, raw_neighbors, raw_distances):
+    def map_knn_indices_to_data(self, raw_distances, raw_neighbors):
         """
         -----------------------------------------------
         Shift knn_neighbors to lib_i reference
