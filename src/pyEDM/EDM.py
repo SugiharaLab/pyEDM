@@ -665,15 +665,11 @@ class EDM:
 
     def FindNeighbors(self):
         # --------------------------------------------------------------------
-        '''Use Scipy KDTree to find neighbors
+        '''Find neighbors in the lib set for the pred set
 
-           Note: If dimensionality is k, the number of points n in
-           the data should be n >> 2^k, otherwise KDTree efficiency is low.
-           k:2^k pairs { 4 : 16, 5 : 32, 7 : 128, 8 : 256, 10 : 1024 }
-
-           KDTree returns ndarray of knn_neighbors as indices with respect
-           to the data array passed to KDTree, not with respect to the lib_i
-           of embedding[ lib_i ] passed to KDTree. Since lib_i are generally
+           NeighborFinder objects returns ndarray of knn_neighbors as indices
+           with respect to the data array passed in, not with respect to the lib_i
+           of embedding[ lib_i ] passed to in. Since lib_i are generally
            not [0..N] the knn_neighbors need to be adjusted to lib_i reference
            for use in projections. If the the library is unitary this is
            a simple shift by lib_i[0]. If the library has disjoint segments
@@ -691,7 +687,7 @@ class EDM:
            distance in rows between the lib & pred gap is less than
            exlcusionRadius, knn_neighbors have to be selected for each
            pred row to exclude library neighbors within exlcusionRadius.
-           This is done by increasing knn to KDTree.query by a factor of
+           This is done by increasing knn by a factor of
            self.xRadKnnFactor, then selecting valid nn.
 
            Writes to EDM object:
