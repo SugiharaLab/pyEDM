@@ -51,26 +51,6 @@ def FindNeighbors( self ) :
 
     self.check_lib_valid()
 
-    # Local knn_
-    knn_ = self.knn
-    if self.libOverlap and not self.exclusionRadius_knn :
-        # Increase knn +1 if libOverlap
-        # Returns one more column in knn_distances, knn_neighbors
-        # The first nn degenerate with the prediction vector
-        # is replaced with the 2nd to knn+1 neighbors
-        knn_ = knn_ + 1
-
-    elif self.exclusionRadius_knn :
-        # knn_neighbors exclusionRadius adjustment required
-        # Ask for enough knn to discard exclusionRadius neighbors
-        # This is controlled by the factor: self.xRadKnnFactor
-        # JP : Perhaps easier to just compute all neighbors?
-        knn_ = min( knn_ * self.xRadKnnFactor, len( self.lib_i ) )
-
-    if len( self.validLib ) :
-        # Have to examine all knn
-        knn_ = len( self.lib_i )
-
     #-----------------------------------------------
     # Compute KDTree on library of embedding vectors
     #-----------------------------------------------
@@ -83,146 +63,10 @@ def FindNeighbors( self ) :
     # Query prediction set
     #-----------------------------------------------
     numThreads = -1 # Use all CPU threads in kdTree.query
-    self.knn_distances, self.knn_neighbors = self.kdTree.query(
+    raw_distances, raw_neighbors = self.kdTree.query(
         self.Embedding.iloc[ self.pred_i, : ].to_numpy(),
-        k = knn_, eps = 0, p = 2, workers = numThreads )
+        k = self.knn_, eps = 0, p = 2, workers = numThreads )
 
-    #-----------------------------------------------
-    # Shift knn_neighbors to lib_i reference
-    #-----------------------------------------------
-    # KDTree.query returns knn referenced to embedding.iloc[self.lib_i,:]
-    # where returned knn_neighbors are indexed from 0 : len( lib_i ).
-    # Generally, these are different from the knn that refer to prediction
-    # library rows since generally lib != pred. Adjust knn from 0-offset 
-    # returned by KDTree.query to EDM knn with respect to  embedding rows.
-    #
-    # If there is only one lib segment with contiguous values, a single
-    # adjustment to knn_neighbors based on lib_i[0] suffices
-    if not self.disjointLib and \
-       self.lib_i[-1] - self.lib_i[0] + 1 == len(self.lib_i) :
+    self.knn_distances, self.knn_neighbors = self.map_knn_indices_to_data(raw_distances, raw_neighbors)
 
-        self.knn_neighbors = self.knn_neighbors + self.lib_i[0]
 
-    else :
-        # Disjoint library or CCM subset of lib_i.
-        # Create mapping from KDTree neighbor indices to knn_neighbors
-        knn_lib_map = {} # keys KDTree index : values lib_i index
-
-        for i in range( len(self.lib_i) ) :
-            knn_lib_map[ i ] = self.lib_i[ i ]
-
-        #--------------------------------------------------------
-        # Function to apply the knn_lib_map in apply_along_axis()
-        #--------------------------------------------------------
-        def knnMapFunc( knn, knn_lib_map ) :
-            '''Function for apply_along_axis() on knn_neighbors.
-               Maps the KDTree returned knn_neighbor indices to lib_i'''
-            out = zeros( len( knn ), dtype = int )
-            for i in range( len( knn ) ) :
-                idx    = knn[i]
-                out[i] = knn_lib_map[ idx ]
-            return out
-
-        # Apply the knn_lib_map to self.knn_neighbors
-        # Use numpy apply_along_axis() to transform knn_neighbors from
-        # KDTree indices to lib_i indices using the knn_lib_map
-        knn_neighbors_ = zeros( self.knn_neighbors.shape, dtype = int )
-
-        for j in range( self.knn_neighbors.shape[1] ) :
-            knn_neighbors_[:,j] = \
-                apply_along_axis( knnMapFunc, 0,
-                                  self.knn_neighbors[:,j], knn_lib_map )
-
-        self.knn_neighbors = knn_neighbors_
-
-    if self.knn == 1 and not self.libOverlap :
-        # Edge case outside the EDM canon.  KDTree.query() docs:
-        # When k == 1, the last dimension of the output is squeezed. 
-        self.knn_distances = self.knn_distances[:,None]
-        self.knn_neighbors = self.knn_neighbors[:,None]
-
-    if self.libOverlap :
-        # Remove degenerate knn_distances, knn_neighbors
-        # Get first column of knn_neighbors with knn_distance = 0
-        knn_neighbors_0 = self.knn_neighbors[:,0]
-
-        # If self.pred_i == knn_neighbors[:,0], point is degenerate,
-        # distance = 0. Create boolean mask array of rows i_overlap
-        # True where self.pred_i == knn_neighbors_0
-        i_overlap = [ i == j for i,j in zip( self.pred_i,
-                                             knn_neighbors_0 ) ]
-
-        # Shift col = 1:knn_ values into col = 0:(J-1)
-        # Use 0:(J-1) instead of 0:self.knn since knn_ may be large
-        J = self.knn_distances.shape[1]
-        self.knn_distances[ i_overlap, 0:(J-1) ] = \
-            self.knn_distances[ i_overlap, 1:knn_ ]
-
-        self.knn_neighbors[ i_overlap, 0:(J-1) ] = \
-            self.knn_neighbors[ i_overlap, 1:knn_ ]
-
-        # Delete extra knn_ column
-        if not exclusionRadius_knn :
-            self.knn_distances = delete(self.knn_distances, self.knn, axis=1)
-            self.knn_neighbors = delete(self.knn_neighbors, self.knn, axis=1)
-
-    if exclusionRadius_knn :
-        # For each pred row find k nn outside exclusionRadius
-
-        #-----------------------------------------------------------
-        # Function to select knn from each row of self.knn_neighbors
-        #-----------------------------------------------------------
-        def ExclusionRad( knnRow, knnDist, excludeRow ) :
-            '''Search excludeRow for each element of knnRow
-               If knnRow is in excludeRow : exclude the neighbor
-               Return knn length arrays of neighbors, distances'''
-
-            knn_neighbors = full( self.knn, -1E6, dtype = int )
-            knn_distances = full( self.knn, -1E6, dtype = float )
-
-            k = 0
-            for r in range( len( knnRow ) ) :
-                if knnRow[ r ] in excludeRow :
-                    # this nn is within exlcusionRadius of pred_i
-                    continue
-
-                knn_neighbors[ k ] = knnRow [ r ]
-                knn_distances[ k ] = knnDist[ r ]
-                k = k + 1
-
-                if k == self.knn :
-                    break
-
-            if -1E6 in knn_neighbors :
-                knn_neighbors = knnRow [ : self.knn ]
-                knn_distances = knnDist[ : self.knn ]
-                msg = f'{self.name}: FindNeighbors() : ExclusionRad() ' +\
-                    'Failed to find knn outside exclusionRadius ' +\
-                    f'{self.exclusionRadius}. Returning orginal knn. ' +\
-                    f'Consider to reduce knn {self.knn}.'
-                warn( msg )
-
-            return knn_neighbors, knn_distances
-
-        # Call ExclusionRad() on each row
-        for i in range( N_pred_rows ) :
-            # Existing knn_neighbors, knn_distances row i with knn_ values
-            knn_neighbors_i = self.knn_neighbors[ i, : ]
-            knn_distances_i = self.knn_distances[ i, : ]
-
-            # Create list excludeRow of lib_i nn to be excluded
-            pred_i     = self.pred_i[ i ]
-            rowLow     = max( self.lib_i.min(), pred_i - self.exclusionRadius )
-            rowHi      = min( self.lib_i.max(), pred_i + self.exclusionRadius )
-            excludeRow = [ k for k in range( rowLow, rowHi + 1 ) ]
-
-            knn_neighbors, knn_distances = \
-                ExclusionRad( knn_neighbors_i, knn_distances_i, excludeRow )
-
-            self.knn_neighbors[ i, range( self.knn ) ] = knn_neighbors
-            self.knn_distances[ i, range( self.knn ) ] = knn_distances
-
-        # Delete the extra knn_ columns
-        d = [ i for i in range( self.knn, self.knn_distances.shape[1] ) ]
-        self.knn_distances = delete( self.knn_distances, d, axis=1 )
-        self.knn_neighbors = delete( self.knn_neighbors, d, axis=1 )
