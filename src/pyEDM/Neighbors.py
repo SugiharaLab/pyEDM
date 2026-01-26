@@ -49,26 +49,7 @@ def FindNeighbors( self ) :
     N_lib_rows  = len( self.lib_i )
     N_pred_rows = len( self.pred_i )
 
-    # Is knn_neighbors exclusionRadius radius adjustment needed?
-    exclusionRadius_knn = False
 
-    if self.exclusionRadius > 0 :
-        if self.libOverlap :
-            exclusionRadius_knn = True
-        else :
-            # If no libOverlap and exclusionRadius is less than the
-            # distance in rows between lib : pred, no library neighbor
-            # exclusion needed. 
-            # Find row span between lib & pred
-            excludeRow = 0
-            if self.pred_i[0] > self.lib_i[-1] :
-                # pred start is beyond lib end
-                excludeRow = self.pred_i[0] - self.lib_i[-1]
-            elif self.lib_i[0] > self.pred_i[-1] :
-                # lib start row is beyond pred end
-                excludeRow = self.lib_i[0] - self.pred_i[-1]
-            if self.exclusionRadius >= excludeRow :
-                exclusionRadius_knn = True
 
     if len( self.validLib ) :
         # Convert self.validLib boolean vector to data indices

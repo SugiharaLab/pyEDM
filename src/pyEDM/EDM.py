@@ -427,3 +427,30 @@ class EDM:
                             msg = f'{self.name} Validate(): generateSteps ' +\
                                 'with datetime needs to use noTime = True.'
                             raise RuntimeError( msg )
+
+
+    @property
+    def exclusionRadius_knn(self):
+        """
+        Is knn_neighbors exclusionRadius radius adjustment needed?
+        Refactored out of FindNeighbors
+        """
+        out = False
+        if self.exclusionRadius > 0:
+            if self.libOverlap:
+                out = True
+            else:
+                # If no libOverlap and exclusionRadius is less than the
+                # distance in rows between lib : pred, no library neighbor
+                # exclusion needed.
+                # Find row span between lib & pred
+                excludeRow = 0
+                if self.pred_i[0] > self.lib_i[-1]:
+                    # pred start is beyond lib end
+                    excludeRow = self.pred_i[0] - self.lib_i[-1]
+                elif self.lib_i[0] > self.pred_i[-1]:
+                    # lib start row is beyond pred end
+                    excludeRow = self.lib_i[0] - self.pred_i[-1]
+                if self.exclusionRadius >= excludeRow:
+                   out = True
+        return out
