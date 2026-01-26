@@ -454,3 +454,34 @@ class EDM:
                 if self.exclusionRadius >= excludeRow:
                    out = True
         return out
+
+
+    def check_lib_valid(self):
+        """
+        Refactored out of FindNeighbors
+        :return: 
+        """
+        if len(self.validLib):
+            # Convert self.validLib boolean vector to data indices
+            data_i = array([i for i in range(self.Data.shape[0])],
+                           dtype = int)
+            validLib_i = data_i[self.validLib.to_numpy()]
+    
+            # Filter lib_i to only include valid library points
+            lib_i_valid = array([i for i in self.lib_i if i in validLib_i],
+                                dtype = int)
+    
+            if len(lib_i_valid) == 0:
+                msg = f'{self.name}: FindNeighbors() : ' + \
+                      'No valid library points found. ' + \
+                      'All library points excluded by validLib.'
+                raise ValueError(msg)
+    
+            if len(lib_i_valid) < self.knn:
+                msg = f'{self.name}: FindNeighbors() : Only {len(lib_i_valid)} ' + \
+                      f'valid library points found, but knn={self.knn}. ' + \
+                      'Reduce knn or check validLib.'
+                warn(msg)
+    
+            # Replace lib_ with lib_i_valid
+            self.lib_i = lib_i_valid
