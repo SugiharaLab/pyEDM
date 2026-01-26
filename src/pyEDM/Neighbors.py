@@ -5,6 +5,9 @@ from warnings import warn
 from numpy import array, delete, full, zeros, apply_along_axis
 from scipy.spatial import KDTree
 
+from .NeighborFinder import KDTreeNeighborFinder, PairwiseDistanceNeighborFinder
+
+
 #--------------------------------------------------------------------
 # EDM Method
 #--------------------------------------------------------------------
@@ -46,26 +49,31 @@ def FindNeighbors( self ) :
     if self.verbose :
         print( f'{self.name}: FindNeighbors()' )
 
-    N_lib_rows  = len( self.lib_i )
-    N_pred_rows = len( self.pred_i )
-
     self.check_lib_valid()
 
-    #-----------------------------------------------
-    # Compute KDTree on library of embedding vectors
-    #-----------------------------------------------
-    self.kdTree = KDTree( self.Embedding.iloc[ self.lib_i, : ].to_numpy(),
-                          leafsize      = 20,
-                          compact_nodes = True,
-                          balanced_tree = True )
+    train = self.Embedding.iloc[self.lib_i, :].to_numpy()
+    test = self.Embedding.iloc[self.pred_i, :].to_numpy()
+
+    # make neighbor finder and query
+    if self.neigbor_algorithm == 'kdtree':
+        self.neighbor_finder = KDTreeNeighborFinder(train,
+                                                    leafsize = 20,
+                                                    compact_nodes = True,
+                                                    balanced_tree = True)
+    elif self.neigbor_algorithm == 'pdist':
+        self.neighor_finder = PairwiseDistanceNeighborFinder(self.Embedding.iloc[self.lib_i, :].to_numpy())
+    else:
+        raise ValueError('Unknown neighbor finding algorithm {}'.format(self.neigbor_algorithm))
 
     #-----------------------------------------------
     # Query prediction set
     #-----------------------------------------------
-    numThreads = -1 # Use all CPU threads in kdTree.query
-    raw_distances, raw_neighbors = self.kdTree.query(
-        self.Embedding.iloc[ self.pred_i, : ].to_numpy(),
-        k = self.knn_, eps = 0, p = 2, workers = numThreads )
+    numThreads = -1  # Use all CPU threads in kdTree.query
+    raw_distances, raw_neighbors = self.neighbor_finder.query(test,
+                                                              k = self.knn_,
+                                                              eps = 0,
+                                                              p = 2,
+                                                              workers = numThreads)
 
     self.knn_distances, self.knn_neighbors = self.map_knn_indices_to_data(raw_distances, raw_neighbors)
 

@@ -32,13 +32,14 @@ class Simplex( EDMClass ):
                   generateSteps   = 0,
                   generateConcat  = False,
                   ignoreNan       = True,
-                  verbose         = False ):
+                  verbose         = False,
+                  neighbor_algorithm = 'kdtree'):
         '''Initialize Simplex as child of EDM.
            Set data object to dataFrame.
            Setup : Validate(), CreateIndices(), get targetVec, time'''
 
         # Instantiate EDM class: inheret EDM members to self
-        super(Simplex, self).__init__( dataFrame, 'Simplex' )
+        super(Simplex, self).__init__(dataFrame, neighbor_algorithm, name = 'Simplex')
 
         # Assign parameters from API arguments
         self.columns         = columns

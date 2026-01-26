@@ -33,13 +33,14 @@ class SMap( EDMClass ):
                   generateSteps   = 0,
                   generateConcat  = False,
                   ignoreNan       = True,
-                  verbose         = False ):
+                  verbose         = False,
+                  neighbor_algorithm = 'kdtree'):
         '''Initialize SMap as child of EDM.
            Set data object to dataFrame.
            Setup : Validate(), CreateIndices(), get targetVec, time'''
 
         # Instantiate EDM class: inheret all members to self
-        super(SMap, self).__init__( dataFrame, 'SMap' )
+        super(SMap, self).__init__(dataFrame, neighbor_algorithm, name = 'SMap')
 
         # Assign parameters from API arguments
         self.columns         = columns

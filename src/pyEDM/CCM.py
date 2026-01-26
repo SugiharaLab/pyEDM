@@ -34,7 +34,8 @@ class CCM:
                   ignoreNan       = True,
                   mpMethod        = None,
                   sequential      = False,
-                  verbose         = False ):
+                  verbose         = False,
+                  neighbor_algorithm = 'pdist'):
         '''Initialize CCM.'''
 
         # Assign parameters from API arguments
@@ -58,6 +59,7 @@ class CCM:
         self.mpMethod        = mpMethod
         self.sequential      = sequential
         self.verbose         = verbose
+        self.neighbor_algorithm = neighbor_algorithm
 
         # Set full lib & pred
         self.lib = self.pred = [ 1, self.Data.shape[0] ]
@@ -88,7 +90,8 @@ class CCM:
                                     validLib        = validLib,
                                     noTime          = noTime,
                                     ignoreNan       = ignoreNan,
-                                    verbose         = verbose )
+                                    verbose         = verbose,
+                                    neighbor_algorithm = neighbor_algorithm)
 
         self.RevMap = SimplexClass( dataFrame       = dataFrame,
                                     columns         = target,
@@ -104,7 +107,8 @@ class CCM:
                                     validLib        = validLib,
                                     noTime          = noTime,
                                     ignoreNan       = ignoreNan,
-                                    verbose         = verbose )
+                                    verbose         = verbose,
+                                    neighbor_algorithm = neighbor_algorithm)
 
     #-------------------------------------------------------------------
     # Methods

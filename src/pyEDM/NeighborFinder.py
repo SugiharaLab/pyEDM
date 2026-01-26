@@ -20,11 +20,13 @@ class NeighborFinderBase(AbstractBaseClass):
 
 	def query(self, 
 			  x: np.ndarray, 
-			  k: int = 1) -> Tuple[Union[float, np.ndarray], Union[int, np.ndarray]]:
+			  k: int = 1,
+			  **kwargs) -> Tuple[Union[float, np.ndarray], Union[int, np.ndarray]]:
 		"""
 		Get nearest neighbors for k
 		:param x:	data to query
 		:param k: 	number of nearest neighbors to get
+		:param kwargs:	algorithm-specific arguments
 		:return: distance to each nearest neighbor and index for each neighbor
 		"""
 		raise NotImplementedError
@@ -56,7 +58,8 @@ class KDTreeNeighborFinder(NeighborFinderBase):
 			  eps: float = 0.0,
 			  distance_upper_bound = np.inf, 
 			  p: float = 2.0, 
-			  workers: int = 1) -> Tuple[Union[float, np.ndarray], Union[int, np.ndarray]]:
+			  workers: int = 1,
+			  **kwargs) -> Tuple[Union[float, np.ndarray], Union[int, np.ndarray]]:
 		return self.tree.query(x, k, eps, p, distance_upper_bound, workers)
 
 
@@ -103,7 +106,7 @@ class PairwiseDistanceNeighborFinder(NeighborFinderBase):
 	def query(self, 
 			  x: np.ndarray = None, 
 			  k: int = 1, 
-			  workers = 1) -> Tuple[
+			  **kwargs) -> Tuple[
 		Union[float, np.ndarray], Union[int, np.ndarray]]:
 		self.numNeighbors = k
 		if x is not None:

@@ -17,7 +17,7 @@ class EDM:
     '''EDM class : data container
        Simplex, SMap, CCM inherited from EDM'''
 
-    def __init__( self, dataFrame, name = 'EDM' ):
+    def __init__(self, dataFrame, neighbor_algorithm = 'kdtree', name = 'EDM'):
         self.name = name
 
         self.Data          = dataFrame # DataFrame
@@ -42,6 +42,9 @@ class EDM:
         self.targetVec     = None  # ndarray entire record
         self.targetVecNan  = False # True if targetVec has nan : SMap only
         self.time          = None  # ndarray entire record numerically operable
+
+        self.neighbor_algorithm = neighbor_algorithm
+        self.neighbor_finder = None
 
     #--------------------------------------------------------------------
     # Methods
