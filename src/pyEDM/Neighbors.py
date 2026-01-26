@@ -78,14 +78,14 @@ def FindNeighbors( self ) :
 
     # Local knn_
     knn_ = self.knn
-    if self.libOverlap and not exclusionRadius_knn :
+    if self.libOverlap and not self.exclusionRadius_knn :
         # Increase knn +1 if libOverlap
         # Returns one more column in knn_distances, knn_neighbors
         # The first nn degenerate with the prediction vector
         # is replaced with the 2nd to knn+1 neighbors
         knn_ = knn_ + 1
 
-    elif exclusionRadius_knn :
+    elif self.exclusionRadius_knn :
         # knn_neighbors exclusionRadius adjustment required
         # Ask for enough knn to discard exclusionRadius neighbors
         # This is controlled by the factor: self.xRadKnnFactor
