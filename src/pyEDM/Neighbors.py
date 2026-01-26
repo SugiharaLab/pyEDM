@@ -55,13 +55,13 @@ def FindNeighbors( self ) :
     test = self.Embedding.iloc[self.pred_i, :].to_numpy()
 
     # make neighbor finder and query
-    if self.neigbor_algorithm == 'kdtree':
+    if self.neighbor_algorithm == 'kdtree':
         self.neighbor_finder = KDTreeNeighborFinder(train,
                                                     leafsize = 20,
                                                     compact_nodes = True,
                                                     balanced_tree = True)
-    elif self.neigbor_algorithm == 'pdist':
-        self.neighor_finder = PairwiseDistanceNeighborFinder(self.Embedding.iloc[self.lib_i, :].to_numpy())
+    elif self.neighbor_algorithm == 'pdist':
+        self.neighbor_finder = PairwiseDistanceNeighborFinder(self.Embedding.iloc[self.lib_i, :].to_numpy())
     else:
         raise ValueError('Unknown neighbor finding algorithm {}'.format(self.neigbor_algorithm))
 
