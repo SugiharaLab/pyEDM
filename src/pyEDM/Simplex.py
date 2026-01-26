@@ -110,11 +110,7 @@ class Simplex( EDMClass ):
         #   loop over knn_neighbors_Tp columns to get target value column
         #   vectors from the knn_neighbors_Tp row indices
         knn_neighbors_Tp = self.knn_neighbors + self.Tp     # N x k
-        libTargetValues  = zeros( knn_neighbors_Tp.shape )  # N x k
-
-        for j in range( knn_neighbors_Tp.shape[1] ) : # for each column j of k   
-            libTargetValues[ :, j ][ :, None ] = \
-                self.targetVec[ knn_neighbors_Tp[ :, j ] ]
+        libTargetValues = self.targetVec[knn_neighbors_Tp].squeeze()
 
         # Projection is average of weighted knn library target values
         self.projection = sum(weights * libTargetValues, axis=1) / weightRowSum
