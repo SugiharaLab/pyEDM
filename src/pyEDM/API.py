@@ -106,7 +106,8 @@ def Simplex( dataFrame       = None,
              verbose         = False,
              showPlot        = False,
              ignoreNan       = True,
-             returnObject    = False ):
+             returnObject    = False,
+             neighbor_algorithm = 'kdtree'):
     '''Simplex prediction of dataFrame target from columns.'''
 
     # Instantiate SimplexClass object
@@ -128,7 +129,8 @@ def Simplex( dataFrame       = None,
                       generateSteps   = generateSteps,
                       generateConcat  = generateConcat,
                       ignoreNan       = ignoreNan,
-                      verbose         = verbose )
+                      verbose         = verbose,
+                      neighbor_algorithm = neighbor_algorithm)
 
     if generateSteps :
         S.Generate()
@@ -166,7 +168,8 @@ def SMap( dataFrame       = None,
           ignoreNan       = True,
           showPlot        = False,
           verbose         = False,
-          returnObject    = False ):
+          returnObject    = False,
+          neighbor_algorithm = 'kdtree'):
     '''S-Map prediction of dataFrame target from columns.'''
 
     # Validate solver if one was provided
@@ -206,7 +209,8 @@ def SMap( dataFrame       = None,
                    generateSteps   = generateSteps,
                    generateConcat  = generateConcat,
                    ignoreNan       = ignoreNan,
-                   verbose         = verbose )
+                   verbose         = verbose,
+                   neighbor_algorithm = neighbor_algorithm)
 
     if generateSteps :
         S.Generate()
@@ -248,7 +252,9 @@ def CCM( dataFrame        = None,
          sequential       = False,
          verbose          = False,
          showPlot         = False,
-         returnObject     = False ) :
+         returnObject     = False,
+         neighbor_algorithm = 'pdist'
+         ) :
     '''Convergent Cross Mapping.'''
 
     # Instantiate CCMClass object
@@ -271,7 +277,8 @@ def CCM( dataFrame        = None,
                   ignoreNan       = ignoreNan,
                   mpMethod        = mpMethod,
                   sequential      = sequential,
-                  verbose         = verbose )
+                  verbose         = verbose,
+                  neighbor_algorithm = neighbor_algorithm)
 
     # Embedding of Forward & Reverse mapping
     C.FwdMap.EmbedData()

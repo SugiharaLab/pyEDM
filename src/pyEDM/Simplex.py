@@ -32,13 +32,14 @@ class Simplex( EDMClass ):
                   generateSteps   = 0,
                   generateConcat  = False,
                   ignoreNan       = True,
-                  verbose         = False ):
+                  verbose         = False,
+                  neighbor_algorithm = 'kdtree'):
         '''Initialize Simplex as child of EDM.
            Set data object to dataFrame.
            Setup : Validate(), CreateIndices(), get targetVec, time'''
 
         # Instantiate EDM class: inheret EDM members to self
-        super(Simplex, self).__init__( dataFrame, 'Simplex' )
+        super(Simplex, self).__init__(dataFrame, neighbor_algorithm, name = 'Simplex')
 
         # Assign parameters from API arguments
         self.columns         = columns
@@ -109,11 +110,7 @@ class Simplex( EDMClass ):
         #   loop over knn_neighbors_Tp columns to get target value column
         #   vectors from the knn_neighbors_Tp row indices
         knn_neighbors_Tp = self.knn_neighbors + self.Tp     # N x k
-        libTargetValues  = zeros( knn_neighbors_Tp.shape )  # N x k
-
-        for j in range( knn_neighbors_Tp.shape[1] ) : # for each column j of k   
-            libTargetValues[ :, j ][ :, None ] = \
-                self.targetVec[ knn_neighbors_Tp[ :, j ] ]
+        libTargetValues = self.targetVec[knn_neighbors_Tp].squeeze()
 
         # Projection is average of weighted knn library target values
         self.projection = sum(weights * libTargetValues, axis=1) / weightRowSum

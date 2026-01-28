@@ -4,7 +4,7 @@ import unittest
 from   datetime import datetime
 from   warnings import filterwarnings, catch_warnings
 
-from numpy  import nan, array, array_equal
+from numpy  import nan, array, array_equal, allclose
 from pandas import DataFrame, read_csv
 import pyEDM as EDM
 
@@ -467,9 +467,9 @@ class test_EDM( unittest.TestCase ):
                           libSizes = [10,190,10], sample = 20, E = 2,
                           Tp = 5, tau = -1, seed = 777 )
 
-        dfv = round( self.ValidFiles["CCM_nan_valid.csv"], 4 )
+        dfv = self.ValidFiles["CCM_nan_valid.csv"]
 
-        self.assertTrue( dfv.equals( round( df, 4 ) ) )
+        self.assertTrue(allclose(df.values, dfv.values, atol = 1e-4))
 
     #------------------------------------------------------------
     def test_ccm4( self ):
