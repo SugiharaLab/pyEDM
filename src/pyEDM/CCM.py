@@ -230,11 +230,7 @@ class CCM:
 
                 # Matrix of knn_neighbors + Tp defines library target values
                 knn_neighbors_Tp = S.knn_neighbors + self.Tp      # Npred x k
-
-                libTargetValues = zeros( knn_neighbors_Tp.shape ) # Npred x k
-                for j in range( knn_neighbors_Tp.shape[1] ) :
-                    libTargetValues[ :, j ][ :, None ] = \
-                        S.targetVec[ knn_neighbors_Tp[ :, j ] ]
+                libTargetValues  = S.targetVec[ knn_neighbors_Tp, 0 ]
                 # Code from Simplex:Project ----------------------------------
 
                 # Projection is average of weighted knn library target values
