@@ -14,7 +14,8 @@ from .AuxFunc import IsIterable
 class EDM:
 #--------------------------------------------------------------------
     '''EDM class : data container
-       Simplex, SMap, CCM inherited from EDM'''
+       Simplex, SMap inherited from EDM.
+       CCM base class contains two Simplex instances.'''
 
     def __init__( self, dataFrame, name = 'EDM' ):
         self.name = name

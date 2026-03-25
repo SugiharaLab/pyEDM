@@ -260,15 +260,16 @@ def CCMFunc( column_target, df, args ):
     tau = args['D_tau'][column]
 
     try :
-        ccm_ = CCM( dataFrame = df,
-                    columns   = column,
-                    target    = target,
-                    libSizes  = args['libSizes'],
-                    sample    = args['sample'],
-                    E         = E,
-                    tau       = tau,
-                    Tp        = args['Tp'],
-                    seed      = 0 )
+        ccm_ = CCM( dataFrame       = df,
+                    columns         = column,
+                    target          = target,
+                    libSizes        = args['libSizes'],
+                    sample          = args['sample'],
+                    E               = E,
+                    Tp              = args['Tp'],
+                    tau             = tau,
+                    exclusionRadius = args['exclusionRadius'],
+                    seed            = 0 )
     except :
         if args['verbose'] :
             print( f'\tCCMFunc() CCM Error: column {column} target {target}.' )

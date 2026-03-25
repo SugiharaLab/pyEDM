@@ -104,16 +104,8 @@ class Simplex( EDMClass ):
         weightRowSum = sum( weights, axis = 1 ) # N x 1
 
         # Matrix of knn_neighbors + Tp defines library target values
-        # JP : Find optimal way to fill libTargetValues, for now:
-        #   Since number of knn is usually less than number of pred rows
-        #   loop over knn_neighbors_Tp columns to get target value column
-        #   vectors from the knn_neighbors_Tp row indices
-        knn_neighbors_Tp = self.knn_neighbors + self.Tp     # N x k
-        libTargetValues  = zeros( knn_neighbors_Tp.shape )  # N x k
-
-        for j in range( knn_neighbors_Tp.shape[1] ) : # for each column j of k   
-            libTargetValues[ :, j ][ :, None ] = \
-                self.targetVec[ knn_neighbors_Tp[ :, j ] ]
+        knn_neighbors_Tp = self.knn_neighbors + self.Tp  # N x k
+        libTargetValues  = self.targetVec[ knn_neighbors_Tp, 0 ]
 
         # Projection is average of weighted knn library target values
         self.projection = sum(weights * libTargetValues, axis=1) / weightRowSum

@@ -13,7 +13,12 @@ from .AuxFunc import ComputeError, IsIterable
 
 #------------------------------------------------------------
 class CCM:
-    '''CCM class : Base class. Contains two Simplex instances'''
+    '''CCM class : Base class. Contains two Simplex instances
+       If sequential is False (default) the two simplex instances representing
+       columns:target and target:columns are executed in parallel processes.
+       If sequential is True the two instances are executed sequentially
+       without multiprocessing.
+    '''
 
     def __init__( self,
                   dataFrame       = None,
@@ -109,7 +114,7 @@ class CCM:
     #-------------------------------------------------------------------
     # Methods
     #-------------------------------------------------------------------
-    def Project( self, sequential = False ) :
+    def Project( self ) :
         '''CCM both directions with CrossMap()'''
 
         if self.verbose:
@@ -173,6 +178,7 @@ class CCM:
     # 
     #-------------------------------------------------------------------
     def CrossMap( self, direction ) :
+        '''Simplex cross mapping with loops for library sizes and samples'''
         if self.verbose:
             print( f'{self.name}: CrossMap()' )
 
@@ -193,21 +199,23 @@ class CCM:
         libRhoMap  = {} # Output dict libSize key : mean rho value
         libStatMap = {} # Output dict libSize key : list of ComputeError dicts
 
+        #------------------------------------------------------------
         # Loop for library sizes
+        #------------------------------------------------------------
         for libSize in self.libSizes :
             rhos = zeros( self.sample )
             if self.includeData :
                 predictStats = [None] * self.sample
 
-            # Loop for subsamples
+            #--------------------------------------------------------
+            # Loop for samples
+            #--------------------------------------------------------
             for s in range( self.sample ) :
-                # Generate library row indices for this subsample
-                rng_i = RNG.choice( lib_i, size = min( libSize, N_lib_i ),
-                                    replace = False )
+                # Generate library row indices for this sample
+                S.lib_i = RNG.choice( lib_i, size = min( libSize, N_lib_i ),
+                                      replace = False )
 
-                S.lib_i = rng_i
-
-                S.FindNeighbors() # Depends on S.lib_i
+                S.FindNeighbors() # Depends on S.lib_i & S.knn
 
                 # Code from Simplex:Project ---------------------------------
                 # First column is minimum distance of all N pred rows
@@ -235,11 +243,12 @@ class CCM:
 
                 # Align observations & predictions as in FormatProjection()
                 # Shift projection_ by Tp
-                projection_ = roll( projection_, S.Tp )
-                if S.Tp > 0 :
-                    projection_[ :S.Tp ] = nan
-                elif S.Tp < 0 :
-                    projection_[ S.Tp: ] = nan
+                if S.Tp != 0 :
+                    projection_ = roll( projection_, S.Tp )
+                    if S.Tp > 0 :
+                        projection_[ :S.Tp ] = nan
+                    elif S.Tp < 0 :
+                        projection_[ S.Tp: ] = nan
 
                 err = ComputeError( S.targetVec[ S.pred_i, 0 ],
                                     projection_, digits = 5 )
