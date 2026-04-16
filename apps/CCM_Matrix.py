@@ -1,414 +1,856 @@
 #! /usr/bin/env python3
 
+"""
+CCM_Matrix: compute M×M×L convergent cross mapping tensor.
+
+For M data columns, computes CCM correlation of each column against
+every other column at each library size, returning an (M, M, L)
+float16 tensor with a convergence depth dimension.
+
+Optimization: for a fixed source column i the KDTree construction,
+neighbor query, self/exclusion filtering, and simplex weight computation
+depend only on column i's embedding — not on the target. The expensive
+per-subsample work is done once and the resulting weights are reused
+across all M-1 target columns via vectorized batched prediction.
+
+Post-processing:
+ - Linear convergence slope: vectorized numpy regression across the
+   full M×M matrix simultaneously, producing an (M, M) float32 array.
+ - Exponential convergence (optional): scipy curve_fit of
+   rho(L) = y0 + b*(1 - exp(-a*x)) per cell, storing the rate
+   parameter `a` as an (M, M) float32 array.
+
+Reference: George Sugihara et al., Detecting Causality in Complex Ecosystems.
+           Science338, 496-500(2012). DOI:10.1126/science.1227079
+"""
 # Python distribution modules
-from datetime           import datetime
-from argparse           import ArgumentParser
-from itertools          import repeat
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing    import get_context
+from datetime        import datetime
+from time            import perf_counter
+from argparse        import ArgumentParser
+from multiprocessing import cpu_count, shared_memory
+from multiprocessing import get_context, get_start_method
+from pickle          import dump
+import sys
+import warnings
 
 # Community modules
-from pyEDM  import CCM
-from numpy  import array, exp, full, nan, nan_to_num, round, zeros
-from pandas import DataFrame, read_csv, read_feather
-from sklearn.linear_model import LinearRegression
+from pyEDM2         import CCM # JP Change to pyEDM 
+from scipy.spatial  import KDTree
+from pandas         import DataFrame, read_csv, read_feather
 from scipy.optimize import curve_fit
-from matplotlib import pyplot as plt
+from matplotlib     import pyplot as plt
+import numpy as np
 
-#----------------------------------------------------------------------------
-#
-#----------------------------------------------------------------------------
-def CCM_Matrix( data,
-                E,
-                libSizes        = [],
-                pLibSizes       = [10,20,80,90],
-                sample          = 30,
-                Tp              = 0,
-                tau             = -1,
-                exclusionRadius = 0,
-                expConverge     = False,
-                ignoreNan       = True,
-                noTime          = False,
-                validLib        = [],
-                cores           = 5,
-                mpMethod        = None,
-                chunksize       = 1,
-                verbose         = False,
-                debug           = False,
-                outputFile      = None,
-                includeCCM      = False,
-                plot            = False,
-                title           = "",
-                figSize         = (6,6),
-                dpi             = 150 ) :
+# ====================================================================
+# CCM_Matrix class
+# ====================================================================
 
-    '''Use ProcessPoolExecutor to process parallelize CCM.
-       All dataFrame columns are cross mapped against all others.
+class CCM_Matrix:
+    """
+    Compute the full M×M×L convergent cross mapping tensor.
 
-       E is a vector of embedding dimension for each column.
-       if E is a single value it is repeated for all columns.
+    Parameters
+    ----------
+    dataFrame : pandas.DataFrame
+        Input data. First column is time unless noTime=True.
+    E : int or array-like of int
+        Embedding dimension. Scalar or per-column vector of length M.
+    Tp : int
+        Prediction horizon. Default 0.
+    tau : int
+        Embedding delay. Default -1.
+    exclusionRadius : int
+        Temporal exclusion radius. Default 0.
+    libSizes : list of int
+        Explicit library sizes. If non-empty, used directly and
+        pLibSizes is ignored. Default [].
+    pLibSizes : list of float
+        Percentiles of N to generate library sizes. Used only when
+        libSizes is empty. Default [10, 20, 80, 90].
+    sample : int
+        Subsamples per library size. Default 100.
+    seed : int or None
+        RNG seed.
+    noTime : bool
+        If True, all columns are data. If False, first column is
+        time (stripped). Default False.
+    parallel : bool or int
+        Worker count. Default True.
+    mpMethod : str or None
+        Multiprocessing start method: 'forkserver' or 'spawn' only.
+        Default None.
+    sharedMB : float
+        Data size threshold for shared memory vs pickle. Default 5.
+    targetBatchSize : int or None
+        Max target columns per batch within each worker. Default None.
+    expConverge : bool
+        If True, fit exponential convergence curve. Default False.
+    progressLog : None, True, or str
+        None: no logging. True: log to stderr. str: log to file path.
+        Default None.
+    progressInterval : int
+        Percentage increment for progress log lines. Default 5.
 
-       tau is a vector of embedding delay for each column.
-       if tau is a single value it is repeated for all columns.
+    Attributes (after Run)
+    --------------------------
+    tensor : ndarray (M, M, |L|), float16
+    slope : ndarray (M, M), float32
+    exp_a : ndarray (M, M), float32 or None
+    column_names : list of str
+    lib_sizes_arr : ndarray of int
+    lib_sizes_norm : ndarray of float
 
-       Note CCM() invokes multiprocessing with two processes.
-       The number of cores used : -C args.cores should be less
-       than os.process_cpu_count() / 2
+    The slope of CCM rho(libSizes) is computed based on a [0,1]
+    normalization of libSizes.
 
-       If libSizes are not provided they are computed from pLibSizes:
-       a vector of percentiles of the data length. pLibSizes can also
-       be specified directly.
+    if expConverge = True a nonlinear convergence function is fit
+    to rho(libSizes) : y0 + b * ( 1 - exp(-a * x) ) with fit coefficient
+    a returned in the (M, M) matrix self.exp_a
+    """
 
-       The slope of CCM rho(libSizes) is computed based on a [0,1]
-       normalization of libSizes.
+    _validated = False
 
-       if expConverge = True a nonlinear convergence function is fit
-       to rho(libSizes) : y0 + b * ( 1 - exp(-a * x) )
-         Fit parameters [a,b,y0] returned in DataFrame D['ccm converge']
-         DataFrame of just a returned in D['ccm converge a']
+    def __init__(self,
+                 dataFrame,
+                 E,
+                 libSizes         = [],
+                 pLibSizes        = [10,20,80,90],
+                 Tp               = 0,
+                 tau              = -1,
+                 exclusionRadius  = 0,
+                 sample           = 30,
+                 seed             = None,
+                 noTime           = False,
+                 parallel         = True,
+                 mpMethod         = None,
+                 sharedMB   = 0.01,
+                 targetBatchSize  = None,
+                 expConverge      = False,
+                 progressLog      = None,
+                 progressInterval = 5):
 
-       return : D = { 'ccm rho' : DataFrame, 'ccm slope' : DataFrame }
+        self.E                = E
+        self.Tp               = Tp
+        self.tau              = tau
+        self.exclusionRadius  = exclusionRadius
+        self.libSizes         = libSizes
+        self.pLibSizes        = pLibSizes
+        self.sample           = sample
+        self.seed             = seed
+        self.noTime           = noTime
+        self.parallel         = parallel
+        self.mpMethod         = mpMethod
+        self.sharedMB   = sharedMB
+        self.targetBatchSize  = targetBatchSize
+        self.expConverge      = expConverge
+        self.progressLog      = progressLog
+        self.progressInterval = progressInterval
+        self._dataFrame       = dataFrame
 
-       if args.expConverge add to D:
-          { 'ccm converge' : DataFrame, 'ccm converge a' : DataFrame }
+        self.tensor         = None
+        self.slope          = None
+        self.exp_a          = None
+        self.column_names   = None
+        self.lib_sizes_arr  = None
+        self.lib_sizes_norm = None
 
-       if args.includeCCM add to D:
-          { 'ccm results':list }
-    '''
+    # ================================================================
+    # Validate
+    # ================================================================
 
-    startTime = datetime.now()
-    
-    if verbose :
-        print( f'CCM_Matrix: {startTime}' )
+    def Validate(self):
+        """Parse DataFrame, extract data, resolve E and library sizes."""
+        df = self._dataFrame
 
-    if outputFile :
-        if '.csv' not in outputFile[-4:] and '.feather' not in outputFile[-8:] :
-            msg = f'outputFile {outputFile} must be .csv or .feather'
-            raise( RuntimeError( msg ) )
+        if self.noTime:
+            self.column_names = list(df.columns)
+            self.data_matrix = np.ascontiguousarray(
+                df.values.astype(np.float64)
+            )
+        else:
+            self.column_names = list(df.columns[1:])
+            self.data_matrix = np.ascontiguousarray(
+                df.iloc[:, 1:].values.astype(np.float64)
+            )
 
-    # If no libSizes create from pLibSizes percentiles of data len
-    if not len( libSizes ) :
-        libSizes = [ int( data.shape[0] * (p/100) ) for p in pLibSizes ]
-        if verbose :
-            print( f'CCM_Matrix(): libSizes set to {libSizes}\n' )
+        self.N, self.M = self.data_matrix.shape
 
-    if noTime :
-        columns = data.columns.to_list()
-    else :
-        # Ignore first column
-        columns = data.columns[ 1 : len(data.columns) ].to_list()
+        E_input = self.E
+        if np.ndim(E_input) == 0:
+            # scalar E : create M dimensional vector
+            self.E_vec = np.full(self.M, int(E_input), dtype=int)
+        else:
+            self.E_vec = np.asarray(E_input, dtype=int)
+            if len(self.E_vec) != self.M:
+                raise ValueError(
+                    f"E has length {len(self.E_vec)} but there are "
+                    f"{self.M} data columns."
+                )
 
-    # Empty DataFrame for CCM & slope
-    CCM_DF   = DataFrame( columns = columns, index = columns )
-    slope_DF = DataFrame( columns = columns, index = columns )
-    if expConverge :
-        expConverge_DF = DataFrame( columns = columns, index = columns )
-    else :
-        expConverge_DF = DataFrame() # empty
+        self.k_vec = self.E_vec + 1
 
-    # Create dictionary of columns : E
-    # If E is scalar use E for all columns
-    if isinstance( E, int ) :
-        E = [ e for e in repeat( E, len( columns ) ) ]
-    elif len( E ) == 1 :
-        E = [ e for e in repeat( E[0], len( columns ) ) ]
-    if len( E ) != len( columns ) :
-        msg = 'CCM_Matrix() E must be scalar or length of columns.'
-        raise RuntimeError( msg )
-    D_E = dict( zip( columns, E ) )
+        if len(self.libSizes) > 0:
+            self.lib_sizes_arr = np.asarray(
+                self.libSizes, dtype=int
+            )
+        else:
+            pcts = np.asarray(self.pLibSizes, dtype=float)
+            self.lib_sizes_arr = np.unique(np.clip(
+                np.round(pcts / 100.0 * self.N).astype(int),
+                2, self.N
+            ))
+            self.libSizes = self.lib_sizes_arr
 
-    # Create dictionary of columns : tau
-    # If tau is scalar use tau for all columns
-    if isinstance( tau, int ) :
-        tau = [ t for t in repeat( tau, len( columns ) ) ]
-    elif len( tau ) == 1 :
-        tau = [ t for t in repeat( E[0], len( columns ) ) ]
-    if len( tau ) != len( columns ) :
-        msg = 'CCM_Matrix() tau must be scalar or length of columns.'
-        raise RuntimeError( msg )
-    D_tau = dict( zip( columns, tau ) )
+        self.lib_sizes_norm = (self.lib_sizes_arr.astype(np.float64)
+                               / self.N)
 
-    #----------------------------------------------------------------
-    def UpperDiagonalProduct( iterable ):
-        '''Manually generate upper triangular elements of iterable product'''
-        for i, x in enumerate( iterable ):
-            for y in iterable[ i+1: ]:
-                yield(x, y)
+        if self.M < 2:
+            raise ValueError(
+                f"Need at least 2 data columns, got {self.M}."
+            )
+        if np.any(self.E_vec < 1):
+            raise ValueError("All E values must be >= 1.")
 
-    # List of tuples of upper triangular columns x columns
-    # Remove degenerate pairs from diagonal with same columns
-    # Remove pairs with reversed order since CCM computes both V1:V2, V2:V1
-    upperDiagPairs = [ _ for _ in UpperDiagonalProduct( columns ) ]
-    N = len( upperDiagPairs )
+        self._validated = True
 
-    if debug :
-        print( upperDiagPairs )
-        print()
+    # ================================================================
+    # Run
+    # ================================================================
 
-    # Dictionary of static arguments for Pool : CCMFunc
-    argsD = { 'D_E'             : D_E,
-              'libSizes'        : libSizes,
-              'Tp'              : Tp,
-              'D_tau'           : D_tau,
-              'sample'          : sample,
-              'exclusionRadius' : exclusionRadius,
-              'expConverge'     : expConverge,
-              'validLib'        : validLib,
-              'noTime'          : noTime,
-              'ignoreNan'       : ignoreNan,
-              'verbose'         : verbose }
+    def Run(self):
+        """
+        Compute the M×M×L CCM tensor, linear convergence slope,
+        and (optionally) exponential convergence rate.
 
-    mpContext = get_context( mpMethod )
+        Returns
+        -------
+        tensor : ndarray (M, M, |L|), float16
+        """
+        if not self._validated:
+            self.Validate()
 
-    if verbose :
-        print( f'multiprocessing: {mpContext._name} ' +\
-               f'using {cores} of {mpContext.cpu_count()} available CPU' )
+        M = self.M
+        N = self.N
+        n_lib     = len(self.lib_sizes_arr)
+        logging   = self.progressLog is not None
+        dest      = self.progressLog
+        interval  = self.progressInterval
+        n_workers = _resolve_workers(self.parallel)
 
-    # ProcessPoolExecutor has no starmap(). Pass argument lists directly.
-    with ProcessPoolExecutor( max_workers=cores, mp_context=mpContext ) as exe :
-        ccm_ = exe.map( CCMFunc,
-                        upperDiagPairs,
-                        repeat( data,  N ),
-                        repeat( argsD, N ),
-                        chunksize = chunksize )
+        if logging:
+            datetime_start = datetime.now()
+            _log_progress(dest, "CCM_Matrix.Run() starting.")
 
-    # ccm_ is a generator of dictionaries from CCMFunc
-    ccmD_ = [ _ for _ in ccm_ ]
+        root_seq = np.random.SeedSequence(self.seed)
+        child_seqs = root_seq.spawn(M)
 
-    if debug :
-        for ccmD in ccmD_ :
-            print( ccmD )
-            print()
+        tasks = []
+        for i in range(M):
+            tasks.append((
+                i, M, N, int(self.E_vec[i]), self.tau,
+                self.lib_sizes_arr.tolist(),
+                self.sample, self.exclusionRadius, self.Tp,
+                self.targetBatchSize, child_seqs[i].entropy
+            ))
 
-    # Load ccmD_ results into DataFrame
-    for ccmD in ccmD_ :
-        column_ = ccmD['column']
-        target_ = ccmD['target']
+        # ---- Dispatch ----
+        if n_workers > 1:
+            ctx = _resolve_mp_context(self.mpMethod)
+            total_bytes = self.data_matrix.nbytes
+            use_shm = total_bytes > self.sharedMB * 1_000_000
 
-        CCM_DF.loc[ column_, target_ ] = ccmD['col_tgt'][-1]
-        CCM_DF.loc[ target_, column_ ] = ccmD['tgt_col'][-1]
+            if logging:
+                results = self._dispatch_parallel_logged(
+                    ctx, tasks, use_shm, M, n_workers, dest, interval
+                )
+            else:
+                results = self._dispatch_parallel_silent(
+                    ctx, tasks, use_shm, n_workers
+                )
+        else:
+            _mw_data['data'] = self.data_matrix
+            if logging:
+                results = self._dispatch_sequential_logged(
+                    tasks, M, dest, interval
+                )
+            else:
+                results = [_mw_task(*t) for t in tasks]
 
-        slope_DF.loc[ column_, target_ ] = ccmD['col_tgt_slope']
-        slope_DF.loc[ target_, column_ ] = ccmD['tgt_col_slope']
+        # ---- Assemble tensor ----
+        tensor_f32 = np.full((M, M, n_lib), np.nan, dtype=np.float32)
+        for src_idx, row in results:
+            tensor_f32[src_idx, :, :] = row
 
-        if expConverge :
-            expConverge_DF.loc[ column_, target_ ] = ccmD['col_tgt_expConverge']
-            expConverge_DF.loc[ target_, column_ ] = ccmD['tgt_col_expConverge']
+        self.tensor = tensor_f32.astype(np.float16)
 
-    if debug :
-        print( 'CCM_Matrix: ccm rho' )
-        print( CCM_DF )
-        print()
-        print( 'CCM_Matrix: ccm slope' )
-        print( slope_DF )
-        print()
-        print( 'CCM_Matrix: ccm expConverge' )
-        print( expConverge_DF )
-        print()
+        if logging:
+            msg = (f"100% ({M}/{M}) complete")
+            _log_progress(dest, msg)
 
-    if verbose :
-        print( f'Finished {datetime.now()}' )
-        print( f'Elapsed time: {datetime.now() - startTime}' )
+        # ---- Post-processing: convergence estimates ----
+        t_post = perf_counter()
 
-    if plot :
-        PlotMatrix( CCM_DF.to_numpy( dtype = float ), columns,
-                    figsize = figSize, dpi = dpi,
-                    title = title, plot = True, plotFile = None )
+        if self.tensor.shape[2] > 1:
+            self.slope = _compute_slope(tensor_f32, self.lib_sizes_norm)
 
-    if outputFile :
-        if '.csv' in outputFile[-4:] :
-            CCM_DF.to_csv( 'CCM_' + outputFile, index_label = 'variable' )
-            slope_DF.to_csv( 'Slope_' + outputFile, index_label = 'variable' )
-            expConverge_DF.to_csv( 'expConverge_' + outputFile,
-                                   index_label = 'variable' )
+        t_slope = perf_counter() - t_post
+        datetime_end = datetime.now()
 
-        elif '.feather' in outputFile[-8:] :
-            CCM_DF.to_feather( 'CCM_' + outputFile )
-            slope_DF.to_feather( 'Slope_' + outputFile )
-            expConverge_DF.to_feather( 'expConverge_' + outputFile )
+        if self.expConverge:
+            t_exp0 = perf_counter()
+            self.exp_a = _compute_exp_converge(
+                tensor_f32, self.lib_sizes_norm
+            )
+            t_exp = perf_counter() - t_exp0
+            datetime_end = datetime.now()
+        else:
+            self.exp_a = None
+            t_exp = 0.0
 
-    # Output dict
-    D = { 'ccm rho' : CCM_DF, 'ccm slope' : slope_DF }
+        if logging:
+            msg = (f"slope complete: {_fmt_duration(t_slope)}")
+            _log_progress(dest, msg)
 
-    if expConverge :
-          D['ccm converge']   = expConverge_DF
-          D['ccm converge a'] = expConverge_DF.apply(lambda x: x.str[0])
+            if self.expConverge:
+                msg = f"expConverge: {_fmt_duration(t_exp)}"
+                _log_progress(dest, msg)
 
-    if includeCCM :
-        D['ccm results'] = ccmD_
+            msg = f"Elapsed: {datetime_end - datetime_start}"
+            _log_progress(dest, msg)
 
-    return D
+        return self.tensor
 
-#----------------------------------------------------------------------------
-def CCMFunc( column_target, df, args ):
-    '''pyEDM CCM
-       Compute CCM for forward and reverse mapping, and, linear regression
-       slope of CCM rho against [0,1] normalized libSizes. if args.expConverge
-       fit CCM_rho_L_fit() function to rho(libSizes)
+    # ---- Parallel dispatch with logging ----
 
-       Return dict: { 'target':, 'column':, 'libSize':, 'col_tgt':, 'tgt_col':,
-                      'col_tgt_slope':, 'tgt_col_slope':,
-                      'expConverge_col_tgt':, 'expConverge_tgt_col': }
-    '''
-    #------------------------------------------------------------------
-    def CCM_rho_L_fit( x = 0, a = 2, b = 1, y0 = 0.1 ):
-        '''CCM rho(L) curve for L = [0:1] to optimize in curve_fit()'''
-        return ( y0 + b * ( 1 - exp(-a * x) ) ).flatten()
+    def _dispatch_parallel_logged(self, ctx, tasks, use_shm,
+                                  M, n_workers, dest, interval):
+        chunksize = max(1, M // (4 * n_workers))
+        results = []
 
-    column, target = column_target
-    E   = args['D_E']  [column]
-    tau = args['D_tau'][column]
-
-    try :
-        ccm_ = CCM( dataFrame       = df,
-                    columns         = column,
-                    target          = target,
-                    libSizes        = args['libSizes'],
-                    sample          = args['sample'],
-                    E               = E,
-                    Tp              = args['Tp'],
-                    tau             = tau,
-                    exclusionRadius = args['exclusionRadius'],
-                    seed            = 0 )
-    except :
-        if args['verbose'] :
-            print( f'\tCCMFunc() CCM Error: column {column} target {target}.' )
-
-        D = { 'column'  : column,
-              'target'  : target,
-              'E'       : E,
-              'tau'     : tau,
-              'libSize' : args['libSizes'],
-              'col_tgt' : zeros( len( args['libSizes'] ) ),
-              'tgt_col' : zeros( len( args['libSizes'] ) ),
-              'col_tgt_slope' : 0.,
-              'tgt_col_slope' : 0.,
-              'col_tgt_expConverge' : 0.,
-              'tgt_col_expConverge' : 0.}
-
-        return D
-
-    col_target = f'{column}:{target}'
-    target_col = f'{target}:{column}'
-
-    ccm_col_tgt = ccm_[ ['LibSize', col_target] ]
-    ccm_tgt_col = ccm_[ ['LibSize', target_col] ]
-
-    # libSizes ndarray for CCM convergence slope estimate
-    libSizesVec = array( args['libSizes'], dtype = float ).reshape( -1, 1 )
-    # normalize L ∈ [0,1]
-    libSizesVec = libSizesVec / df.shape[0]
-
-    # Slope of linear fit to rho(libSizes)
-    lm_col_tgt = LinearRegression().fit(libSizesVec,
-                                        nan_to_num(ccm_col_tgt[ col_target ]))
-    lm_tgt_col = LinearRegression().fit(libSizesVec,
-                                        nan_to_num(ccm_tgt_col[ target_col ]))
-
-    slope_col_tgt = lm_col_tgt.coef_[0]
-    slope_tgt_col = lm_tgt_col.coef_[0]
-
-    expConverge_col_tgt = None
-    expConverge_tgt_col = None
-
-    if args['expConverge'] :
-        try:
-            ydata = ccm_[ f'{column}:{target}' ]
-            popt_c_t, pcov_c_t, infodict_c_t, msg_c_t, ier_c_t = \
-                curve_fit( CCM_rho_L_fit,
-                           xdata  = libSizesVec,
-                           ydata  = ydata,
-                           p0     = [2,1,0.1],
-                           bounds = ( [0,0,0], [100,1,1] ),
-                           method = 'dogbox',
-                           full_output = True )
-        except Exception as e:
-            if args['verbose'] :
-                print( e )
-            popt_c_t = full( 3, nan )
+        if use_shm:
+            shm, spec = _create_shared_array(self.data_matrix)
+            init_fn = _mw_init_shm
+            init_args = ([spec],)
+        else:
+            shm = None
+            init_fn = _mw_init_pickle
+            init_args = (self.data_matrix,)
 
         try:
-            ydata = ccm_[ f'{target}:{column}' ]
-            popt_t_c, pcov_t_c, infodict_t_c, msg_t_c, ier_t_c = \
-                curve_fit( CCM_rho_L_fit,
-                           xdata  = libSizesVec,
-                           ydata  = ydata,
-                           p0     = [2,1,0.1],
-                           bounds = ( [0,0,0], [100,1,1] ),
-                           method = 'dogbox',
-                           full_output = True )
-        except Exception as e:
-            if args['verbose'] :
-                print( e )
-            popt_t_c = full( 3, nan )
+            with ctx.Pool(
+                processes=n_workers,
+                initializer=init_fn,
+                initargs=init_args,
+            ) as pool:
+                completed = 0
+                next_threshold = interval
+                t_start = perf_counter()
 
-        expConverge_col_tgt = popt_c_t # 3 parameters
-        expConverge_tgt_col = popt_t_c # 3 parameters
+                for result in pool.imap_unordered(
+                    _mw_task_unpack, tasks, chunksize=chunksize
+                ):
+                    results.append(result)
+                    completed += 1
+                    pct = completed * 100.0 / M
 
-    D = { 'column'  : column,
-          'target'  : target,
-          'E'       : E,
-          'tau'     : tau,
-          'libSize' : args['libSizes'],
-          'col_tgt' : round( ccm_col_tgt[ col_target ].to_numpy(), 5 ),
-          'tgt_col' : round( ccm_tgt_col[ target_col ].to_numpy(), 5 ),
-          'col_tgt_slope' : round( slope_col_tgt, 5 ),
-          'tgt_col_slope' : round( slope_tgt_col, 5 ),
-          'col_tgt_expConverge' : expConverge_col_tgt,
-          'tgt_col_expConverge' : expConverge_tgt_col }
+                    if pct >= next_threshold:
+                        elapsed = perf_counter() - t_start
+                        rate = completed / elapsed
+                        remaining = (M - completed) / rate
+                        _log_progress(
+                            dest,
+                            f"{int(pct)}% ({completed}/{M}) | "
+                            f"elapsed {_fmt_duration(elapsed)} | "
+                            f"~{_fmt_duration(remaining)} remaining | "
+                            f"{rate:.1f} tasks/s"
+                        )
+                        next_threshold += interval
+        finally:
+            if shm is not None:
+                shm.close()
+                shm.unlink()
 
-    return D
+        return results
 
-#---------------------------------------------------------------------
-def CCM_Matrix_CmdLine():
-    '''Wrapper for CCM_Matrix with command line parsing'''
+    # ---- Parallel dispatch without logging ----
 
-    args = ParseCmdLine()
+    def _dispatch_parallel_silent(self, ctx, tasks, use_shm, n_workers):
+        chunksize = max(1, len(tasks) // (4 * n_workers))
 
-    # Read data
-    # If -i input file: load it, else look for inputData in pyEDM sampleData
-    if args.inputFile:
-        if '.csv' in args.inputFile[-4:] :
-            dataFrame = read_csv( args.inputFile )
-        elif '.feather' in args.inputFile[-8:] :
-            dataFrame = read_feather( args.inputFile )
-        else :
-            msg = f'Input file {args.inputFile} must be csv or feather'
-            raise( RuntimeError( msg ) )
-    elif args.inputData:
-        from pyEDM import sampleData
-        dataFrame = sampleData[ args.inputData ]
+        if use_shm:
+            shm, spec = _create_shared_array(self.data_matrix)
+            try:
+                with ctx.Pool(
+                    processes=n_workers,
+                    initializer=_mw_init_shm,
+                    initargs=([spec],),
+                ) as pool:
+                    results = pool.starmap(
+                        _mw_task, tasks, chunksize=chunksize
+                    )
+            finally:
+                shm.close()
+                shm.unlink()
+        else:
+            with ctx.Pool(
+                processes=n_workers,
+                initializer=_mw_init_pickle,
+                initargs=(self.data_matrix,),
+            ) as pool:
+                results = pool.starmap(
+                    _mw_task, tasks, chunksize=chunksize
+                )
+
+        return results
+
+    # ---- Sequential dispatch with logging ----
+
+    def _dispatch_sequential_logged(self, tasks, M, dest, interval):
+        results = []
+        completed = 0
+        next_threshold = interval
+        t_start = perf_counter()
+
+        for t in tasks:
+            results.append(_mw_task(*t))
+            completed += 1
+            pct = completed * 100.0 / M
+
+            if pct >= next_threshold:
+                elapsed = perf_counter() - t_start
+                rate = completed / elapsed
+                remaining = (M - completed) / rate
+                _log_progress(
+                    dest,
+                    f"{int(pct)}% ({completed}/{M}) | "
+                    f"elapsed {_fmt_duration(elapsed)} | "
+                    f"~{_fmt_duration(remaining)} remaining | "
+                    f"{rate:.1f} tasks/s"
+                )
+                next_threshold += interval
+
+        return results
+
+    def __repr__(self):
+        state = 'ready' if self._validated else 'init'
+        if self.tensor is not None:
+            state = f'computed({self.tensor.shape})'
+
+        if self._validated:
+            e_min, e_max = self.E_vec.min(), self.E_vec.max()
+            e_str = str(e_min) if e_min == e_max else f'{e_min}..{e_max}'
+        else:
+            e_str = str(self.E)
+
+        parts = [
+            f"CCM_Matrix(M={self.M if self._validated else '?'}",
+            f"E={e_str}, Tp={self.Tp}, tau={self.tau}",
+            f"state='{state}'",
+        ]
+        return ', '.join(parts) + ')'
+
+
+# ====================================================================
+# Batched Pearson correlation across columns
+# ====================================================================
+
+def _batched_pearson_cols(preds, actuals, skip_col, col_offset):
+    """Pearson r per column between preds and actuals."""
+    B = preds.shape[1]
+    has_nan = np.isnan(preds).any() or np.isnan(actuals).any()
+
+    if not has_nan:
+        pm = preds - preds.mean(axis=0, keepdims=True)
+        am = actuals - actuals.mean(axis=0, keepdims=True)
+        num = np.sum(pm * am, axis=0)
+        den = np.sqrt(np.sum(pm * pm, axis=0) * np.sum(am * am, axis=0))
+        rhos = np.where(den > 0, num / den, 0.0).astype(np.float32)
     else:
-        raise RuntimeError( "Invalid inputFile or inputData" )
+        rhos = np.full(B, np.nan, dtype=np.float32)
+        for b in range(B):
+            j = col_offset + b
+            if j == skip_col:
+                continue
+            rhos[b] = _nan_safe_pearson(preds[:, b], actuals[:, b])
 
-    # Call CCM_Matrix()
-    df = CCM_Matrix( data = dataFrame, E = args.E,
-                     libSizes = args.libSizes, pLibSizes = args.pLibSizes,
-                     sample = args.sample, Tp = args.Tp, tau = args.tau,
-                     exclusionRadius = args.exclusionRadius,
-                     expConverge = args.expConverge,
-                     ignoreNan = args.ignoreNan, noTime = args.noTime,
-                     validLib = args.validLib,
-                     cores = args.cores, mpMethod = args.mpMethod,
-                     chunksize = args.chunksize,
-                     verbose = args.verbose, debug = args.debug,
-                     outputFile = args.outputFile,
-                     includeCCM = args.includeCCM,
-                     plot = args.Plot, title = args.plotTitle,
-                     figSize = args.figureSize, dpi = args.dpi )
+    diag_b = skip_col - col_offset
+    if 0 <= diag_b < B:
+        rhos[diag_b] = np.nan
 
-#---------------------------------------------------------------------
+    return rhos
+
+
+def _nan_safe_pearson(predictions, actuals):
+    """Pearson r excluding NaN pairs. NaN if < 3 valid pairs."""
+    valid = ~(np.isnan(predictions) | np.isnan(actuals))
+    n = valid.sum()
+    if n < 3:
+        return np.nan
+    p = predictions[valid]
+    a = actuals[valid]
+    pm = p - p.mean()
+    am = a - a.mean()
+    denom = np.sqrt(np.dot(pm, pm) * np.dot(am, am))
+    if denom == 0.0:
+        return 0.0
+    return np.dot(pm, am) / denom
+
+
+# ====================================================================
+# Helpers
+# ====================================================================
+
+def _resolve_mp_context(mpMethod):
+    """Return a multiprocessing context restricted to forkserver/spawn."""
+    allowed = ('forkserver', 'spawn')
+    if mpMethod is not None:
+        if mpMethod not in allowed:
+            raise ValueError(
+                f"mpMethod must be one of {allowed}, got '{mpMethod}'."
+            )
+        return get_context(mpMethod)
+    default = get_start_method(allow_none=True)
+    if default in allowed:
+        return get_context(default)
+    return get_context('forkserver')
+
+
+def _resolve_workers(parallel):
+    """Resolve the parallel parameter to a worker count."""
+    if parallel is True:
+        return max(1, cpu_count())
+    if parallel is False:
+        return 1
+    n_workers = min(cpu_count(), int(parallel))
+    return max(1, n_workers)
+
+
+def _create_shared_array(arr):
+    """Copy a numpy array into a new shared memory segment."""
+    shm = shared_memory.SharedMemory(create=True, size=arr.nbytes)
+    buf = np.ndarray(arr.shape, dtype=arr.dtype, buffer=shm.buf)
+    buf[:] = arr
+    return shm, (shm.name, arr.shape, arr.dtype.str)
+
+
+def _build_embedding(vec, shifts):
+    """Delay-coordinate embedding. Invalid rows retain NaN."""
+    N = len(vec)
+    E = len(shifts)
+    emb = np.full((N, E), np.nan, dtype=np.float64)
+    for dim, s in enumerate(shifts):
+        if s <= 0:
+            emb[-s:, dim] = vec[:N + s]
+        else:
+            emb[:N - s, dim] = vec[s:]
+    valid = ~np.any(np.isnan(emb), axis=1)
+    return emb, valid
+
+
+# ====================================================================
+# Worker process globals
+# ====================================================================
+_mw_data = {}
+
+
+def _mw_init_pickle(data_matrix):
+    """Store data matrix passed via initargs (pickle path)."""
+    _mw_data['data'] = data_matrix
+
+
+def _mw_init_shm(shm_specs):
+    """Attach to shared memory data matrix in worker process."""
+    arrays = []
+    handles = []
+    for name, shape, dtype_str in shm_specs:
+        shm = shared_memory.SharedMemory(name=name, create=False)
+        handles.append(shm)
+        arrays.append(
+            np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=shm.buf)
+        )
+    _mw_data['data'] = arrays[0]
+    _mw_data['_shm'] = handles
+
+
+def _mw_task(src_idx, M, N, E_src, tau, lib_sizes, sample,
+             exclusionRadius, Tp, target_batch_size, seed_entropy):
+    """
+    Process one source column → one row of the M×M×L tensor.
+    """
+    data = _mw_data['data']
+    n_lib = len(lib_sizes)
+    row = np.full((M, n_lib), np.nan, dtype=np.float32)
+
+    k = E_src + 1
+    shifts = np.arange(E_src) * tau
+
+    src_vec = data[:, src_idx]
+    embed_src, valid_src = _build_embedding(src_vec, shifts)
+    valid_src &= ~np.isnan(src_vec)
+
+    idx_src = np.where(valid_src)[0]
+    M_valid = len(idx_src)
+
+    if M_valid < E_src + 2:
+        return src_idx, row
+
+    embed_valid = np.ascontiguousarray(embed_src[idx_src])
+
+    shifted_idx = idx_src + Tp
+    in_bounds = (shifted_idx >= 0) & (shifted_idx < N)
+    shifted_safe = np.clip(shifted_idx, 0, N - 1)
+
+    target_all = data[shifted_safe, :].copy()
+    target_all[~in_bounds, :] = np.nan
+
+    rng = np.random.default_rng(np.random.SeedSequence(seed_entropy))
+    r_Mv = np.arange(M_valid)[:, np.newaxis]
+
+    if target_batch_size is None or target_batch_size <= 0:
+        target_batch_size = M
+
+    k_base = min(k, M_valid - 1)
+    if k_base < 1:
+        return src_idx, row
+
+    for li, L in enumerate(lib_sizes):
+        L = min(int(L), M_valid)
+        k_use = min(k, L - 1)
+        if k_use < 1:
+            continue
+
+        k_query = min(k_use + 1 + (2 * exclusionRadius
+                                    if exclusionRadius > 0 else 0), L)
+
+        sample_rhos = np.full((sample, M), np.nan, dtype=np.float32)
+
+        for s in range(sample):
+            lib_idx = rng.choice(M_valid, size=L, replace=False)
+            lib_idx.sort()
+
+            tree = KDTree(embed_valid[lib_idx])
+            nn_dist_raw, nn_local_raw = tree.query(embed_valid, k=k_query)
+
+            if nn_dist_raw.ndim == 1:
+                nn_dist_raw  = nn_dist_raw[:, np.newaxis]
+                nn_local_raw = nn_local_raw[:, np.newaxis]
+
+            nn_global_raw = lib_idx[nn_local_raw]
+
+            is_self = (nn_global_raw == r_Mv)
+
+            if exclusionRadius > 0:
+                src_rows = idx_src[:, np.newaxis]
+                nn_rows  = idx_src[nn_global_raw]
+                mask = is_self | (np.abs(src_rows - nn_rows)
+                                  <= exclusionRadius)
+            else:
+                mask = is_self
+
+            valid_nn = ~mask
+            cs = np.cumsum(valid_nn, axis=1)
+            first_k = valid_nn & (cs <= k_use)
+
+            total_found = cs[:, -1]
+            insufficient = total_found < k_use
+
+            if np.all(insufficient):
+                continue
+
+            if np.any(insufficient):
+                first_k[insufficient, :] = False
+
+            _, col_indices = np.where(first_k)
+
+            nn_cols = np.zeros((M_valid, k_use), dtype=np.intp)
+            sufficient = ~insufficient
+            suf_count = sufficient.sum()
+            if suf_count > 0:
+                nn_cols[sufficient] = col_indices.reshape(suf_count, k_use)
+
+            nn_dist   = nn_dist_raw[r_Mv, nn_cols]
+            nn_global = nn_global_raw[r_Mv, nn_cols]
+
+            d_min    = nn_dist[:, 0:1]
+            d_min_nz = np.where(d_min > 0.0, d_min, 1.0)
+            weights  = np.exp(-nn_dist / d_min_nz)
+
+            zero_mask = (d_min == 0.0)
+            if np.any(zero_mask):
+                weights = np.where(
+                    zero_mask,
+                    np.where(nn_dist == 0.0, 1.0, 0.0),
+                    weights
+                )
+            w_sum = weights.sum(axis=1, keepdims=True)
+            w_sum = np.where(w_sum > 0.0, w_sum, 1.0)
+            weights /= w_sum
+
+            if np.any(insufficient):
+                weights[insufficient, :] = 0.0
+
+            weights_3d = weights[:, :, np.newaxis]
+
+            for t_start in range(0, M, target_batch_size):
+                t_end = min(t_start + target_batch_size, M)
+                tgt_batch = target_all[:, t_start:t_end]
+
+                nn_tgt = tgt_batch[nn_global]
+                preds = np.sum(weights_3d * nn_tgt, axis=1)
+
+                if np.any(insufficient):
+                    preds[insufficient, :] = np.nan
+
+                batch_rhos = _batched_pearson_cols(
+                    preds, tgt_batch, src_idx, t_start
+                )
+                sample_rhos[s, t_start:t_end] = batch_rhos
+
+        any_valid = ~np.all(np.isnan(sample_rhos), axis=0)
+        if np.any(any_valid):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                row[any_valid, li] = np.nanmean(
+                    sample_rhos[:, any_valid], axis=0
+                )
+
+    row[src_idx, :] = np.nan
+    return src_idx, row
+
+
+def _mw_task_unpack(args):
+    """Unpack single tuple argument for imap_unordered."""
+    return _mw_task(*args)
+
+
+# ====================================================================
+# Convergence fitting functions
+# ====================================================================
+
+def _compute_slope(tensor, lib_sizes_norm):
+    """
+    Vectorized linear regression of CCM rho vs normalised library size
+    across the full M×M matrix simultaneously.
+    """
+    M = tensor.shape[0]
+    n_L = tensor.shape[2]
+
+    Y = tensor.astype(np.float32).reshape(M * M, n_L)
+    X = lib_sizes_norm.astype(np.float32)
+
+    all_nan = np.all(np.isnan(Y), axis=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        row_mean = np.nanmean(Y, axis=1, keepdims=True)
+    row_mean = np.where(np.isnan(row_mean), 0.0, row_mean)
+    Y = np.where(np.isnan(Y), row_mean, Y)
+
+    x_bar = X.mean()
+    x_dev = X - x_bar
+    y_bar = Y.mean(axis=1, keepdims=True)
+    y_dev = Y - y_bar
+
+    ss_xy = y_dev @ x_dev
+    ss_xx = np.dot(x_dev, x_dev)
+
+    slope = np.where(ss_xx > 0, ss_xy / ss_xx, 0.0)
+    slope[all_nan] = np.nan
+
+    return slope.reshape(M, M).astype(np.float32)
+
+
+def _CCM_rho_L_fit(x, a, b, y0):
+    """CCM rho(L) curve for L normalised to [0,1]."""
+    return (y0 + b * (1.0 - np.exp(-a * x))).flatten()
+
+
+def _compute_exp_converge(tensor, lib_sizes_norm):
+    """
+    Fit rho(L) = y0 + b*(1 - exp(-a*x)) per cell.
+    Returns only the rate parameter `a`.
+    """
+    from scipy.optimize import curve_fit
+
+    M = tensor.shape[0]
+    a_matrix = np.full((M, M), np.nan, dtype=np.float32)
+    xdata = lib_sizes_norm.astype(np.float64)
+
+    for i in range(M):
+        for j in range(M):
+            if i == j:
+                continue
+            ydata = tensor[i, j, :].astype(np.float64)
+            if np.all(np.isnan(ydata)) or np.sum(np.isfinite(ydata)) < 3:
+                continue
+            try:
+                popt, _ = curve_fit(
+                    _CCM_rho_L_fit,
+                    xdata  = xdata,
+                    ydata  = ydata,
+                    p0     = [2.0, 1.0, 0.1],
+                    bounds = ([0, 0, 0], [100, 1, 1]),
+                    method = 'dogbox',
+                )
+                a_matrix[i, j] = popt[0]
+            except Exception:
+                pass
+
+    return a_matrix
+
+
+# ====================================================================
+# Progress logging
+# ====================================================================
+
+def _log_progress(dest, message):
+    """
+    Write a timestamped log line. Self-contained: opens and closes
+    the file on each call so nothing is lost on hard termination.
+
+    Parameters
+    ----------
+    dest : True (stderr), str (file path), or None (no-op)
+    message : str
+    """
+    if dest is None:
+        return
+
+    line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n"
+
+    if dest is True:
+        try:
+            sys.stderr.write(line)
+            sys.stderr.flush()
+        except Exception:
+            pass
+    elif isinstance(dest, str):
+        try:
+            with open(dest, 'a') as f:
+                f.write(line)
+        except Exception:
+            pass
+
+
+def _fmt_duration(seconds):
+    """Format seconds into 'Xh Ym Zs' or 'Ym Zs' or 'Zs'."""
+    s = int(round(seconds))
+    if s < 60:
+        return f"{s}s"
+    m, s = divmod(s, 60)
+    if m < 60:
+        return f"{m}m {s}s"
+    h, m = divmod(m, 60)
+    return f"{h}h {m}m {s}s"
+
+    
+# ====================================================================
+# PlotMatrix
+# ====================================================================
+
 def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
                 plot = True, plotFile = None, cmap = None, norm = None,
                 aspect = None, vmin = None, vmax = None, colorBarShrink = 1. ):
-    '''Generic function to plot numpy matrix
-
-    Examples of DataFrame returned in dict of CCM_Matrix:
-       CM = CCM_Matrix( df, 5, expConverge = True )
-       PlotMatrix(CM['ccm slope'].to_numpy(dtype=float),CM['ccm slope'].columns)
-       PlotMatrix(CM['ccm converge a'].to_numpy(dtype=float),
-                  CM['ccm converge a'].columns)
-    '''
+    '''Generic function to plot numpy matrix'''
 
     fig = plt.figure( figsize = figsize, dpi = dpi )
     ax  = fig.add_subplot()
@@ -433,7 +875,79 @@ def PlotMatrix( xm, columns, figsize = (5,5), dpi = 150, title = None,
     if plot :
         plt.show()
 
-#----------------------------------------------------------------------
+
+# ====================================================================
+# CCM_Matrix_CmdLine
+# ====================================================================
+
+def CCM_Matrix_CmdLine():
+    '''Wrapper for CCM_Matrix with command line parsing'''
+
+    args = ParseCmdLine()
+
+    # Read data
+    # If -i input file: load it, else look for inputData in pyEDM sampleData
+    if args.inputFile:
+        if '.csv' in args.inputFile[-4:] :
+            dataFrame = read_csv( args.inputFile )
+        elif '.feather' in args.inputFile[-8:] :
+            dataFrame = read_feather( args.inputFile )
+        else :
+            msg = f'Input file {args.inputFile} must be csv or feather'
+            raise( RuntimeError( msg ) )
+    elif args.inputData:
+        from pyEDM import sampleData
+        dataFrame = sampleData[ args.inputData ]
+    else:
+        raise RuntimeError( "Invalid inputFile or inputData" )
+
+    if len(args.E) == 1:
+        args.E = args.E[0]
+
+    # Instantiate CCM_Matrix()
+    ccm = CCM_Matrix( dataFrame       = dataFrame,
+                      libSizes        = args.libSizes,
+                      pLibSizes       = args.pLibSizes,
+                      E               = args.E,
+                      Tp              = args.Tp,
+                      tau             = args.tau,
+                      exclusionRadius = args.exclusionRadius,
+                      sample          = args.sample,
+                      seed            = args.seed,
+                      noTime          = args.noTime,
+                      parallel        = args.parallel,
+                      mpMethod        = args.mpMethod,
+                      sharedMB        = args.sharedMB,
+                      targetBatchSize = args.targetBatchSize,
+                      expConverge     = args.expConverge,
+                      progressLog     = args.progressLog,
+                      progressInterval= args.progressInterval )
+
+    tensor = ccm.Run()
+
+    if args.outputFile is not None:
+        if returnObject:
+            with open(args.outputFile,'wb') as f:
+                dump( ccm, f )
+        else:
+            np.savez_compressed( args.outputFile,
+                                 tensor  = ccm.tensor,
+                                 columns = ccm.column_list,
+                                 slope   = ccm.slope,
+                                 exp_a   = ccm.exp_a )
+
+    if args.Plot:
+        PlotMatrix( tensor[:,:,tensor.shape[2]-1],
+                    columns = ccm.column_names,
+                    title = args.plotTitle,
+                    figsize = args.figureSize,
+                    dpi = args.dpi )
+
+
+# ====================================================================
+# ParseCmdLine
+# ====================================================================
+
 def ParseCmdLine():
 
     parser = ArgumentParser( description = 'CCM Matrix' )
@@ -456,11 +970,11 @@ def ParseCmdLine():
                         default = None,
                         help    = 'CCM/slope matrix output file name')
 
-    parser.add_argument('-iCCM', '--includeCCM',
-                        dest    = 'includeCCM',
+    parser.add_argument('-r', '--returnObject',
+                        dest    = 'returnObject',
                         action  = 'store_true',
                         default = False,
-                        help    = 'Include CCM results in return dictionary')
+                        help    = 'Return CCM_Matric class instance')
 
     parser.add_argument('-E', '--E', nargs = '*',
                         dest    = 'E', type = int,
@@ -504,34 +1018,11 @@ def ParseCmdLine():
                         default = 30,
                         help    = 'CCM sample')
 
-    parser.add_argument('-ec', '--expConverge',
-                        dest    = 'expConverge',
-                        action  = 'store_true',
-                        default = False,
-                        help    = 'Compute exp convergence')
-
-    parser.add_argument('-V', '--validLib', nargs = '*',
-                        dest    = 'validLib', type = int,
-                        action  = 'store',
-                        default = [],
-                        help    = 'validLib indices')
-
-    parser.add_argument('-C', '--cores',
-                        dest    = 'cores', type = int,
-                        action  = 'store',
-                        default = 5,
-                        help    = 'Multiprocessing cores')
-
-    parser.add_argument('-mp', '--mpMethod',
-                        dest    = 'mpMethod', type = str,
+    parser.add_argument('-seed', '--seed',
+                        dest    = 'seed', type = int,
                         action  = 'store',
                         default = None,
-                        help    = 'Multiprocessing start method')
-
-    parser.add_argument('-cz', '--chunksize',
-                        dest   = 'chunksize', type = int,
-                        action = 'store', default = 1,
-                        help = 'ProcessPool chunksize')
+                        help    = 'RNG seed')
 
     parser.add_argument('-nT', '--noTime',
                         dest    = 'noTime',
@@ -539,11 +1030,46 @@ def ParseCmdLine():
                         default = False,
                         help    = 'set noTime True')
 
-    parser.add_argument('-in', '--ignoreNan',
-                        dest    = 'ignoreNan',
+    parser.add_argument('-parallel', '--parallel',
+                        dest   = 'parallel',
+                        action = 'store', default = True,
+                        help = 'Number of parallel processes')
+
+    parser.add_argument('-mp', '--mpMethod',
+                        dest    = 'mpMethod', type = str,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Multiprocessing start method')
+
+    parser.add_argument('-m', '--sharedMB',
+                        dest    = 'sharedMB', type = float,
+                        action  = 'store',
+                        default = 0.01,
+                        help    = 'Shared memory data size threshold')
+    
+    parser.add_argument('-b', '--targetBatchSize',
+                        dest    = 'targetBatchSize', type = int,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Batch size for parallel dispatch')
+    
+    parser.add_argument('-ec', '--expConverge',
+                        dest    = 'expConverge',
                         action  = 'store_true',
                         default = False,
-                        help    = 'set ignoreNan True')
+                        help    = 'Compute exp convergence')
+
+    parser.add_argument('-e', '--progressLog',
+                        dest    = 'progressLog',
+                        action  = 'store',
+                        default = None,
+                        help    = 'file for progress Log')
+
+    parser.add_argument('-z', '--progressInterval',
+                        dest    = 'progressInterval', type = int,
+                        action  = 'store',
+                        default = 10,
+                        help    = 'progress interval percentile')
 
     parser.add_argument('-v', '--verbose',
                         dest    = 'verbose',
@@ -574,12 +1100,6 @@ def ParseCmdLine():
                         action  = 'store',
                         default = 150,
                         help    = 'CCM matrix figure dpi.')
-
-    parser.add_argument('-D', '--debug',
-                        dest    = 'debug',
-                        action  = 'store_true',
-                        default = False,
-                        help    = 'debug.')
 
     args = parser.parse_args()
 

@@ -6,5 +6,5 @@ from .AuxFunc  import Examples, PlotObsPred, PlotCoeff, ComputeError
 from .AuxFunc  import SurrogateData
 from .LoadData import sampleData
 
-__version__     = "2.4.0"
-__versionDate__ = "2026-03-25"
+__version__     = "2.5.0"
+__versionDate__ = "2026-04-15"

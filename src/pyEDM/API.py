@@ -13,6 +13,7 @@ from .AuxFunc   import IsIterable, PlotObsPred, PlotCoeff, ComputeError
 from .Simplex   import Simplex   as SimplexClass
 from .SMap      import SMap      as SMapClass
 from .CCM       import CCM       as CCMClass
+from .CCM_24    import CCM       as CCM_24_Class
 from .Multiview import Multiview as MultiviewClass
 
 import pyEDM.PoolFunc as PoolFunc
@@ -232,7 +233,7 @@ def CCM( dataFrame        = None,
          columns          = "",
          target           = "",
          libSizes         = "",
-         sample           = 0,
+         sample           = 30,
          E                = 0,
          Tp               = 0,
          knn              = 0,
@@ -243,41 +244,72 @@ def CCM( dataFrame        = None,
          validLib         = [],
          includeData      = False,
          noTime           = False,
-         ignoreNan        = True,
          mpMethod         = None,
-         sequential       = False,
+         parallel         = True,
+         sharedMB         = 0.01,
          verbose          = False,
          showPlot         = False,
-         returnObject     = False ) :
-    '''Convergent Cross Mapping.'''
+         returnObject     = False,
+         legacy           = False ) :
+    '''Convergent Cross Mapping.
+
+    In version 2.5.0 two implementations are supported via `legacy`:
+       CCM    : New 2.5.0 implementation with shared memory & parallel
+       CCM_24 : Legacy 2.4.0 implementation with FwdMap RevMap & sequential
+    '''
 
     # Instantiate CCMClass object
-    # __init__ creates .FwdMap & .RevMap
-    C = CCMClass( dataFrame       = dataFrame,
-                  columns         = columns,
-                  target          = target,
-                  E               = E,
-                  Tp              = Tp,
-                  knn             = knn,
-                  tau             = tau,
-                  exclusionRadius = exclusionRadius,
-                  libSizes        = libSizes,
-                  sample          = sample,
-                  seed            = seed,
-                  includeData     = includeData,
-                  embedded        = embedded,
-                  validLib        = validLib,
-                  noTime          = noTime,
-                  ignoreNan       = ignoreNan,
-                  mpMethod        = mpMethod,
-                  sequential      = sequential,
-                  verbose         = verbose )
+    if legacy:
+        # __init__ creates .FwdMap & .RevMap Simplex objects
+        C = CCM_24_Class( dataFrame       = dataFrame,
+                          columns         = columns,
+                          target          = target,
+                          E               = E,
+                          Tp              = Tp,
+                          knn             = knn,
+                          tau             = tau,
+                          exclusionRadius = exclusionRadius,
+                          libSizes        = libSizes,
+                          sample          = sample,
+                          seed            = seed,
+                          includeData     = includeData,
+                          embedded        = embedded,
+                          validLib        = validLib,
+                          noTime          = noTime,
+                          ignoreNan       = True,
+                          mpMethod        = mpMethod,
+                          sequential      = ~bool(parallel),
+                          verbose         = verbose )
 
-    # Embedding of Forward & Reverse mapping
-    C.FwdMap.EmbedData()
-    C.FwdMap.RemoveNan()
-    C.RevMap.EmbedData()
-    C.RevMap.RemoveNan()
+        # Embedding of Forward & Reverse mapping
+        C.FwdMap.EmbedData()
+        C.FwdMap.RemoveNan()
+        C.RevMap.EmbedData()
+        C.RevMap.RemoveNan()
+
+    else:
+        C = CCMClass( dataFrame       = dataFrame,
+                      columns         = columns,
+                      target          = target,
+                      E               = E,
+                      Tp              = Tp,
+                      knn             = knn,
+                      tau             = tau,
+                      exclusionRadius = exclusionRadius,
+                      libSizes        = libSizes,
+                      sample          = sample,
+                      seed            = seed,
+                      validLib        = validLib,
+                      embedded        = embedded,
+                      includeData     = includeData,
+                      parallel        = parallel,
+                      mpMethod        = mpMethod,
+                      sharedMB        = sharedMB,
+                      verbose         = verbose )
+
+        # Explicit member calls
+        C.Validate()
+        C.Embed()
 
     C.Project()
 
@@ -301,9 +333,12 @@ def CCM( dataFrame        = None,
         return C
     else :
         if includeData :
-            return { 'LibMeans'      : C.libMeans,
-                     'PredictStats1' : C.PredictStats1,
-                     'PredictStats2' : C.PredictStats2 }
+            if legacy:
+                return { 'libMeans'      : C.libMeans,
+                         'PredictStats1' : C.PredictStats1,
+                         'PredictStats2' : C.PredictStats2 }
+            else:
+                return C.libMeans
         else :
             return C.libMeans
 
