@@ -66,7 +66,7 @@ def FindNeighbors( self ) :
     if len( self.validLib ) :
         # Convert self.validLib boolean vector to data indices
         data_i = array( range( self.Data.shape[0] ), dtype = int )
-        validLib_i = data_i[ self.validLib.to_numpy() ]
+        validLib_i = data_i[ self.validLib ]
 
         # Filter lib_i to only include valid library points
         lib_i_valid = array( [ i for i in self.lib_i if i in validLib_i ],
