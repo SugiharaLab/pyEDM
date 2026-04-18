@@ -34,7 +34,7 @@ import sys
 import warnings
 
 # Community modules
-from pyEDM2         import CCM # JP Change to pyEDM 
+from pyEDM          import CCM
 from scipy.spatial  import KDTree
 from pandas         import DataFrame, read_csv, read_feather
 from scipy.optimize import curve_fit
