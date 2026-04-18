@@ -140,7 +140,7 @@ class CCM_Matrix:
         self.noTime           = noTime
         self.parallel         = parallel
         self.mpMethod         = mpMethod
-        self.sharedMB   = sharedMB
+        self.sharedMB         = sharedMB
         self.targetBatchSize  = targetBatchSize
         self.expConverge      = expConverge
         self.progressLog      = progressLog
@@ -233,7 +233,7 @@ class CCM_Matrix:
         N = self.N
         n_lib     = len(self.lib_sizes_arr)
         logging   = self.progressLog is not None
-        dest      = self.progressLog
+        dest      = self.progressLog # None, True or filename
         interval  = self.progressInterval
         n_workers = _resolve_workers(self.parallel)
 
@@ -926,22 +926,23 @@ def CCM_Matrix_CmdLine():
     tensor = ccm.Run()
 
     if args.outputFile is not None:
-        if returnObject:
+        if args.returnObject:
             with open(args.outputFile,'wb') as f:
                 dump( ccm, f )
         else:
             np.savez_compressed( args.outputFile,
                                  tensor  = ccm.tensor,
-                                 columns = ccm.column_list,
+                                 columns = ccm.column_names,
                                  slope   = ccm.slope,
                                  exp_a   = ccm.exp_a )
 
     if args.Plot:
+        # Plot last libSize
         PlotMatrix( tensor[:,:,tensor.shape[2]-1],
                     columns = ccm.column_names,
-                    title = args.plotTitle,
+                    title   = args.plotTitle,
                     figsize = args.figureSize,
-                    dpi = args.dpi )
+                    dpi     = args.dpi )
 
 
 # ====================================================================
@@ -1059,8 +1060,14 @@ def ParseCmdLine():
                         default = False,
                         help    = 'Compute exp convergence')
 
-    parser.add_argument('-e', '--progressLog',
+    parser.add_argument('-log', '--log',
                         dest    = 'progressLog',
+                        action  = 'store_true',
+                        default = False,
+                        help    = 'activate logging to console')
+
+    parser.add_argument('-logFile', '--logFile', type = str,
+                        dest    = 'progressLogFile',
                         action  = 'store',
                         default = None,
                         help    = 'file for progress Log')
@@ -1102,6 +1109,10 @@ def ParseCmdLine():
                         help    = 'CCM matrix figure dpi.')
 
     args = parser.parse_args()
+
+    # progressLogFile overrides progressLog from bool to filename
+    if args.progressLogFile is not None:
+        args.progressLog = args.progressLogFile
 
     return args
 
