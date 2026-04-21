@@ -318,7 +318,11 @@ class CCM_Matrix:
             msg = f"Elapsed: {datetime_end - datetime_start}"
             _log_progress(dest, msg)
 
-        return self.tensor
+        return dict( tensor   = self.tensor,
+                     columns  = self.column_names,
+                     slope    = self.slope,
+                     exp_a    = self.exp_a,
+                     libSizes = self.libSizes )
 
     # ---- Parallel dispatch with logging ----
 
@@ -923,7 +927,7 @@ def CCM_Matrix_CmdLine():
                       progressLog     = args.progressLog,
                       progressInterval= args.progressInterval )
 
-    tensor = ccm.Run()
+    D = ccm.Run()
 
     if args.outputFile is not None:
         if args.returnObject:
@@ -931,10 +935,11 @@ def CCM_Matrix_CmdLine():
                 dump( ccm, f )
         else:
             np.savez_compressed( args.outputFile,
-                                 tensor  = ccm.tensor,
-                                 columns = ccm.column_names,
-                                 slope   = ccm.slope,
-                                 exp_a   = ccm.exp_a )
+                                 tensor   = ccm.tensor,
+                                 columns  = ccm.column_names,
+                                 slope    = ccm.slope,
+                                 exp_a    = ccm.exp_a,
+                                 libSizes = ccm.libSizes,)
 
     if args.Plot:
         # Plot last libSize
