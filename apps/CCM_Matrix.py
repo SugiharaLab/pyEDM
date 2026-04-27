@@ -943,7 +943,7 @@ def CCM_Matrix_CmdLine():
 
     if args.Plot:
         # Plot last libSize
-        PlotMatrix( tensor[:,:,tensor.shape[2]-1],
+        PlotMatrix( ccm.tensor[:,:,ccm.tensor.shape[2]-1],
                     columns = ccm.column_names,
                     title   = args.plotTitle,
                     figsize = args.figureSize,
