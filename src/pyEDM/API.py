@@ -278,7 +278,7 @@ def CCM( dataFrame        = None,
                           noTime          = noTime,
                           ignoreNan       = True,
                           mpMethod        = mpMethod,
-                          sequential      = ~bool(parallel),
+                          sequential      = not bool(parallel),
                           verbose         = verbose )
 
         # Embedding of Forward & Reverse mapping
