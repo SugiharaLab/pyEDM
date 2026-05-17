@@ -197,3 +197,21 @@ PredictNonlinearArgs = dict( columns         = "",
                              mpMethod        = None,
                              chunksize       = 1,      # not tested
                              showPlot        = False )
+
+PredictExclusionRadiusArgs = dict( columns         = "",
+                                   target          = "",
+                                   lib             = "",
+                                   pred            = "",
+                                   Tp              = 1,
+                                   E               = 1,
+                                   tau             = -1,
+                                   exclusionRadius = None,
+                                   embedded        = False,
+                                   validLib        = [],
+                                   noTime          = False,
+                                   ignoreNan       = True,
+                                   verbose         = False,
+                                   numProcess      = 4,
+                                   mpMethod        = None,
+                                   chunksize       = 1,
+                                   showPlot        = True )

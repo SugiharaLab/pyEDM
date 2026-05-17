@@ -479,9 +479,11 @@ def EmbedDimension( dataFrame       = None,
 
     if showPlot :
         title = "Tp=" + str(Tp)
-        ax = df.plot( 'E', 'rho', title = title, linewidth = 3 )
+        ax = df.plot( 'E', 'rho', title = title,
+                      label = f"{columns} : {target}", linewidth = 3 )
         ax.set( xlabel = "Embedding Dimension",
                 ylabel = "Prediction Skill ρ" )
+        ax.legend()
         show()
 
     return df
@@ -541,9 +543,79 @@ def PredictInterval( dataFrame       = None,
             else :
                 E = len( columns.split() )
         title = "E=" + str( E )
-        ax = df.plot( 'Tp', 'rho', title = title, linewidth = 3 )
+        ax = df.plot( 'Tp', 'rho', title = title,
+                      label = f"{columns} : {target}", linewidth = 3 )
         ax.set( xlabel = "Forecast Interval",
                 ylabel = "Prediction Skill ρ" )
+        ax.legend()
+        show()
+
+    return df
+
+#------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------
+def PredictExclusionRadius( dataFrame       = None,
+                            columns         = "",
+                            target          = "",
+                            lib             = "",
+                            pred            = "",
+                            Tp              = 1,
+                            E               = 1,
+                            tau             = -1,
+                            exclusionRadius = None,
+                            embedded        = False,
+                            validLib        = [],
+                            noTime          = False,
+                            ignoreNan       = True,
+                            verbose         = False,
+                            numProcess      = 4,
+                            mpMethod        = None,
+                            chunksize       = 1,
+                            showPlot        = True ):
+    '''Estimate optimal prediction against exclusion radius'''
+
+    if exclusionRadius is None :
+        exclusionRadius = [0,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,25,30]
+    elif not IsIterable( exclusionRadius ) :
+        exclusionRadius = [int(x) for x in exclusionRadius.split()]
+
+    # Setup Pool
+    args = { 'columns'         : columns,
+             'target'          : target,
+             'lib'             : lib,
+             'pred'            : pred,
+             'E'               : E,
+             'Tp'              : Tp,
+             'tau'             : tau,
+             'embedded'        : embedded,
+             'validLib'        : validLib,
+             'noTime'          : noTime,
+             'ignoreNan'       : ignoreNan }
+
+    # Create iterable for Pool.starmap, use repeated copies of data, args
+    poolArgs = zip( exclusionRadius, repeat( dataFrame ), repeat( args ) )
+
+    # Multiargument starmap : EmbedDimSimplexFunc in PoolFunc
+    mpContext = get_context( mpMethod )
+    with mpContext.Pool( processes = numProcess ) as pool :
+        rhoList = pool.starmap( PoolFunc.PredictExclusionRadiusSimplexFunc,
+                                poolArgs, chunksize = chunksize )
+
+    df = DataFrame( {'Exclusion radius':exclusionRadius, 'rho':rhoList} )
+
+    if showPlot :
+        if embedded :
+            if IsIterable( columns ) :
+                E = len( columns )
+            else :
+                E = len( columns.split() )
+        title = "E=" + str( E ) + "  Tp=" + str(Tp)
+        ax = df.plot( 'Exclusion radius', 'rho', title = title,
+                      label = f"{columns} : {target}", linewidth = 3 )
+        ax.set( xlabel = "Exclusion radius",
+                ylabel = "Prediction Skill ρ" )
+        ax.legend()
         show()
 
     return df
@@ -615,9 +687,11 @@ def PredictNonlinear( dataFrame       = None,
                 E = len( columns.split() )
         title = "E=" + str( E )
 
-        ax = df.plot( 'theta', 'rho', title = title, linewidth = 3 )
+        ax = df.plot( 'theta', 'rho', title = title,
+                      label = f"{columns} : {target}", linewidth = 3 )
         ax.set( xlabel = "S-map Localisation (θ)",
                 ylabel = "Prediction Skill ρ" )
+        ax.legend()
         show()
 
     return df

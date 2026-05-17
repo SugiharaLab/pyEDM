@@ -91,6 +91,28 @@ def PredictIntervalSimplexFunc( Tp, data, args ) :
     err = ComputeError( df['Observations'], df['Predictions'] )
     return err['rho']
 
+#------------------------------------------------------------
+# Function to evaluate Simplex in PredictExclusionRadius Pool
+#------------------------------------------------------------
+def PredictExclusionRadiusSimplexFunc( exclusionRadius, data, args ) :
+
+    df = API.Simplex( dataFrame       = data,
+                      columns         = args['columns'],
+                      target          = args['target'], 
+                      lib             = args['lib'],
+                      pred            = args['pred'],
+                      E               = args['E'], 
+                      Tp              = args['Tp'],
+                      tau             = args['tau'],
+                      exclusionRadius = exclusionRadius,
+                      embedded        = args['embedded'],
+                      validLib        = args['validLib'],
+                      noTime          = args['noTime'],
+                      ignoreNan       = args['ignoreNan'] )
+
+    err = ComputeError( df['Observations'], df['Predictions'] )
+    return err['rho']
+
 #-----------------------------------------------------
 # Function to evaluate SMap in PredictNonlinear Pool
 #-----------------------------------------------------

@@ -2,9 +2,10 @@
 # import EDM functions
 from .API      import MakeBlock, Embed, Simplex, SMap, CCM, Multiview
 from .API      import EmbedDimension, PredictInterval, PredictNonlinear
+from .API      import PredictExclusionRadius
 from .AuxFunc  import Examples, PlotObsPred, PlotCoeff, ComputeError
 from .AuxFunc  import SurrogateData
 from .LoadData import sampleData
 
-__version__     = "2.5.1"
-__versionDate__ = "2026-05-02"
+__version__     = "2.5.2"
+__versionDate__ = "2026-05-17"
