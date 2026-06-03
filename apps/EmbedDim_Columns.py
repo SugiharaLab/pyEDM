@@ -300,7 +300,7 @@ def EmbedDim_Columns( data,
             if verbose and ( done % stride == 0 or done == M ):
                 pct = 100.0 * done / M
                 print( f"  [{done}/{M} {pct:5.1f}%] {col} -> {tgt}  "
-                       f"maxE={E_}  maxRho={rho_}", flush = True )
+                       f"E={E_}  rho={rho_.round(4)}", flush = True )
 
     if verbose :
         print( f"EmbedDim_Columns: finished {M}/{M} in "
