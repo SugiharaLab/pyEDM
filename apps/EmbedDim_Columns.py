@@ -71,8 +71,8 @@ def _ColumnSweep( task ):
 
     task = ( index, column, target, subFrame, params )
     Returns ( index, column, target, E, rho ).
-    Any failure (degenerate / too-short / Simplex error) yields NaN, NaN
-    rather than killing the batch.
+    Any failure (degenerate / too-short / Simplex error) yields
+    E, rho = NaN, NaN rather than killing the batch.
     '''
     index, column, target, subFrame, P = task
 
@@ -85,32 +85,32 @@ def _ColumnSweep( task ):
             limiter = None
 
         try :
-            warnings.simplefilter( 'ignore' )   # constant-column corr -> NaN
-            prevE   = None      # E of the last finite rho seen
-            prevRho = None      # the last finite rho
-            allE    = []        # (E, rho) for the global-max path
-            peakE   = None
-            peakRho = None
+            warnings.simplefilter( 'ignore' ) # NaN
+            prevE   = None
+            prevRho = None
+            allE    = []    # (E, rho) global-max
+            peakE   = None  # if firstMax True
+            peakRho = None  # if firstMax True
 
             for E in range( P['minE'], P['maxE'] + 1 ):
-                sx = Simplex( dataFrame       = subFrame,
-                              columns         = column,
-                              target          = target,
-                              lib             = P['lib'],
-                              pred            = P['pred'],
-                              E               = E,
-                              Tp              = P['Tp'],
-                              tau             = P['tau'],
-                              exclusionRadius = P['exclusionRadius'],
-                              embedded        = False,
-                              validLib        = P['validLib'],
-                              noTime          = P['noTime'],
-                              ignoreNan       = P['ignoreNan'] )
+                smpx = Simplex( dataFrame       = subFrame,
+                                columns         = column,
+                                target          = target,
+                                lib             = P['lib'],
+                                pred            = P['pred'],
+                                E               = E,
+                                Tp              = P['Tp'],
+                                tau             = P['tau'],
+                                exclusionRadius = P['exclusionRadius'],
+                                embedded        = False,
+                                validLib        = P['validLib'],
+                                noTime          = P['noTime'],
+                                ignoreNan       = P['ignoreNan'] )
 
-                err = ComputeError( sx['Observations'], sx['Predictions'] )
+                err = ComputeError( smpx['Observations'], smpx['Predictions'] )
                 rho = err['rho']
 
-                if rho is None or (isinstance( rho, float ) and np.isnan( rho )):
+                if rho is None or (isinstance(rho, float) and np.isnan( rho )):
                     continue   # skip non-finite rho; do not trip turnover
 
                 allE.append( ( E, rho ) )
@@ -131,7 +131,9 @@ def _ColumnSweep( task ):
                         return ( index, column, target, np.nan, np.nan )
                 # Estimate is never below the minE floor.
                 peakE = max( peakE, P['minE'] )
-                return ( index, column, target, peakE, peakRho )
+                return ( index, column, target,
+                         np.uint16(peakE),
+                         peakRho.round(4).astype(np.float32) )
 
             # Global maximum, ties broken toward the smaller E.
             if not allE :
@@ -139,7 +141,8 @@ def _ColumnSweep( task ):
 
             bestE, bestRho = max( allE, key = lambda er: ( er[1], -er[0] ) )
             bestE = max( bestE, P['minE'] )   # never below the minE floor
-            return ( index, column, target, bestE, bestRho )
+            return ( index, column, target, np.uint16(bestE),
+                     bestRho.round(4).astype(np.float32) )
 
         finally :
             if limiter is not None :
@@ -172,7 +175,7 @@ def EmbedDim_Columns( data,
                       verbose         = False,
                       logPct          = 5,
                       plot            = False ):
-    '''Estimate embedding dimension for every feature column of data.
+    '''Estimate embedding dimension for every column of data.
 
     data       : pandas DataFrame, N observations x M columns.  Unless
                  noTime=True the first column is treated as a time/index
@@ -180,7 +183,7 @@ def EmbedDim_Columns( data,
     target     : None  -> each feature is projected to itself.
                  name  -> every feature is projected to this column.
     minE,maxE  : inclusive embedding-dimension sweep.
-    lib,pred   : pyEDM library/prediction ranges.  None -> full record "1 N".
+    lib,pred   : pyEDM library/prediction ranges.  None -> full record [1,N].
     firstMax   : True  -> report the first (lowest-E) local maximum of rho.
                  False -> report the global maximum (ties -> smaller E).
     nWorkers   : column-level processes.  None -> os.cpu_count().
@@ -199,7 +202,7 @@ def EmbedDim_Columns( data,
     if maxE < minE :
         raise ValueError( "EmbedDim_Columns: require maxE >= minE." )
 
-    columns = list( data.columns )
+    columns = data.columns.to_list()
 
     # ---- feature / time split ------------------------------------------
     if noTime :
@@ -258,7 +261,7 @@ def EmbedDim_Columns( data,
 
     M = len( tasks )
     if M == 0 :
-        return pd.DataFrame( columns = ['column','target','E','rho'] )
+        return pd.DataFrame( columns = ['column','target','E','rho'] ) # empty
 
     # ---- worker count ---------------------------------------------------
     if nWorkers is None :
