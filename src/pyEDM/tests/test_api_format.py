@@ -87,6 +87,10 @@ def test_api_negative_tau():
 def test_api_column_names_with_spaces():
     '''Column names containing spaces, all-positional call'''
     data = EDM.sampleData['columnNameSpace']
-    EDM.Simplex( data, ['Var 1', 'Var 2'], ['Var 5 1'],
-                 [1, 80], [81, 85], 5, 1, 0, -1, 0,
-                 False, [], False, 0, False, False, False )
+    kwargs = SimplexArgs.copy()
+    kwargs.update( dict( columns = ['Var 1', 'Var 2'],
+                         target  = ['Var 5 1'],
+                         lib     = [1, 80],
+                         pred    = [81, 85],
+                         E       = 5 ) )
+    EDM.Simplex( data, **kwargs )

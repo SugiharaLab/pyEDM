@@ -115,13 +115,12 @@ def FindNeighbors( self ) :
                           compact_nodes = True,
                           balanced_tree = True )
 
-    #-----------------------------------------------
-    # Query prediction set
-    #-----------------------------------------------
-    numThreads = -1 # Use all CPU threads in kdTree.query
+    #------------------------------------------------
+    # Query prediction set : workers = -1 all threads
+    #------------------------------------------------
     knn_distances, knn_neighbors = self.kdTree.query(
         self.Embedding.iloc[ self.pred_i, : ].to_numpy(),
-        k = k_query, eps = 0, p = 2, workers = numThreads )
+        k = k_query, eps = 0, p = 2, workers = self.kdWorkers )
 
     # KDTree.query squeezes the last dimension when k == 1
     if k_query == 1 :

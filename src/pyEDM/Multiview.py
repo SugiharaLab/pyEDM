@@ -69,6 +69,7 @@ class Multiview:
                   numProcess      = 4,
                   mpMethod        = None,
                   chunksize       = 1,
+                  kdWorkers       = -1,
                   returnObject    = False ):
         '''Initialize Multiview.'''
 
@@ -93,6 +94,7 @@ class Multiview:
         self.numProcess      = numProcess
         self.mpMethod        = mpMethod
         self.chunksize       = chunksize
+        self.kdWorkers       = kdWorkers
 
         self.Embedding  = None # DataFrame 
         self.View       = None # DataFrame
@@ -164,6 +166,7 @@ class Multiview:
                  'exclusionRadius' : self.exclusionRadius,
                  'embedded'        : True,
                  'noTime'          : True,
+                 'kdWorkers'       : self.kdWorkers,
                  'ignoreNan'       : self.ignoreNan }
 
         # Create iterable for Pool.starmap, repeated copies of data, args

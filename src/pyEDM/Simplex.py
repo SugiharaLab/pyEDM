@@ -29,6 +29,7 @@ class Simplex( EDMClass ):
                   embedded        = False,
                   validLib        = [],
                   noTime          = False,
+                  kdWorkers       = -1,
                   generateSteps   = 0,
                   generateConcat  = False,
                   ignoreNan       = True,
@@ -53,6 +54,7 @@ class Simplex( EDMClass ):
         self.embedded        = embedded
         self.validLib        = validLib
         self.noTime          = noTime
+        self.kdWorkers       = kdWorkers
         self.generateSteps   = generateSteps
         self.generateConcat  = generateConcat
         self.ignoreNan       = ignoreNan

@@ -102,6 +102,7 @@ def Simplex( dataFrame       = None,
              embedded        = False,
              validLib        = [],
              noTime          = False,
+             kdWorkers       = -1,
              generateSteps   = 0,
              generateConcat  = False,
              verbose         = False,
@@ -126,6 +127,7 @@ def Simplex( dataFrame       = None,
                       embedded        = embedded,
                       validLib        = validLib,
                       noTime          = noTime,
+                      kdWorkers       = kdWorkers,
                       generateSteps   = generateSteps,
                       generateConcat  = generateConcat,
                       ignoreNan       = ignoreNan,
@@ -162,6 +164,7 @@ def SMap( dataFrame       = None,
           embedded        = False,
           validLib        = [],
           noTime          = False,
+          kdWorkers       = -1,
           generateSteps   = 0,
           generateConcat  = False,
           ignoreNan       = True,
@@ -204,6 +207,7 @@ def SMap( dataFrame       = None,
                    embedded        = embedded,
                    validLib        = validLib,
                    noTime          = noTime,
+                   kdWorkers       = kdWorkers,
                    generateSteps   = generateSteps,
                    generateConcat  = generateConcat,
                    ignoreNan       = ignoreNan,
@@ -364,6 +368,7 @@ def Multiview( dataFrame       = None,
                numProcess      = 4,
                mpMethod        = None,
                chunksize       = 1,
+               kdWorkers       = -1,
                showPlot        = False,
                returnObject    = False ):
     '''Multiview prediction on path/file.'''
@@ -389,6 +394,7 @@ def Multiview( dataFrame       = None,
                         numProcess      = numProcess,
                         mpMethod        = mpMethod,
                         chunksize       = chunksize,
+                        kdWorkers       = kdWorkers,
                         returnObject    = returnObject )
 
     M.Rank()
@@ -449,6 +455,7 @@ def EmbedDimension( dataFrame       = None,
                     numProcess      = 4,
                     mpMethod        = None,
                     chunksize       = 1,
+                    kdWorkers       = -1,
                     showPlot        = True ):
     '''Estimate optimal embedding dimension [1:maxE].'''
 
@@ -464,6 +471,7 @@ def EmbedDimension( dataFrame       = None,
              'embedded'        : embedded,
              'validLib'        : validLib,
              'noTime'          : noTime,
+             'kdWorkers'       : kdWorkers,
              'ignoreNan'       : ignoreNan }
 
     # Create iterable for Pool.starmap, use repeated copies of data, args
@@ -508,6 +516,7 @@ def PredictInterval( dataFrame       = None,
                      numProcess      = 4,
                      mpMethod        = None,
                      chunksize       = 1,
+                     kdWorkers       = -1,
                      showPlot        = True ):
     '''Estimate optimal prediction interval [1:maxTp]'''
 
@@ -523,6 +532,7 @@ def PredictInterval( dataFrame       = None,
              'embedded'        : embedded,
              'validLib'        : validLib,
              'noTime'          : noTime,
+             'kdWorkers'       : kdWorkers,
              'ignoreNan'       : ignoreNan }
 
     # Create iterable for Pool.starmap, use repeated copies of data, args
@@ -572,6 +582,7 @@ def PredictExclusionRadius( dataFrame       = None,
                             numProcess      = 4,
                             mpMethod        = None,
                             chunksize       = 1,
+                            kdWorkers       = -1,
                             showPlot        = True ):
     '''Estimate optimal prediction against exclusion radius'''
 
@@ -591,6 +602,7 @@ def PredictExclusionRadius( dataFrame       = None,
              'embedded'        : embedded,
              'validLib'        : validLib,
              'noTime'          : noTime,
+             'kdWorkers'       : kdWorkers,
              'ignoreNan'       : ignoreNan }
 
     # Create iterable for Pool.starmap, use repeated copies of data, args
@@ -643,6 +655,7 @@ def PredictNonlinear( dataFrame       = None,
                       numProcess      = 4,
                       mpMethod        = None,
                       chunksize       = 1,
+                      kdWorkers       = -1,
                       showPlot        = True ):
     '''Estimate S-map localisation over theta.'''
 
@@ -666,6 +679,7 @@ def PredictNonlinear( dataFrame       = None,
              'embedded'        : embedded,
              'validLib'        : validLib,
              'noTime'          : noTime,
+             'kdWorkers'       : kdWorkers,
              'ignoreNan'       : ignoreNan }
 
     # Create iterable for Pool.starmap, use repeated copies of data, args

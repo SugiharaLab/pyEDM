@@ -23,6 +23,7 @@ def MultiviewSimplexPred( combo, data, args ) :
                       exclusionRadius = args['exclusionRadius'],
                       embedded        = args['embedded'],
                       noTime          = args['noTime'],
+                      kdWorkers       = args['kdWorkers'],
                       ignoreNan       = args['ignoreNan'] )
     return df
 
@@ -64,6 +65,7 @@ def EmbedDimSimplexFunc( E, data, args ) :
                       embedded        = args['embedded'],
                       validLib        = args['validLib'],
                       noTime          = args['noTime'],
+                      kdWorkers       = args['kdWorkers'],
                       ignoreNan       = args['ignoreNan'] )
 
     err = ComputeError( df['Observations'], df['Predictions'] )
@@ -86,6 +88,7 @@ def PredictIntervalSimplexFunc( Tp, data, args ) :
                       embedded        = args['embedded'],
                       validLib        = args['validLib'],
                       noTime          = args['noTime'],
+                      kdWorkers       = args['kdWorkers'],
                       ignoreNan       = args['ignoreNan'] )
 
     err = ComputeError( df['Observations'], df['Predictions'] )
@@ -108,6 +111,7 @@ def PredictExclusionRadiusSimplexFunc( exclusionRadius, data, args ) :
                       embedded        = args['embedded'],
                       validLib        = args['validLib'],
                       noTime          = args['noTime'],
+                      kdWorkers       = args['kdWorkers'],
                       ignoreNan       = args['ignoreNan'] )
 
     err = ComputeError( df['Observations'], df['Predictions'] )
@@ -133,6 +137,7 @@ def PredictNLSMapFunc( theta, data, args ) :
                   embedded        = args['embedded'],
                   validLib        = args['validLib'],
                   noTime          = args['noTime'],
+                  kdWorkers       = args['kdWorkers'],
                   ignoreNan       = args['ignoreNan'] )
 
     df = S['predictions']

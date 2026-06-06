@@ -47,6 +47,24 @@ def test_simplex_embedded_block_3sp():
     assert S1.equals( S2 )
 
 
+def test_simplex_E3_block_3sp_kdWorkers():
+    '''embedded = False, E = 3, kdWorkers = 1'''
+    data = EDM.sampleData['block_3sp']
+    kwargs = SimplexArgs.copy()
+    kwargs.update( dict( columns   = 'x_t',
+                         target    = 'x_t',
+                         lib       = [1, 100],
+                         pred      = [101, 195],
+                         E         = 3,
+                         kdWorkers = 1 ) )
+    df  = EDM.Simplex( data, **kwargs )
+    dfv = ValidData( 'Smplx_E3_block_3sp_valid.csv' )
+
+    S1 = round( dfv.get('Predictions')[1:95], 6 )
+    S2 = round(  df.get('Predictions')[1:95], 6 )
+    assert S1.equals( S2 )
+
+
 def test_simplex_negative_tp():
     '''Tp = -2'''
     data = EDM.sampleData['block_3sp']

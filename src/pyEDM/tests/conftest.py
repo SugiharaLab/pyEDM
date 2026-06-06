@@ -70,6 +70,7 @@ SimplexArgs = dict( columns         = "",
                     embedded        = False,
                     validLib        = [],
                     noTime          = False,    # not tested individually
+                    kdWorkers       = -1,
                     generateSteps   = 0,        # tested in test_generate.py
                     generateConcat  = False,    # tested in test_generate.py
                     verbose         = False,    # not tested
@@ -91,6 +92,7 @@ SMapArgs = dict( columns         = "",
                  embedded        = False,
                  validLib        = [],
                  noTime          = False,       # tested in test_smap.py
+                 kdWorkers       = -1,
                  generateSteps   = 0,           # tested in test_generate.py
                  generateConcat  = False,       # tested in test_generate.py
                  ignoreNan       = True,
@@ -138,6 +140,7 @@ MultiviewArgs = dict( columns         = "",
                       numProcess      = 4,
                       mpMethod        = None,
                       chunksize       = 1,      # not tested
+                      kdWorkers       = -1,
                       showPlot        = False,
                       returnObject    = False )
 
@@ -157,6 +160,7 @@ EmbedDimensionArgs = dict( columns         = "",
                            numProcess      = 4,
                            mpMethod        = None,
                            chunksize       = 1,      # not tested
+                           kdWorkers       = -1,
                            showPlot        = False )
 
 PredictIntervalArgs = dict( columns         = "",
@@ -175,6 +179,7 @@ PredictIntervalArgs = dict( columns         = "",
                             numProcess      = 4,
                             mpMethod        = None,
                             chunksize       = 1,      # not tested
+                            kdWorkers       = -1,
                             showPlot        = False )
 
 PredictNonlinearArgs = dict( columns         = "",
@@ -196,6 +201,7 @@ PredictNonlinearArgs = dict( columns         = "",
                              numProcess      = 4,
                              mpMethod        = None,
                              chunksize       = 1,      # not tested
+                             kdWorkers       = -1,
                              showPlot        = False )
 
 PredictExclusionRadiusArgs = dict( columns         = "",
@@ -214,4 +220,5 @@ PredictExclusionRadiusArgs = dict( columns         = "",
                                    numProcess      = 4,
                                    mpMethod        = None,
                                    chunksize       = 1,
+                                   kdWorkers       = -1,
                                    showPlot        = True )

@@ -15,7 +15,7 @@ class EDM:
 #--------------------------------------------------------------------
     '''EDM class : data container
        Simplex, SMap inherited from EDM.
-       CCM base class contains two Simplex instances.'''
+       CCM is standalone. CCM_24 has two Simplex instances.'''
 
     def __init__( self, dataFrame, name = 'EDM' ):
         self.name = name
