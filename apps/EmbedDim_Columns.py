@@ -72,7 +72,7 @@ def _ColumnSweep( task ):
     task = ( index, column, target, subFrame, params )
     Returns ( index, column, target, E, rho ).
     Any failure (degenerate / too-short / Simplex error) yields
-    E, rho = NaN, NaN rather than killing the batch.
+    E, rho = 0, NaN rather than killing the batch. E cast to uint16. 
     '''
     index, column, target, subFrame, P = task
 
@@ -128,7 +128,7 @@ def _ColumnSweep( task ):
                     if prevRho is not None :
                         peakE, peakRho = prevE, prevRho
                     else :
-                        return ( index, column, target, np.nan, np.nan )
+                        return ( index, column, target, np.uint16(0), np.nan )
                 # Estimate is never below the minE floor.
                 peakE = max( peakE, P['minE'] )
                 return ( index, column, target,
@@ -137,7 +137,7 @@ def _ColumnSweep( task ):
 
             # Global maximum, ties broken toward the smaller E.
             if not allE :
-                return ( index, column, target, np.nan, np.nan )
+                return ( index, column, target, np.uint16(0), np.nan )
 
             bestE, bestRho = max( allE, key = lambda er: ( er[1], -er[0] ) )
             bestE = max( bestE, P['minE'] )   # never below the minE floor
@@ -149,7 +149,7 @@ def _ColumnSweep( task ):
                 limiter.unregister()
 
     except Exception :
-        return ( index, column, target, np.nan, np.nan )
+        return ( index, column, target, np.uint16(0), np.nan )
 
 
 #-----------------------------------------------------------------------------
