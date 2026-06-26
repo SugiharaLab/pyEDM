@@ -123,7 +123,7 @@ class CCM_Matrix:
                  noTime           = False,
                  parallel         = True,
                  mpMethod         = None,
-                 sharedMB   = 0.01,
+                 sharedMB         = 0.01,
                  targetBatchSize  = None,
                  expConverge      = False,
                  progressLog      = None,
@@ -905,14 +905,33 @@ def CCM_Matrix_CmdLine():
     else:
         raise RuntimeError( "Invalid inputFile or inputData" )
 
+    # Read embedding dimension DataFrame from EmbedDim_Columns.py if provided
+    if args.inputEDimFile:
+        if '.csv' in args.inputEDimFile[-4:] :
+            dataFrameEDim = read_csv( args.inputEDimFile )
+        elif '.feather' in args.inputEDimFile[-8:] :
+            dataFrameEDim = read_feather( args.inputEDimFile )
+        else :
+            msg = f'Input EDim file {args.inputEDimFile} must be csv or feather'
+            raise( RuntimeError( msg ) )
+
+        # Validate coherence between data and EDim columns
+        EDimColumns = dataFrameEDim['column']
+        columns_valid = EDimColumns.to_list() == dataFrame.columns.to_list()
+        if not columns_valid :
+            msg = 'inputEDimFile "column" does not match data DataFrame.columns'
+            raise( RuntimeError( msg ) )
+
+        args.E = dataFrameEDim['E']
+
     if len(args.E) == 1:
         args.E = args.E[0]
 
     # Instantiate CCM_Matrix()
     ccm = CCM_Matrix( dataFrame       = dataFrame,
+                      E               = args.E,
                       libSizes        = args.libSizes,
                       pLibSizes       = args.pLibSizes,
-                      E               = args.E,
                       Tp              = args.Tp,
                       tau             = args.tau,
                       exclusionRadius = args.exclusionRadius,
@@ -963,6 +982,12 @@ def ParseCmdLine():
                         action  = 'store',
                         default = None,
                         help    = 'Input data file .csv or .feather')
+
+    parser.add_argument('-iE', '--inputEDimFile',
+                        dest    = 'inputEDimFile', type = str,
+                        action  = 'store',
+                        default = None,
+                        help    = 'Input EDim file .csv or .feather')
 
     parser.add_argument('-d', '--inputData',
                         dest    = 'inputData', type = str,

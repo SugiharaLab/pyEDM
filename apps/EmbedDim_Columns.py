@@ -355,7 +355,7 @@ def _Plot( df, Tp ):
 #-----------------------------------------------------------------------------
 # Command-line interface
 #-----------------------------------------------------------------------------
-def ParseArguments():
+def ParseCmdLine():
     parser = argparse.ArgumentParser(
         description = 'Parallel embedding-dimension estimation across '
                       'DataFrame columns.' )
@@ -440,10 +440,12 @@ def ParseArguments():
     return parser.parse_args()
 
 
-def main():
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+def EmbedDim_Columns_CmdLine():
     '''Command-line entry point.
 
-    Parses CLI flags via ParseArguments(), reads the input .csv .feather from
+    Parses CLI flags via ParseCmdLine(), reads the input .csv .feather from
     inputPath/inputFile into a pandas DataFrame, calls EmbedDim_Columns()
     with the parsed arguments, and either writes the result to outputFile
     or prints it to stdout when no output file is given.
@@ -452,7 +454,7 @@ def main():
     multiprocessing start method is 'spawn' or 'forkserver', which re-import
     this module in each worker.
     '''
-    args = ParseArguments()
+    args = ParseCmdLine()
 
     path = os.path.join( args.inputPath, args.inputFile )
     if '.csv' in args.inputFile[-4:] :
@@ -484,9 +486,12 @@ def main():
                            logPct          = args.logPct,
                            plot            = args.plot )
 
-    if not args.outputFile :
+    if args.verbose and not args.outputFile :
         print( df.to_string( index = False ) )
 
+    return df
 
-if __name__ == '__main__':
-    main()
+#----------------------------------------------------------------------------
+# Provide for cmd line invocation and clean module loading
+if __name__ == "__main__":
+    EmbedDim_Columns_CmdLine()

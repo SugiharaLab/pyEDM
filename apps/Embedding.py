@@ -7,8 +7,13 @@ from pandas import concat, read_csv
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
-def Embedding( data, columns = None, E = 2, tau = -1,
-               outputFile = None, plusminus = False, verbose = False ):
+def Embedding( data,
+               columns    = None,
+               E          = 2,
+               tau        = -1,
+               outputFile = None,
+               plusminus  = False,
+               verbose    = False ):
     '''
     EDM Embed wrapper
     Create time-delay embedding with time column for EDM. 
@@ -87,9 +92,12 @@ def Embedding_CmdLine():
     dataFrame = read_csv( args.inputFile )
 
     # Call Embedding()
-    df = Embedding( data = dataFrame, columns = args.columns,
-                    E = args.E, tau = args.tau, plusminus = args.plusminus, 
-                    verbose = args.verbose )
+    df = Embedding( data      = dataFrame,
+                    columns   = args.columns,
+                    E         = args.E,
+                    tau       = args.tau,
+                    plusminus = args.plusminus, 
+                    verbose   = args.verbose )
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
