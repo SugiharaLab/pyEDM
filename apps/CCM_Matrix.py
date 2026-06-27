@@ -917,7 +917,11 @@ def CCM_Matrix_CmdLine():
 
         # Validate coherence between data and EDim columns
         EDimColumns = dataFrameEDim['column']
-        columns_valid = EDimColumns.to_list() == dataFrame.columns.to_list()
+        if args.noTime :
+            columns_valid = EDimColumns.to_list() == dataFrame.columns.to_list()
+        else :
+            columns_valid = EDimColumns.to_list() == \
+                dataFrame.columns[1:].to_list()
         if not columns_valid :
             msg = 'inputEDimFile "column" does not match data DataFrame.columns'
             raise( RuntimeError( msg ) )

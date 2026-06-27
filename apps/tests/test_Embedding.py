@@ -2,7 +2,7 @@
 import pytest
 from   pyEDM import sampleData
 
-from conftest  import EmbeddingArgs, ValidData, pyEDM_FlyData
+from conftest  import EmbeddingArgs, ValidData
 from Embedding import Embedding
 
 #------------------------------------------------------------

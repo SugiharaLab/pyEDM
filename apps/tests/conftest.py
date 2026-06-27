@@ -55,9 +55,9 @@ def ValidData( filename, index_col = None ):
 
 DATA_DIR = os.path.join( os.path.dirname(os.path.abspath(__file__)), "data" )
 
-def pyEDM_FlyData():
-    '''Get Fly data'''
-    return read_csv( os.path.join( DATA_DIR, 'Fly20_norm_1061.csv' ) )
+def LoadData( filename ):
+    '''Return data DataFrame from data/ directory.'''
+    return read_csv( os.path.join( DATA_DIR, filename ) )
 
 # ---------------------------------------------------------------------------
 # Default argument dictionaries — one per API function.

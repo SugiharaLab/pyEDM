@@ -1,15 +1,15 @@
 '''Validation tests for pyEDM/apps/SMap_Tp'''
 import pytest
 
-from conftest import CrossMap_MatrixArgs, ValidData, pyEDM_FlyData
+from conftest import CrossMap_MatrixArgs, ValidData, LoadData
 from conftest import GetMP_ContextName 
 from CrossMap_Matrix import CrossMap_Matrix
 
 #------------------------------------------------------------
 def test_CrossMap_Matrix_1():
     '''Fly 20 subset'''
-    data    = pyEDM_FlyData().copy()
-    kwargs  = CrossMap_MatrixArgs.copy()
+    data   = LoadData('Fly20_norm_1061.csv').copy()
+    kwargs = CrossMap_MatrixArgs.copy()
     kwargs.update( dict( E           = 7,
                          Tp          = 1,
                          tau         = -3,
