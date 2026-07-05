@@ -14,6 +14,7 @@ from importlib import resources
 from multiprocessing import get_context, get_start_method
 
 from pandas import read_csv, read_feather
+from numpy import load
 
 # Monkeypatch sys.path to import non-package apps in ../
 sys.path.append('../')
@@ -47,6 +48,8 @@ def ValidData( filename, index_col = None ):
         df = read_csv( os.path.join(VALID_DIR, filename), index_col = index_col )
     elif '.feather' in filename[-8:] :
         df = read_feather( os.path.join(VALID_DIR, filename) )
+    elif '.npy' in filename[-4:] :
+        df = load( os.path.join(VALID_DIR, filename) )
     return df
 
 # ---------------------------------------------------------------------------
