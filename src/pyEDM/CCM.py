@@ -333,7 +333,7 @@ class CCM:
         if self.embedded:
             # Pre-built embedding: take columns directly
             self.embedding_col = np.column_stack([
-                np.asarray(self._dataFrame[c], dtype=np.float64)
+                np.asarray(self.Data[c], dtype=np.float64)
                 for c in self.columns
             ])
             self.valid_col = ~np.any(np.isnan(self.embedding_col), axis=1)
@@ -341,7 +341,7 @@ class CCM:
 
             # Reverse: target list as pre-built embedding
             self.embedding_tgt = np.column_stack([
-                np.asarray(self._dataFrame[c], dtype=np.float64)
+                np.asarray(self.Data[c], dtype=np.float64)
                 for c in self.target
             ])
             self.valid_tgt = ~np.any(np.isnan(self.embedding_tgt), axis=1)
