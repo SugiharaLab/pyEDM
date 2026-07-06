@@ -138,6 +138,23 @@ def test_ccm_positive_tau():
     assert dfv.equals( round( df, 4 ) )
 
 
+def test_ccm_embedded():
+    '''embedded = True'''
+    data = EDM.sampleData['Lorenz5D']
+    kwargs = CCMArgs.copy()
+    kwargs.update( dict( columns  = ['V1','V2','V3'],
+                         target   = 'V5',
+                         libSizes = [50, 950, 100],
+                         Tp       = 0,
+                         sample   = 20,
+                         embedded = True,
+                         seed     = 777 ) )
+    df  = EDM.CCM( data, **kwargs )
+    dfv = round( ValidData( 'CCM_embedded.csv' ), 4 )
+
+    assert dfv.equals( round( df, 4 ) )
+
+
 def test_ccm_legacy():
     '''CCM legacy'''
     data = EDM.sampleData["block_3sp"]
