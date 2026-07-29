@@ -4,7 +4,7 @@ from warnings import warn
 
 # package modules
 from pandas import DataFrame
-from numpy  import append, array, empty, floating, full, integer, nan
+from numpy  import append, arange, array, empty, floating, full, integer, nan
 
 #--------------------------------------------------------------------
 # EDM Methods
@@ -157,10 +157,19 @@ def FormatProjection( self ) :
 
     obsOut_i = array( obsOut_i, dtype = int )
 
+    # outSize (above) is the per-segment upper bound N_pred + Tp_magnitude. It
+    # assumes the extension spans a full Tp_magnitude of created rows. When an
+    # embedding shift removes rows from the end being extended (e.g. negative Tp
+    # with tau < 0, where pred_i[0] > 0), fewer rows are created and the surplus
+    # would appear as trailing all-nan rows. outSize_fit is the actual number of
+    # output rows: the span truly occupied by predictions and observations.
+    # Every output vector below is allocated with outSize_fit.
+    outSize_fit = int( max( predOut_i[-1], obsOut_i[-1] ) ) + 1
+
     # ndarray init to nan
-    observationOut = full( outSize, nan )
-    projectionOut  = full( outSize, nan )
-    varianceOut    = full( outSize, nan )
+    observationOut = full( outSize_fit, nan )
+    projectionOut  = full( outSize_fit, nan )
+    varianceOut    = full( outSize_fit, nan )
 
     # fill *Out with observed & projected values
     observationOut[ obsOut_i ] = observations
@@ -176,11 +185,11 @@ def FormatProjection( self ) :
        (self.Tp > 0 and (self.pred_i_all[-1] + self.Tp) < len(self.time)) or \
        (self.Tp < 0 and (self.pred_i[0] + self.Tp >= 0)) :
         # All times present in self.time, copy them
-        timeOut = empty( outSize, dtype = self.time.dtype )
+        timeOut = empty( outSize_fit, dtype = self.time.dtype )
         timeOut[ obsOut_i ] = self.time[ obs_i ]
     else :
         # Need to pre/append additional times
-        timeOut = self.AddTime( Tp_magnitude, outSize, obs_i, obsOut_i )
+        timeOut = self.AddTime( Tp_magnitude, outSize_fit, obs_i, obsOut_i )
 
     #----------------------------------------------------
     # Output DataFrame
@@ -196,8 +205,8 @@ def FormatProjection( self ) :
     #----------------------------------------------------
     if self.name == 'SMap' :
         # ndarray init to nan
-        coefOut = full( (outSize, N_dim), nan )
-        SVOut   = full( (outSize, N_dim), nan )
+        coefOut = full( (outSize_fit, N_dim), nan )
+        SVOut   = full( (outSize_fit, N_dim), nan )
         # fill coefOut, SVOut with projected values
         coefOut[ predOut_i, : ] = self.coefficients
         SVOut  [ predOut_i, : ] = self.singularValues
@@ -267,7 +276,7 @@ def ConvertTime( self ) :
     self.time = time_
 
 #-------------------------------------------------------------------
-def AddTime( self, Tp_magnitude, outSize, obs_i, obsOut_i ) :
+def AddTime( self, Tp_magnitude, outSize_fit, obs_i, obsOut_i ) :
 #-------------------------------------------------------------------
     '''Prepend or append time values to self.time if needed
        Return timeOut vector with additional Tp points
@@ -275,46 +284,37 @@ def AddTime( self, Tp_magnitude, outSize, obs_i, obsOut_i ) :
     if self.verbose:
         print( f'{self.name}: AddTime()' )
 
-    min_pred_i     = self.pred_i[0]
-    max_pred_i_all = self.pred_i_all[-1]
-    deltaT         = self.time[1] - self.time[0]
+    deltaT = self.time[1] - self.time[0]
 
-    # First, fill timeOut with times in time
-    # timeOut should not be int (np.integer) since they cannot be nan
+    # timeOut must be able to hold nan, so never an integer dtype
     time0 = self.time[0]
     if isinstance( time0, int ) or isinstance( time0, integer ) :
         time_dtype = float
     else :
         time_dtype = type( time0 )
 
-    timeOut = full( outSize, nan, dtype = time_dtype )
-
+    # Place the observed times; created times fill the remaining nan slots
+    timeOut = full( outSize_fit, nan, dtype = time_dtype )
     timeOut[ obsOut_i ] = self.time[ obs_i ]
 
-    newTimes = full( Tp_magnitude, nan, dtype = time_dtype )
-
+    # The extension length is the count of empty (created) slots at the end
+    # being extended -- NOT Tp_magnitude. These differ whenever an embedding
+    # shift removes usable rows from that end (tau sign dependent), which is
+    # the source of the mis-sized / mis-anchored extensions.
     if self.Tp > 0 :
-        # Tp introduces time values beyond the range of time
-        # Generate future times
-        lastTime    = self.time[ max_pred_i_all ]
-        newTimes[0] = lastTime + deltaT
+        # Future extension: fill the trailing nan slots after the last
+        # observation, continuing from the last observed time.
+        nExtend = outSize_fit - obsOut_i[-1] - 1
+        if nExtend > 0 :
+            newTimes = self.time[ obs_i[-1] ] + deltaT * arange( 1, nExtend + 1 )
+            timeOut[ -nExtend : ] = newTimes
 
-        for i in range( 1, self.Tp ) :
-            newTimes[ i ] = newTimes[ i-1 ] + deltaT
-
-        timeOut[ -self.Tp : ] = newTimes
-
-    else :
-        # Tp introduces time values before the range of time
-        # Generate past times
-        newTimes[0] = self.time[ min_pred_i ] - deltaT
-        for i in range( 1, Tp_magnitude ) :
-            newTimes[ i ] = newTimes[ i-1 ] - deltaT
-
-        newTimes = newTimes[::-1] # Reverse
-
-        # Shift timeOut values based on leading nan
-        shift = Tp_magnitude - self.pred_i[0]
-        timeOut[ : Tp_magnitude ] = newTimes
+    elif self.Tp < 0 :
+        # Past extension: fill the leading nan slots before the first
+        # observation, descending from the first observed time.
+        nExtend = obsOut_i[0]
+        if nExtend > 0 :
+            newTimes = self.time[ obs_i[0] ] - deltaT * arange( nExtend, 0, -1 )
+            timeOut[ : nExtend ] = newTimes
 
     return timeOut
