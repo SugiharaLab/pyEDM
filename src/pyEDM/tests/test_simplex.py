@@ -257,3 +257,24 @@ def test_simplex_exclusion_radius_knn():
 
     knnValid = array( [89, 90, 91, 92, 93, 94, 95, 96, 97, 98] )
     assert array_equal( S.knn_neighbors[:, 0], knnValid )
+
+
+def test_simplex_neighbor_ties():
+    '''E = 1 from PSF salmon data'''
+    data   = ValidData( 'Smplx_NeighborTies.csv' )
+    kwargs = SimplexArgs.copy()
+    kwargs.update( dict( columns         = '1137',
+                         target          = '1135',
+                         lib             = [1, 96],
+                         pred            = [1, 96],
+                         E               = 1,
+                         Tp              = 0,
+                         exclusionRadius = 1,
+                         noTime          = True ) )
+
+    df  = EDM.Simplex( data, **kwargs )
+    dfv = ValidData( 'Smplx_NeighborTies_valid.csv' )
+
+    S1 = round( dfv.get('Predictions'), 5 )
+    S2 = round(  df.get('Predictions'), 5 )
+    assert S1.equals( S2 )

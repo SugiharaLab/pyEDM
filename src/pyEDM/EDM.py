@@ -32,6 +32,7 @@ class EDM:
         self.libOverlap    = False # True if lib & pred overlap
         self.ignoreNan     = True  # Remove nan from embedding
         self.xRadKnnFactor = 5     # exlcusionRadius knn factor
+        self.tieBreak      = False # Simplex-only deterministic tie ordering
 
         self.kdTree        = None  # SciPy KDTree (k-dimensional tree)
         self.knn_neighbors = None  # ndarray (N_pred, knn) sorted

@@ -11,5 +11,5 @@ from .apps.CrossMap_Matrix  import CrossMap_Matrix
 from .apps.CCM_Matrix       import CCM_Matrix
 from .apps.EmbedDim_Columns import EmbedDim_Columns
 
-__version__     = "2.5.6"
-__versionDate__ = "2026-07-27"
+__version__     = "2.5.7"
+__versionDate__ = "2026-08-15"

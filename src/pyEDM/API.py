@@ -136,6 +136,7 @@ def Simplex( dataFrame       = None,
     if generateSteps :
         S.Generate()
     else :
+        S.tieBreak = True   # deterministic Simplex tie ordering (default)
         S.Run()
 
     if showPlot :
