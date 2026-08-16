@@ -2,7 +2,7 @@
 from warnings import warn
 
 # package modules
-from numpy import array, arange, zeros
+from numpy import array, arange, zeros, minimum
 from numpy import repeat, inf, isfinite, sqrt, lexsort, where
 from numpy import abs as npabs, sum as npsum
 from scipy.spatial import KDTree
@@ -25,23 +25,25 @@ def FindNeighbors( self ) :
        for use in projections.
 
        If there are degenerate lib & pred indices (libOverlap) and/or
-       exclusionRadius > 0, a vectorised boolean mask is applied to the
+       exclusionRadius > 0, a vectorized boolean mask is applied to the
        full (N_pred, k_query) neighbor matrix to exclude self-matches
        and temporally proximate library rows. The first knn valid
        neighbors per row are selected via cumulative-sum indexing and
        compacted into dense (N_pred, knn) output arrays.
 
-       If self.tieBreak is True (set only on the top-level Simplex path)
+       If self.tieBreak is True (set only on top-level Simplex path)
        selection among candidates is made deterministic and backend
        independent using the ordering :
            1. distance ascending
            2. |predRow - libRow| ascending (proximity to prediction)
-           3. libRow ascending)
-       on original data-row indices. The tertiary condition applies proximal
-       tie breaking (|predRow - libRow|) to previous time library indices.
-       The common case is vectorized, a per-row full scan runs only for rows
-       whose knn-th distance reaches the over-query boundary (possible
-       straddling tie) or that are deficient.
+           3. libRow ascending
+       on original data-row indices. The secondary condition applies proximal
+       (temporal) tie-breaking but is direction-symmetric; the tertiary
+       condition libRow ascending, breaks any residual tie toward the earlier
+       (lower-index, previous-time) library point. The common case is
+       vectorized, a per-row full scan runs only for rows whose knn-th
+       distance reaches the over-query boundary (possible straddling tie) or
+       that are deficient.
        tieBreak defaults False for SMap / CCM / Multiview.
 
        Writes to EDM object:
@@ -74,6 +76,7 @@ def FindNeighbors( self ) :
             elif self.lib_i[0] > self.pred_i[-1] :
                 # lib start row is beyond pred end
                 excludeRow = self.lib_i[0] - self.pred_i[-1]
+
             if self.exclusionRadius >= excludeRow :
                 exclusionRadius_knn = True
 
@@ -82,7 +85,7 @@ def FindNeighbors( self ) :
     #-----------------------------------------------
     if len( self.validLib ) :
         # Convert self.validLib boolean vector to data indices
-        data_i = array( range( self.Data.shape[0] ), dtype = int )
+        data_i     = array( range( self.Data.shape[0] ), dtype = int )
         validLib_i = data_i[ self.validLib ]
 
         # Filter lib_i to only include valid library points
@@ -121,7 +124,7 @@ def FindNeighbors( self ) :
         k_query = k_query + 1
 
     if len( self.validLib ) :
-        # Have to examine all knn
+        # Have to examine all valid library points
         k_query = len( self.lib_i )
 
     if tieBreak and len( self.lib_i ) > self.knn :
@@ -158,12 +161,22 @@ def FindNeighbors( self ) :
     knn_neighbors = lib_i_arr[ knn_neighbors ]
 
     #-----------------------------------------------
-    # Vectorised exclusion mask
+    # Vectorized exclusion mask
     #-----------------------------------------------
-    needs_filtering = self.libOverlap or exclusionRadius_knn \
-                      or k_query > self.knn or tieBreak
+    # Logical conditions for knn filtering
+    libDisjoint = not self.libOverlap      # pred & lib rows never coincide
+    noExclusion = not exclusionRadius_knn  # exclusionRadius removes nothing
+    exactQuery  = k_query == self.knn      # queried exactly knn : no surplus
+    noTieBreak  = not tieBreak             # accept KDTree order (no tie resort)
 
-    if needs_filtering :
+    no_filtering = libDisjoint and noExclusion and exactQuery and noTieBreak
+
+    if no_filtering :
+        # The KDTree query is the knn neighbor set when no filtering applies
+        self.knn_neighbors = knn_neighbors
+        self.knn_distances = knn_distances
+
+    else :
         pred_col = array( self.pred_i )[:, None]  # (N_pred, 1)
 
         # Build boolean mask: True = exclude this neighbor
@@ -189,24 +202,16 @@ def FindNeighbors( self ) :
         cs      = valid.cumsum( axis = 1 )
         first_k = valid & ( cs <= self.knn )
 
-        # Check for rows with insufficient valid neighbors
+        # Number of valid (non-excluded) neighbors available per row.
+        # Deficient rows (valid_counts < knn) are NOT back-filled with
+        # excluded / self neighbors (that reinstates the self-match and
+        # leaks the target). Their surplus slots are marked inf below.
         valid_counts = cs[ :, -1 ]
-        deficient    = valid_counts < self.knn
-
-        if deficient.any() :
-            warn( f'{self.name}: FindNeighbors() : '
-                  'Failed to find knn outside exclusionRadius '
-                  f'{self.exclusionRadius} for some predictions. '
-                  f'Consider reducing knn {self.knn}.' )
-
-            # Fall back to first knn raw neighbors for deficient rows
-            for i in range( N_pred_rows ) :
-                if deficient[ i ] :
-                    first_k[ i, : ]          = False
-                    first_k[ i, :self.knn ]  = True
 
         # Compact: gather selected entries into dense (N_pred, k_out)
-        # k_out guards against validLib leaving fewer points than knn
+        # preserving knn_neighbors, knn_distances shape and column meaning:
+        #     'j-th valid neighbor by ascending distance'.
+        # k_out guards against validLib leaving fewer points than knn.
         k_out = min( self.knn, knn_neighbors.shape[1] )
 
         # argsort on ~first_k places True (selected) columns first
@@ -217,9 +222,31 @@ def FindNeighbors( self ) :
         self.knn_neighbors = knn_neighbors[ row, col ]
         self.knn_distances = knn_distances[ row, col ]
 
-    else :
-        self.knn_neighbors = knn_neighbors
-        self.knn_distances = knn_distances
+        # Mark padding slots (beyond the per-row valid neighbor count)
+        # with inf distance so every consumer ignores them by finiteness.
+        # Slot j in row i is padding if j >= min(valid_i, knn). The
+        # neighbor index in a padding slot is set to the row's nearest
+        # neighbor (column 0) which is inert since distance is inf,
+        # is in-range and is Tp-safe.
+        n_valid  = minimum( valid_counts, k_out )  # (N_pred,)
+        pad_mask = arange( k_out )[ None, : ] >= n_valid[ :, None ]
+
+        nearest0 = self.knn_neighbors[ :, 0 ][ :, None ]
+        self.knn_neighbors = where( pad_mask, nearest0, self.knn_neighbors )
+        self.knn_distances[ pad_mask ] = inf
+
+        # Deficiency diagnostics (once per call)
+        if ( valid_counts < self.knn ).any() :
+            warn( f'{self.name}: FindNeighbors() : '
+                  f'Fewer than knn={self.knn} neighbors outside '
+                  f'exclusionRadius {self.exclusionRadius} for some '
+                  'predictions; those rows use fewer neighbors. '
+                  'Consider reducing knn or exclusionRadius.' )
+        if ( valid_counts == 0 ).any() :
+            warn( f'{self.name}: FindNeighbors() : '
+                  'Some predictions have no valid neighbors outside '
+                  f'exclusionRadius {self.exclusionRadius}; those '
+                  'predictions are nan.' )
 
 
 #--------------------------------------------------------------------
@@ -228,11 +255,17 @@ def FindNeighbors( self ) :
 #--------------------------------------------------------------------
 def _TieBreakSelect( self, knn_neighbors, knn_distances, mask, k_query,
                      exclusionRadius_knn ) :
-    '''Vectorised deterministic knn selection by the ordering key
-       (distance asc, |predRow - libRow| asc, libRow asc). A per-row
-       full-library scan (_FullScanRow) completes only rows whose knn-th
-       distance reaches the over-query boundary (a possible straddling
-       tie) or that are deficient; the common case is fully vectorised.'''
+    '''Vectorized deterministic knn selection by ordering
+           1. distance ascending
+           2. |predRow - libRow| ascending (proximity to prediction)
+           3. libRow ascending
+       on original data-row indices. The secondary condition applies proximal
+       (temporal) tie-breaking but is direction-symmetric; the tertiary
+       condition libRow ascending, breaks any residual tie toward the earlier
+       (lower-index, previous-time) library point. A per-row full-library 
+       scan (_FullScanRow) completes only rows whose knn-th distance
+       reaches the over-query boundary (a possible straddling tie) or 
+       that are deficient; the typical case is fully vectorized.'''
     N, k   = knn_neighbors.shape
     knn    = self.knn
     lib_i  = array( self.lib_i )
@@ -263,32 +296,49 @@ def _TieBreakSelect( self, knn_neighbors, knn_distances, mask, k_query,
     flagged     = where( straddle | deficient )[0]
 
     if flagged.size :
-        embLib    = self.Embedding.iloc[ self.lib_i, : ].to_numpy()
-        warnedDef = False
+        embLib        = self.Embedding.iloc[ self.lib_i, : ].to_numpy()
+        deficient_any = False
+        empty_any     = False
         for i in flagged :
             p = pred_i[ i ]
+            # Exclusion-respecting full scan only : never ignore exclusion.
             nbr_c, dst_c = _FullScanRow( self, p, embLib, lib_i, knn,
                                          exclusionRadius_knn, False )
-            if nbr_c is None or nbr_c.shape[0] < knn :
-                # Deficiency : fall back to nearest knn ignoring exclusion
-                nbr_c, dst_c = _FullScanRow( self, p, embLib, lib_i, knn,
-                                             exclusionRadius_knn, True )
-                warnedDef = True
-            out_nbr[ i, : ]  = 0
-            out_dist[ i, : ] = 0
-            t = min( knn, 0 if nbr_c is None else nbr_c.shape[0] )
+            t = 0 if nbr_c is None else min( knn, nbr_c.shape[0] )
             if t :
-                out_nbr[ i, :t ]  = nbr_c[ :t ]
+                out_nbr [ i, :t ] = nbr_c[ :t ]
                 out_dist[ i, :t ] = dst_c[ :t ]
-        if warnedDef :
+            if t < knn :
+                # Deficient row : mark surplus slots as inf padding rather
+                # than completing them by ignoring the exclusion radius.
+                # Padding neighbor index is inert (distance is inf); use
+                # the nearest found (or the existing selection if t == 0).
+                if t :
+                    out_nbr[ i, t: ] = nbr_c[ 0 ]
+                out_dist[ i, t: ] = inf
+                deficient_any = True
+                if t == 0 :
+                    empty_any = True
+
+        if deficient_any :
             warn( f'{self.name}: FindNeighbors() : '
-                  'Failed to find knn outside exclusionRadius '
-                  f'{self.exclusionRadius} for some predictions. '
-                  f'Consider reducing knn {self.knn}.' )
+                  f'Fewer than knn={knn} neighbors outside '
+                  f'exclusionRadius {self.exclusionRadius} for some '
+                  'predictions; those rows use fewer neighbors. '
+                  'Consider reducing knn or exclusionRadius.' )
+
+        if empty_any :
+            warn( f'{self.name}: FindNeighbors() : '
+                  'Some predictions have no valid neighbors outside '
+                  f'exclusionRadius {self.exclusionRadius}; those '
+                  'predictions are nan.' )
 
     return out_nbr, out_dist
 
 
+#--------------------------------------------------------------------
+# Exact full-library scan one prediction row p
+#--------------------------------------------------------------------
 def _FullScanRow( self, p, embLib, lib_i, knn, exclusionRadius_knn,
                   ignoreExclusion ) :
     '''Exact full-library scan for one prediction row p, ordered by the

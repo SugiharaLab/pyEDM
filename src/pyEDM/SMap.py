@@ -2,7 +2,7 @@
 
 # package modules
 from numpy  import apply_along_axis, insert, isnan, isfinite, exp
-from numpy  import full, integer, linspace, mean, nan, power, sum
+from numpy  import full, integer, linspace, mean, nan, power, sum, where
 from pandas import DataFrame, Series, concat
 
 from numpy.linalg import lstsq # from scipy.linalg import lstsq
@@ -126,8 +126,16 @@ class SMap( EDMClass ):
 
         embedding = self.Embedding.to_numpy() # reference to ndarray
 
-        # Compute average distance for knn pred rows into a vector
-        distRowMean = mean( self.knn_distances, axis = 1 )
+        # Average distance per prediction row over FINITE (valid)
+        # neighbors only : inf padding slots are excluded. Rows with no
+        # finite neighbor yield nan, which flags an empty (skipped) row.
+        finite      = isfinite( self.knn_distances )
+        finite_cnt  = finite.sum( axis = 1 )
+        dist_sum    = where( finite, self.knn_distances, 0. ).sum( axis = 1 )
+        distRowMean = full( N_pred, nan, dtype = float )
+        nz          = finite_cnt > 0
+        # Mean neighbor distance of each prediction row : valid neighbors only
+        distRowMean[ nz ] = dist_sum[ nz ] / finite_cnt[ nz ]
 
         # Weight matrix of row vectors
         if self.theta == 0 :
@@ -161,7 +169,25 @@ class SMap( EDMClass ):
 
         # Process each prediction row
         for row in range( N_pred ) :
-            # Allocate array
+            # Empty row : no finite-distance neighbors survived exclusion /
+            # validLib. Leave projection, coefficients, variance at their
+            # nan defaults rather than fabricating from excluded neighbors.
+            if isnan( distRowMean[ row ] ) :
+                continue
+
+            # Valid slots : finite distance (exclude inf padding) and
+            # when the target has nan finite target value. Using the
+            # finiteness mask (not the weight) makes padding inert
+            # independently of theta so theta == 0 needs no special case.
+            valid_i = isfinite( self.knn_distances[ row, : ] )
+            if self.targetVecNan :
+                valid_i = valid_i & B_valid[ row, : ]
+
+            if not valid_i.any() :
+                # Finite neighbors exist but all have nan targets : nan row
+                continue
+
+            # Allocate array : shape (knn, N_dim) preserved
             A = full( ( self.knn, N_dim ), nan, dtype = float )
 
             A[:,0] = W[row,:] # Intercept bias terms in column 0 (weighted)
@@ -171,19 +197,18 @@ class SMap( EDMClass ):
             for j in range( 1, N_dim ) :
                 A[ :, j ] = W[ row, : ] * embedding[ libRows, j-1 ]
 
-            wB_ = wB[row,:]
-
-            if self.targetVecNan :
-                # Redefine A, wB_ to remove targetVec nan
-                valid_i = B_valid[ row, : ]
-                A       = A [ valid_i, : ]
-                wB_     = wB[ row, valid_i ]
+            # Restrict A, wB_ to valid slots (drop inf padding & nan targets)
+            A   = A [ valid_i, : ]
+            wB_ = wB[ row, valid_i ]
 
             # Linear mapping of theta weighted embedding A onto weighted target B
             C, SV = self.Solver( A, wB_ )
 
-            self.coefficients  [ row, : ] = C
-            self.singularValues[ row, : ] = SV
+            # Length-safe assignment : an under-determined fit (fewer valid
+            # neighbors than N_dim) returns SV shorter than N_dim.
+            self.coefficients[ row, :len( C ) ] = C
+            if SV is not None :
+                self.singularValues[ row, :len( SV ) ] = SV
 
             # Prediction is local linear projection.
             if isnan( C[0] ) :
@@ -197,15 +222,11 @@ class SMap( EDMClass ):
 
             self.projection[ row ] = projection_
 
-            # "Variance" estimate assuming weights are probabilities
-            if self.targetVecNan :
-                deltaSqr = power( B[ row, valid_i ] - projection_, 2 )
-                self.variance[ row ] = \
-                    sum( W[ row, valid_i ] * deltaSqr ) \
-                    / sum( W[ row, valid_i ] )
-            else :
-                deltaSqr = power( B[row,:] - projection_, 2 )
-                self.variance[ row ] = sum(W[row]*deltaSqr) / sum(W[row])
+            # "Variance" estimate assuming weights are probabilities.
+            # Restricted to valid slots for all theta (padding excluded).
+            Wv       = W[ row, valid_i ]
+            deltaSqr = power( B[ row, valid_i ] - projection_, 2 )
+            self.variance[ row ] = sum( Wv * deltaSqr ) / sum( Wv )
 
     #-------------------------------------------------------------------
     def Solver( self, A, wB ) :

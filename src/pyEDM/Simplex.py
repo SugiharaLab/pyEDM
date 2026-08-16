@@ -4,6 +4,7 @@
 # package modules
 from numpy  import array, divide, exp, fmax, full, integer, nan
 from numpy  import linspace, power, subtract, sum, zeros
+from numpy  import isfinite, where, inf
 from pandas import DataFrame, Series, concat
 
 # local modules
@@ -93,8 +94,14 @@ class Simplex( EDMClass ):
         if self.verbose:
             print( f'{self.name}: Project()' )
 
-        # First column of knn_distances is minimum distance of all N pred rows
-        minDistances = self.knn_distances[:,0]
+        # Finite (valid) slots : inf-distance slots are exclusion padding
+        finite = isfinite( self.knn_distances )
+
+        # Minimum distance per row over FINITE neighbors only. Empty rows
+        # (no finite neighbor) get a placeholder so no nan propagates;
+        # they are set to nan at the end.
+        minDistances = where( finite, self.knn_distances, inf ).min( axis = 1 )
+        minDistances = where( isfinite( minDistances ), minDistances, 1. )
         # In case there is 0 in minDistances: minWeight = 1E-6
         minDistances = fmax( minDistances, 1E-6 )
 
@@ -102,20 +109,34 @@ class Simplex( EDMClass ):
         # column vector minDistances
         scaledDistances = divide( self.knn_distances, minDistances[:,None] )
 
-        weights      = exp( -scaledDistances )  # N x k
-        weightRowSum = sum( weights, axis = 1 ) # N x 1
+        weights = exp( -scaledDistances )        # N x k ; inf slots -> 0
+        # Force padding weights to exactly 0 (do not rely on underflow)
+        weights = where( finite, weights, 0. )
+        weightRowSum = sum( weights, axis = 1 )  # N x 1
 
         # Matrix of knn_neighbors + Tp defines library target values
         knn_neighbors_Tp = self.knn_neighbors + self.Tp  # N x k
         libTargetValues  = self.targetVec[ knn_neighbors_Tp, 0 ]
+        # Zero padding targets so a nan target in an inert slot cannot
+        # poison the weighted sum ( 0 * nan = nan otherwise )
+        libTargetValues  = where( finite, libTargetValues, 0. )
+
+        # Guard division for rows with no weight (all neighbors excluded)
+        wRowSum_safe = where( weightRowSum > 0, weightRowSum, 1. )
 
         # Projection is average of weighted knn library target values
-        self.projection = sum(weights * libTargetValues, axis=1) / weightRowSum
+        self.projection = sum(weights * libTargetValues, axis=1) / wRowSum_safe
 
         # "Variance" estimate assuming weights are probabilities
         libTargetPredDiff = subtract( libTargetValues, self.projection[:,None] )
         deltaSqr          = power( libTargetPredDiff, 2 )
-        self.variance     = sum( weights * deltaSqr, axis = 1 ) / weightRowSum
+        self.variance     = sum( weights * deltaSqr, axis = 1 ) / wRowSum_safe
+
+        # Empty rows (no valid neighbors) -> nan projection & variance
+        empty = weightRowSum <= 0
+        if empty.any() :
+            self.projection = where( empty, nan, self.projection )
+            self.variance   = where( empty, nan, self.variance )
 
     #-------------------------------------------------------------------
     def Generate( self ) :
