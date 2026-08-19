@@ -99,9 +99,14 @@ def FindNeighbors( self ) :
                 'All library points excluded by validLib.' )
 
         if len( lib_i_valid ) < self.knn :
-            warn( f'{self.name}: FindNeighbors() : '
-                  f'Only {len(lib_i_valid)} valid library points found, '
-                  f'but knn={self.knn}. Reduce knn or check validLib.' )
+            # Invalid embedding/library specification.
+            # The valid library (after validLib / nan removal) has fewer than
+            # knn points: knn nearest neighbors do not exist for any prediction.
+            raise ValueError(
+                f'{self.name}: FindNeighbors() : valid library size '
+                f'{len(lib_i_valid)} is less than knn={self.knn}. '
+                'Reduce knn to at most the valid library size, or widen '
+                'validLib / check the library for nan.' )
 
         # Replace lib_ with lib_i_valid
         self.lib_i = lib_i_valid

@@ -17,7 +17,7 @@ Regression coverage for issue #74 : deficient / fully-excluded rows must be
 inf-padded, never back-filled with excluded or self neighbors.
 """
 
-from numpy  import asarray, isfinite, isnan, diff, array_equal, sin, cos, arange
+from numpy  import asarray, isfinite, isnan, diff, array_equal, sin, cos, arange, nan
 from pandas import DataFrame
 import pytest
 
@@ -290,3 +290,24 @@ def test_validlib_filtering_no_leakage():
     S = EDM.Simplex( data, **kwargs )
 
     _assert_filter_invariants( S )
+
+
+def test_smap_validlib_fewer_than_knn():
+    '''validLib leaving fewer valid library points than knn is an invalid
+       system : SMap must raise ValueError with resolving information,
+       not warn-and-crash or silently reduce knn (issue #74 follow-up).'''
+    data = DataFrame( { 'time' : range( 1, 13 ),
+                        'X'    : [ 1, 2, 3, nan, nan, 6, 7, 8, 9, 10, 11, 12 ],
+                        'Y'    : [ 12, 11, 10, 9, 8, 7, 6, nan, nan, 3, 2, 1 ] } )
+    kwargs = SMapArgs.copy()
+    kwargs.update( dict( columns         = 'Y',
+                         target          = 'X',
+                         lib             = [1, 10],
+                         pred            = [1, 10],
+                         E               = 2,
+                         tau             = -1,
+                         theta           = 1,
+                         exclusionRadius = 2,
+                         validLib        = data['X'].notna().values ) )
+    with pytest.raises( ValueError ):
+        EDM.SMap( data, **kwargs )
