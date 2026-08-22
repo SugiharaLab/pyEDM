@@ -66,8 +66,30 @@ class EDM:
     #--------------------------------------------------------------------
     def RemoveNan( self ) :
     #--------------------------------------------------------------------
-        '''KDTree in Neighbors does not accept nan
-           If ignoreNan remove Embedding rows with nan from lib_i, pred_i
+        '''If ignoreNan remove Embedding rows with nan from lib_i, pred_i.
+        If nan target set targetVecNan flag for SMap. 
+
+        pyEDM nan policy
+
+        Embedding (state vectors) : A nan state vector has no defined
+        distance and cannot yield a valid knn_distance or knn_neighbor vector.
+        Functionally, KDTree rejects non-finite coordinates: RemoveNan() is
+        required for all EDM methods.
+
+        Target : SMap solves a locally weighted linear model A · C = B via
+        an external solver that does not allow nan in A or B. Target vector
+        nan are implicitly removed in SMap.Project() as recorded with the
+        targetVecNan flag. When data are long, library dense and number of
+        target nan small this is effectively transparent since SMap uses
+        all available neighbors. 
+
+        Target : Simplex is a weighted average of E+1 nearest neighbor targets,
+        a nan target propagates to a nan prediction. Removing a nan target
+        implicitly collapses the E+1 vertex simplex from interpolation to
+        extrapolation fundamentally changing the presumed model. As such the
+        user is required to explicitly remove target nan, e.g. with validLib,
+        acknowledging the change in the data model but restoring the required
+        E + 1 dimensional simplex with more distant, non-nan targets.
         '''
         if self.verbose:
             print( f'{self.name}: RemoveNan()' )

@@ -12,4 +12,4 @@ from .apps.CCM_Matrix       import CCM_Matrix
 from .apps.EmbedDim_Columns import EmbedDim_Columns
 
 __version__     = "2.5.7"
-__versionDate__ = "2026-08-15"
+__versionDate__ = "2026-08-22"
